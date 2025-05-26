@@ -1,0 +1,24 @@
+# Canonical https/www
+# <IfModule mod_rewrite.c>
+#	#RewriteCond %{HTTPS} off
+#	#RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+#	
+#	RewriteCond %{HTTP_HOST} !^www\. [NC]
+#	RewriteRule (.*) https://www.%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>IfModule mod_rewrite.c>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # QUITAR .php de la URL
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.+)$ $1.php [L,QSA]
+</IfModule>
+
+
+
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.*)$ $1.php
