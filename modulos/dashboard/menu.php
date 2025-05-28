@@ -52,7 +52,7 @@
                     <div class="texto-btn-ajustes">Dashboard</div>
                 </li>
 
-                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>/modulos/productos/lista'">
+                <li class="btn-ajustes" onclick="location.href='../productos/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-boxes-stacked"></i></div>
                     <div class="texto-btn-ajustes">Productos</div>
                 </li>
