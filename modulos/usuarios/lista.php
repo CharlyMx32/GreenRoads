@@ -2,8 +2,9 @@
     ini_set('display_errors', '1');
     ini_set('display_startup_errors', '1');
     error_reporting(E_ALL);
-    $ROOT = $_SERVER['DOCUMENT_ROOT'];
+    // $ROOT = $_SERVER['DOCUMENT_ROOT'];
 
+    $ROOT = '../../';
     $TITULO = "Usuarios";
     
     include_once $ROOT.'/db/conexion.php';
@@ -45,7 +46,7 @@
                 "buscador" => true,
                 "btn_atras" => 'window.history.back()'
             ];
-            include_once $ROOT.'/includes/header.php';
+            include_once '../../includes/header.php';
         ?>
 
         <div class="content">
@@ -70,7 +71,7 @@
                                 <td><?php echo $usuario['estado']; ?></td>
                                 <td>
                                     <div class="opciones-tabla-lista">
-                                        <div class="opcion-tabla-lista editar" onclick="location.href='<?php $ROOT ?>/modulos/usuarios/informacion?u=<?php echo $usuario['id'] ?>'"><i class="fa-solid fa-pen-to-square"></i></div>
+                                        <div class="opcion-tabla-lista editar" onclick="location.href='../usuarios/informacion?u=<?php echo $usuario['id'] ?>'"><i class="fa-solid fa-pen-to-square"></i></div>
                                         <div class="opcion-tabla-lista power" onclick="changeStatus(<?php echo $usuario['id'] ?>, '<?php echo ($usuario['estado'] == 'activo' ? 'inactivo' : 'activo') ?>')" <?php if($usuario['estado'] == 'activo') echo 'style="color: #00dd0b;"'; ?>><i class="fa-solid fa-power-off"></i></div>
                                         <div class="opcion-tabla-lista eliminar" onclick="changeStatus(<?php echo $usuario['id'] ?>, 'eliminado')"><i class="fa-solid fa-trash"></i></div>
                                     </div>
@@ -85,7 +86,7 @@
         <div class="btn-nuevo" onclick="location.href='agregar'"><i class="fa-solid fa-plus"></i></div>
 
         <!-- POPUP -->
-        <?php include_once $ROOT.'/includes/popup.php'; ?>
+        <?php include_once '../../includes/popup.php'; ?>
     </body>
 
     <script>

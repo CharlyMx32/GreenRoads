@@ -19,7 +19,6 @@ if (!tieneSesion()) {
 $id = intval($_POST['id'] ?? 0);
 $nombre = trim($_POST['nombre'] ?? '');
 $precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
-$ancho_metros = floatval($_POST['ancho_metros'] ?? 0);
 $id_unidad = intval($_POST['id_unidad'] ?? 0);
 
 if ($id <= 0 || $nombre == '' || !$id_unidad) {
@@ -43,7 +42,7 @@ if (mysqli_num_rows($qUnidad) == 0) {
 }
 
 // Manejo de imagen
-$nombreImagen = $producto['imagen']; // Por defecto, conservar la actual
+$nombreImagen = $producto['imagen'];
 
 if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
     $ext = pathinfo($_FILES['imagen']['name'], PATHINFO_EXTENSION);
@@ -55,7 +54,7 @@ if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
         exit;
     }
 
-    // (Opcional) eliminar imagen anterior si existe
+    // eliminar imagen anterior si existe
     if ($nombreImagen && file_exists($ROOT . "/img/productos/" . $nombreImagen)) {
         unlink($ROOT . "/img/productos/" . $nombreImagen);
     }
@@ -66,12 +65,12 @@ if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
 // Actualizar en la base de datos
 $stmt = mysqli_prepare($conn, "
     UPDATE productos
-    SET nombre = ?, precio_unitario = ?, ancho_metros = ?, id_unidad = ?, imagen = ?
+    SET nombre = ?, precio_unitario = ?, id_unidad = ?, imagen = ?
     WHERE id = ?
 ");
 
-mysqli_stmt_bind_param($stmt, 'sddisi', $nombre, $precio_unitario, $ancho_metros, $id_unidad, $nombreImagen, $id);
-
+mysqli_stmt_bind_param($stmt, 'sdssi', $nombre, $precio_unitario, $id_unidad, $nombreImagen, $id);
+ 
 if (mysqli_stmt_execute($stmt)) {
     echo json_encode(["status" => 1, "mensaje" => "Producto actualizado correctamente."]);
 } else {

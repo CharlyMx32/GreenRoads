@@ -1,67 +1,128 @@
 <?php
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+// Configuración inicial
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(0);
 
-//$ROOT = $_SERVER['DOCUMENT_ROOT'];
 $ROOT = '../..';
-
 include_once $ROOT . '/db/conexion.php';
 include_once $ROOT . '/includes/sesion.php';
-include_once $ROOT . '/includes/config.php';
 
 header('Content-Type: application/json');
 
+// Verificar si hay errores de conexión
+if (!$conn) {
+    die(json_encode([
+        'status' => 0,
+        'mensaje' => 'Error de conexión a la base de datos'
+    ]));
+}
+
+// Verificar método POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    die(json_encode([
+        'status' => 0,
+        'mensaje' => 'Método no permitido'
+    ]));
+}
+
+// Verificar sesión
 if (!tieneSesion()) {
-    echo json_encode(["status" => 0, "mensaje" => "Sesión no válida."]);
-    exit;
+    http_response_code(401);
+    die(json_encode([
+        'status' => 0,
+        'mensaje' => 'Sesión no válida'
+    ]));
 }
 
-// Validaciones básicas
+// Obtener datos
 $nombre = trim($_POST['nombre'] ?? '');
-$precio_unitario = $_POST['precio_unitario'] ?? 0;
-$ancho_metros = $_POST['ancho_metros'] ?? 0;
-$id_unidad = $_POST['id_unidad'] ?? null;
+$precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
+$tipo_producto = intval($_POST['tipo_producto'] ?? 0);
+$id_unidad = intval($_POST['id_unidad'] ?? 0);
+$tipo_inventario = $_POST['tipo_inventario'] ?? 'unidad';
+$tipo_inventario = in_array($tipo_inventario, ['unidad', 'rollo']) ? $tipo_inventario : 'unidad';
 
-if ($nombre == '' || !$id_unidad) {
-    echo json_encode(["status" => 0, "mensaje" => "Nombre e unidad son obligatorios."]);
-    exit;
+// Validaciones
+if (empty($nombre)) {
+    die(json_encode(['status' => 0, 'mensaje' => 'El nombre del producto es obligatorio']));
 }
 
-// Validar unidad existente
-$qUnidad = mysqli_query($conn, "SELECT id FROM unidades WHERE id = $id_unidad");
-if (mysqli_num_rows($qUnidad) == 0) {
-    echo json_encode(["status" => 0, "mensaje" => "Unidad no válida."]);
-    exit;
+if ($id_unidad <= 0) {
+    die(json_encode(['status' => 0, 'mensaje' => 'Seleccione una unidad válida']));
+}
+
+if ($tipo_producto <= 0) {
+    die(json_encode(['status' => 0, 'mensaje' => 'Seleccione un tipo de producto válido']));
+}
+
+if (!in_array($tipo_inventario, ['unidad', 'rollo'])) {
+    die(json_encode(['status' => 0, 'mensaje' => 'Tipo de inventario inválido']));
 }
 
 // Manejo de imagen
 $nombreImagen = null;
+try {
+    if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
+        $permitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        $tipo = mime_content_type($_FILES['imagen']['tmp_name']);
 
-if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
-    $ext = pathinfo($_FILES['imagen']['name'], PATHINFO_EXTENSION);
-    $nombreImagen = uniqid('producto_') . '.' . strtolower($ext);
-    $rutaDestino = $ROOT . "/img/productos/" . $nombreImagen;
+        if (!in_array($tipo, $permitidos)) {
+            die(json_encode(['status' => 0, 'mensaje' => 'Solo se permiten imágenes JPEG, PNG o GIF']));
+        }
 
-    if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $rutaDestino)) {
-        echo json_encode(["status" => 0, "mensaje" => "No se pudo guardar la imagen."]);
-        exit;
+        if ($_FILES['imagen']['size'] > 2 * 1024 * 1024) {
+            die(json_encode(['status' => 0, 'mensaje' => 'La imagen no debe exceder 2MB']));
+        }
+
+        $ext = pathinfo($_FILES['imagen']['name'], PATHINFO_EXTENSION);
+        $nombreImagen = uniqid('prod_') . '.' . $ext;
+        $destino = $ROOT . '/img/productos/' . $nombreImagen;
+
+        if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $destino)) {
+            die(json_encode(['status' => 0, 'mensaje' => 'Error al guardar la imagen']));
+        }
     }
+
+    $stmt = $conn->prepare("INSERT INTO productos (
+        nombre, precio_unitario, id_unidad, id_tipo_producto, tipo_inventario, imagen, estado
+    ) VALUES (?, ?, ?, ?, ?, ?, 'activo')");
+
+    if (!$stmt) {
+        throw new Exception('Error al preparar la consulta: ' . $conn->error);
+    }
+
+    $stmt->bind_param('sdiiss',
+        $nombre,
+        $precio_unitario,
+        $id_unidad,
+        $tipo_producto,
+        $tipo_inventario,
+        $nombreImagen
+    );
+
+    if (!$stmt->execute()) {
+        throw new Exception('Error al ejecutar la consulta: ' . $stmt->error);
+    }
+
+    echo json_encode([
+        'status' => 1,
+        'mensaje' => 'Producto agregado correctamente',
+        'id' => $stmt->insert_id
+    ]);
+
+} catch (Exception $e) {
+    if ($nombreImagen && file_exists($destino)) {
+        unlink($destino);
+    }
+
+    error_log('Error en agregar.php: ' . $e->getMessage());
+
+    http_response_code(500);
+    echo json_encode([
+        'status' => 0,
+        'mensaje' => 'Error interno del servidor'
+    ]);
 }
-
-// Insertar en base de datos
-$stmt = mysqli_prepare($conn, "
-    INSERT INTO productos (nombre, precio_unitario, ancho_metros, id_unidad, estado, imagen)
-    VALUES (?, ?, ?, ?, 'activo', ?)
-");
-
-mysqli_stmt_bind_param($stmt, 'sddis', $nombre, $precio_unitario, $ancho_metros, $id_unidad, $nombreImagen);
-
-if (mysqli_stmt_execute($stmt)) {
-    echo json_encode(["status" => 1, "mensaje" => "Producto agregado correctamente."]);
-} else {
-    echo json_encode(["status" => 0, "mensaje" => "Error al guardar el producto."]);
-}
-
-mysqli_stmt_close($stmt);
 ?>

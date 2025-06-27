@@ -15,7 +15,6 @@ if (!$id_cotizacion || !is_numeric($id_cotizacion)) {
     exit;
 }
 
-// Cambiar estado a 'aceptada'
 $sql = "UPDATE cotizaciones SET estado = 'aceptada' WHERE id = ? AND estado = 'pendiente'";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $id_cotizacion);

@@ -15,6 +15,6 @@
     <?php } ?>
 
     <?php if(isset($headerParams['btn_logout'])) { ?>
-        <div class="header-rightoption btn_logout" onclick="location.href='<?php $ROOT; ?>/php/sesion/logout'"><i class="fa-light fa-arrow-right-from-bracket"></i></div>
+        <div class="header-rightoption btn_logout" onclick="location.href='<?php $ROOT; ?>../../php/sesion/logout'"><i class="fa-light fa-arrow-right-from-bracket"></i></div>
     <?php } ?>
 </div>

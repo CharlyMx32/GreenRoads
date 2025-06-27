@@ -2,8 +2,8 @@
     ini_set('display_errors', '1');
     ini_set('display_startup_errors', '1');
     error_reporting(E_ALL);
-    $ROOT = $_SERVER['DOCUMENT_ROOT'];
-
+    //$ROOT = $_SERVER['DOCUMENT_ROOT'];
+    $ROOT = '../..';
     $TITULO = "Información usuario";
     
     include_once $ROOT.'/db/conexion.php';
@@ -51,7 +51,7 @@
                 "titulo" => $TITULO,
                 "btn_atras" => "window.history.back()"
             ];
-            include_once $ROOT.'/includes/header.php';
+            include_once '../../includes/header.php';
         ?>
         
         <div class="formulario active">
@@ -76,7 +76,7 @@
         </div>
 
         <!-- POPUP -->
-        <?php include_once $ROOT.'/includes/popup.php'; ?>
+        <?php include_once '../../includes/popup.php'; ?>
 
     </body>
 
@@ -111,7 +111,7 @@
 
             displayPopUp();
 
-            $.post('<?php $ROOT; ?>/php/usuarios/modificar', {
+            $.post('../../php/usuarios/modificar', {
                 id: <?php echo $id; ?>,
                 nombre: nombre,
                 apellido: apellido,

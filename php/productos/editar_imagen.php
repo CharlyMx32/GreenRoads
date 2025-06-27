@@ -48,3 +48,4 @@ if ($producto['imagen'] && file_exists($ROOT . "/img/productos/" . $producto['im
 mysqli_query($conn, "UPDATE productos SET imagen = '$nombreImagen' WHERE id = $id");
 
 echo json_encode(["status" => 1, "mensaje" => "Imagen actualizada correctamente.", "imagen" => $nombreImagen]);
+exit;

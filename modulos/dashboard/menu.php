@@ -57,17 +57,17 @@
                     <div class="texto-btn-ajustes">Productos</div>
                 </li>
 
-                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>/modulos/inventario/lista'">
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../inventario/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-truck"></i></div>
                     <div class="texto-btn-ajustes">Inventario</div>
                 </li>
 
-                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>/modulos/cotizaciones/lista'">
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../cotizaciones/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-list"></i></div>
                     <div class="texto-btn-ajustes">Cotizaciones</div>
                 </li>
 
-                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>/modulos/usuarios/lista'">
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../usuarios/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
                     <div class="texto-btn-ajustes">Usuarios</div>
                 </li>

@@ -42,6 +42,7 @@
         session_start();
         
         $_SESSION['usuario'] = $idUsuario;
+        $_SESSION['usuario_id'] = $idUsuario;
 
         if(!mysqli_commit($conn)) throw new Exception("Error de conexión");
 
