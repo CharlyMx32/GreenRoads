@@ -1,0 +1,187 @@
+:root {
+    --color-primario: #7DC042;
+    --color-secundario: #FF8C42;
+    --color-error: #fc4903;
+    --color-borde: #ccc;
+    --sombra: 0 2px 6px rgba(0, 0, 0, 0.05);
+    --radio-borde: 10px;
+}
+
+body {
+    font-family: "Montserrat", sans-serif;
+}
+
+/* Contenedor principal */
+.contenedor-edicion {
+    min-width: 80%;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Info del producto */
+.info-producto {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    border-left: 4px solid #7dc042;
+}
+
+.info-producto h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-family: "Montserrat", sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Badges con iconos */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: "Montserrat", sans-serif;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.badge i {
+    margin-right: 6px;
+    font-size: 12px;
+}
+
+.badge-producto {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.badge-color {
+    background: #fff8e1;
+    color: #ff8f00;
+    border: 1px solid #ffecb3;
+}
+
+.tabla-rollos {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: "Montserrat", sans-serif;
+}
+
+.tabla-rollos th {
+    background-color: #7dc042;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.tabla-rollos td {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+
+.tabla-rollos tr:hover {
+    background-color: #f9f9f9;
+}
+
+.tabla-rollos input[type="number"] {
+    width: 80px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-family: "Montserrat", sans-serif;
+}
+
+.tabla-rollos input[type="number"]:focus {
+    border-color: #7dc042;
+    outline: none;
+}
+
+.contenedor-tabla {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.sin-rollos {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+    background: #fafafa;
+    border-radius: 6px;
+    margin: 20px 0;
+}
+
+.btncancel {
+    width: 180px;
+    height: 38px;
+    line-height: 38px;
+    text-align: center;
+    background-color: var(--color-secundario);
+    cursor: pointer;
+    color: #ffffff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    border-radius: 5px;
+    margin: 0;
+    border: none;
+    transition: var(--transicion);
+}
+
+.btncancel:hover {
+    background-color: #E67339;
+}
+
+.btnadd {
+    width: 180px;
+    height: 38px;
+    line-height: 38px;
+    text-align: center;
+    background-color: var(--color-primario);
+    cursor: pointer;
+    color: #ffffff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    border-radius: 5px;
+    margin: 0;
+    border: none;
+    transition: var(--transicion);
+}
+
+.btnadd:hover {
+    background-color: rgb(109, 168, 58);
+}
+
+.eliminar {
+    color: var(--color-error);
+}
+
+.acciones-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.rollo-modificado {
+    background-color: #fffde7;
+}
+
+.rollo-eliminado {
+    opacity: 0.6;
+    background-color: #f5f5f5;
+}

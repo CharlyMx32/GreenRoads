@@ -37,6 +37,18 @@ if (!$producto) {
     exit();
 }
 
+$tiposProducto = [];
+$res = mysqli_query($conn, "SELECT id, nombre FROM tipo_productos ORDER BY nombre ASC");
+while ($row = mysqli_fetch_assoc($res)) {
+    $tiposProducto[] = $row;
+}
+
+$modelos = [];
+$res = mysqli_query($conn, "SELECT id, nombre FROM modelos ORDER BY nombre ASC");
+while ($row = mysqli_fetch_assoc($res)) {
+    $modelos[] = $row;
+}
+
 $unidades = [];
 $res = mysqli_query($conn, "SELECT id, nombre FROM unidades ORDER BY nombre ASC");
 while ($row = mysqli_fetch_assoc($res)) {
@@ -103,6 +115,34 @@ while ($row = mysqli_fetch_assoc($res)) {
                 <input type="number" class="textfield" name="precio_unitario" step="0.01" value="<?= $producto['precio_unitario'] ?>">
                 <label placeholder="Precio unitario"></label>
 
+
+                <select name="tipo_producto" class="textfield" required>
+                    <option value=""></option>
+                    <?php foreach ($tiposProducto as $tipo): ?>
+                        <option value="<?= $tipo['id'] ?>" <?= $tipo['id'] == $producto['id_tipo_producto'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($tipo['nombre']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <label placeholder="Tipo de producto *"></label>
+
+                <!-- Tipo de inventario -->
+                <select name="tipo_inventario" class="textfield" required>
+                    <option value="unidad" <?= $producto['tipo_inventario'] == 'unidad' ? 'selected' : '' ?>>Unidad</option>
+                    <option value="rollo" <?= $producto['tipo_inventario'] == 'rollo' ? 'selected' : '' ?>>Rollo</option>
+                </select>
+                <label placeholder="Tipo de inventario *"></label>
+
+                <select name="id_modelo" class="textfield">
+                    <option value="">Sin modelo</option>
+                    <?php foreach ($modelos as $modelo): ?>
+                        <option value="<?= $modelo['id'] ?>" <?= $modelo['id'] == $producto['id_modelo'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($modelo['nombre']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <label placeholder="Modelo (opcional)"></label>
+
                 <select name="id_unidad" class="textfield" required>
                     <option value=""></option>
                     <?php foreach ($unidades as $unidad): ?>
@@ -141,11 +181,11 @@ while ($row = mysqli_fetch_assoc($res)) {
     }
 
     // Mostrar preview al seleccionar una imagen
-    inputImagen.addEventListener('change', function (e) {
+    inputImagen.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
             const reader = new FileReader();
-            reader.onload = function (ev) {
+            reader.onload = function(ev) {
                 preview.src = ev.target.result;
 
                 if (contenedorFoto) contenedorFoto.style.display = 'flex';
@@ -155,8 +195,8 @@ while ($row = mysqli_fetch_assoc($res)) {
         }
     });
 
-    // Subir imagen al servidor
-    inputImagen.addEventListener('change', function () {
+    // Subir imagen
+    inputImagen.addEventListener('change', function() {
         const archivo = this.files[0];
         if (!archivo) return;
 
@@ -168,9 +208,9 @@ while ($row = mysqli_fetch_assoc($res)) {
         displayPopUp("Subiendo imagen...");
 
         fetch('../../php/productos/editar_imagen.php', {
-            method: 'POST',
-            body: formData
-        })
+                method: 'POST',
+                body: formData
+            })
             .then(res => res.json())
             .then(data => {
                 if (spinner) spinner.style.display = 'none';
@@ -204,9 +244,9 @@ while ($row = mysqli_fetch_assoc($res)) {
         displayPopUp();
 
         fetch('../../php/productos/editar_productos.php', {
-            method: 'POST',
-            body: formData
-        })
+                method: 'POST',
+                body: formData
+            })
             .then(res => res.json())
             .then(data => {
                 if (data.status == 0) {

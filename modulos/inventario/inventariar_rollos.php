@@ -68,13 +68,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
 
     $nombre_color = $color['nombre'] ?? 'Desconocido';
 
+    // Inicializar el array para este color si no existe
+    if (!isset($_SESSION['rollos_temporales'][$id_color])) {
+        $_SESSION['rollos_temporales'][$id_color] = [
+            'nombre_color' => $nombre_color,
+            'rollos' => []
+        ];
+    }
+
+    // Agregar los nuevos rollos
     for ($i = 0; $i < $cantidad; $i++) {
-        $_SESSION['rollos_temporales'][] = [
+        $_SESSION['rollos_temporales'][$id_color]['rollos'][] = [
             'largo' => $largo,
             'ancho' => $ancho,
-            'area' => $largo * $ancho,
-            'id_color' => $id_color,
-            'nombre_color' => $nombre_color
+            'area' => $largo * $ancho
         ];
     }
 
@@ -105,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
             flex-direction: column;
             gap: 15px;
             width: 100%;
-            max-width: 350px;
+            max-width: 450px;
             box-sizing: border-box;
         }
 
@@ -158,6 +165,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
             text-align: center;
             margin-bottom: 10px;
         }
+
+        .btnlimpiar {
+            width: 180px;
+            height: 38px;
+            line-height: 38px;
+            text-align: center;
+            margin: 20px calc(50% - 90px);
+            background-color: #e1b12c;
+            cursor: pointer;
+            color: #ffffff;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+
 
         @media (max-width: 992px) {
             .fila-inventario {
@@ -235,29 +257,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
                     <?php if (!empty($_SESSION['rollos_temporales'])): ?>
                         <?php
                         $agrupados = [];
-                        foreach ($_SESSION['rollos_temporales'] as $index => $r) {
-                            if (!isset($r['id_color']) || !isset($r['nombre_color'])) {
-                                error_log("Invalid rollo at index $index: " . print_r($r, true));
-                                continue;
+                        $total_general = 0;
+                        
+                        foreach ($_SESSION['rollos_temporales'] as $id_color => $color_data) {
+                            if (isset($color_data['rollos']) && is_array($color_data['rollos'])) {
+                                foreach ($color_data['rollos'] as $rollo) {
+                                    $key = $rollo['largo'] . '-' . $rollo['ancho'] . '-' . $id_color;
+                                    if (!isset($agrupados[$key])) {
+                                        $agrupados[$key] = [
+                                            'cantidad' => 0,
+                                            'largo' => $rollo['largo'],
+                                            'ancho' => $rollo['ancho'],
+                                            'area_unitaria' => $rollo['largo'] * $rollo['ancho'],
+                                            'area_total' => 0,
+                                            'id_color' => $id_color,
+                                            'nombre_color' => $color_data['nombre_color']
+                                        ];
+                                    }
+                                    $agrupados[$key]['cantidad']++;
+                                    $agrupados[$key]['area_total'] += $rollo['largo'] * $rollo['ancho'];
+                                    $total_general += $rollo['largo'] * $rollo['ancho'];
+                                }
                             }
-                            $key = $r['largo'] . '-' . $r['ancho'] . '-' . $r['id_color'];
-                            if (!isset($agrupados[$key])) {
-                                $agrupados[$key] = [
-                                    'cantidad' => 0,
-                                    'largo' => $r['largo'],
-                                    'ancho' => $r['ancho'],
-                                    'area_unitaria' => $r['area'],
-                                    'area_total' => 0,
-                                    'id_color' => $r['id_color'],
-                                    'nombre_color' => $r['nombre_color']
-                                ];
-                            }
-                            $agrupados[$key]['cantidad']++;
-                            $agrupados[$key]['area_total'] += $r['area'];
                         }
-
                         ?>
-                        <div class="columna">
+                        <div class="columna" style="width: 450px;">
                             <div class="titulo-formulario">Rollos por agregar</div>
                             <div class="contenedor-tabla">
                                 <table class="tabla-rollos">
@@ -274,24 +298,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
                                         <?php foreach ($agrupados as $grupo): ?>
                                             <tr>
                                                 <td><?= $grupo['cantidad'] ?></td>
-                                                <td><?= number_format($grupo['ancho'], 2) ?></td>
-                                                <td><?= number_format($grupo['largo'], 2) ?></td>
-                                                <td><?= number_format($grupo['area_total'], 2) ?></td>
-                                                <td><?= isset($grupo['nombre_color']) ? htmlspecialchars($grupo['nombre_color']) : 'N/A' ?></td>
+                                                <td><?= number_format($grupo['ancho'], 2) ?> m</td>
+                                                <td><?= number_format($grupo['largo'], 2) ?> m</td>
+                                                <td><?= number_format($grupo['area_total'], 2) ?> m²</td>
+                                                <td><?= htmlspecialchars($grupo['nombre_color']) ?></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
                                     <tfoot>
                                         <tr>
                                             <td colspan="3" style="text-align: right;"><strong>Total general:</strong></td>
-                                            <td><strong><?= number_format(array_sum(array_column($agrupados, 'area_total')), 2) ?></strong></td>
+                                            <td><strong><?= number_format($total_general, 2) ?> m²</strong></td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
                                 </table>
                             </div>
                             <div class="btn-row">
-                                <form method="POST" action="../../php/inventario/guardar_editar.php">
+                                <form method="POST" action="../../php/inventario/guardar_rollos.php">
                                     <input type="hidden" name="id_producto" value="<?= $id_producto ?>">
                                     <input type="hidden" name="guardar_definitivo" value="1">
                                     <input type="hidden" name="origen" value="inventariar_rollos">
@@ -300,10 +324,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
                                 <form method="GET" action="inventariar_rollos.php">
                                     <input type="hidden" name="id" value="<?= $id ?>">
                                     <input type="hidden" name="limpiar_temporal" value="1">
-                                    <button type="submit" class="btnadd-filtro">Limpiar</button>
+                                    <button type="submit" class="btnlimpiar">Limpiar</button>
                                 </form>
                             </div>
-
                         </div>
                     <?php endif; ?>
                 </div>
@@ -314,7 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
 
     <script>
         // Manejo del formulario de guardado
-        document.querySelector('form[action*="guardar_editar.php"]')?.addEventListener('submit', function(e) {
+        document.querySelector('form[action*="guardar_rollos.php"]')?.addEventListener('submit', function(e) {
             e.preventDefault();
 
             const form = e.target;

@@ -16,9 +16,13 @@ $sql = "SELECT
     p.id, 
     p.nombre, 
     u.simbolo AS unidad,
-    p.id_tipo_producto
+    p.id_tipo_producto,
+    p.tipo_inventario,
+    m.nombre AS nombre_modelo,
+    m.altura_mm
 FROM productos p
 JOIN unidades u ON u.id = p.id_unidad
+LEFT JOIN modelos m ON m.id = p.id_modelo
 WHERE p.estado = 'activo'
 AND NOT EXISTS (
     SELECT 1 FROM movimientos_inventario mi WHERE mi.id_producto = p.id
@@ -67,13 +71,26 @@ $productos = $result->fetch_all(MYSQLI_ASSOC);
                     <?php else: ?>
                         <?php foreach ($productos as $p): ?>
                             <tr>
-                                <td><strong><?= htmlspecialchars($p['nombre']) ?></strong></td>
+                                <td>
+                                    <strong><?= htmlspecialchars($p['nombre']) ?></strong>
+                                    <?php if (!empty($p['nombre_modelo'])): ?>
+                                        <div style="font-size: 0.9em; color: #666; margin-top: 4px;">
+                                            Modelo: <?= htmlspecialchars($p['nombre_modelo']) ?>
+                                            <?php if (!empty($p['altura_mm'])): ?>
+                                                | Altura: <?= htmlspecialchars($p['altura_mm']) ?> mm
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php elseif (!empty($p['altura_mm'])): ?>
+                                        <div style="font-size: 0.9em; color: #666; margin-top: 4px;">
+                                            Altura: <?= htmlspecialchars($p['altura_mm']) ?> mm
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($p['unidad']) ?></td>
                                 <td>
                                     <div class="acciones">
                                         <div class="editar"
-                                            onclick="location.href='<?= getInventariarURL($p['id_tipo_producto']) ?>?id=<?= $p['id'] ?>'"
-
+                                            onclick="location.href='<?= getInventariarURL($p['id_tipo_producto'], $p['tipo_inventario']) ?>?id=<?= $p['id'] ?>'">
                                             <i class="fa-solid fa-boxes-packing"></i> Inventariar
                                         </div>
                                     </div>
@@ -100,16 +117,16 @@ $productos = $result->fetch_all(MYSQLI_ASSOC);
 </html>
 
 <?php
-function esTipoConRollos(int $tipo_producto_id): bool
+function esTipoConRollos(int $tipo_producto_id, string $tipo_inventario): bool
 {
-    return in_array($tipo_producto_id, [1]); 
+    // Considerar tanto el tipo de producto como el tipo de inventario
+    return in_array($tipo_producto_id, [1]) || $tipo_inventario === 'rollo';
 }
 
-function getInventariarURL(int $tipo_producto_id): string
+function getInventariarURL(int $tipo_producto_id, string $tipo_inventario): string
 {
-    return esTipoConRollos($tipo_producto_id)
+    return esTipoConRollos($tipo_producto_id, $tipo_inventario)
         ? "inventariar_rollos.php"
         : "inventariar_unidad.php";
 }
-
 ?>

@@ -40,7 +40,6 @@ if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $rutaDestino)) {
     exit;
 }
 
-// Eliminar imagen anterior si existe
 if ($producto['imagen'] && file_exists($ROOT . "/img/productos/" . $producto['imagen'])) {
     unlink($ROOT . "/img/productos/" . $producto['imagen']);
 }

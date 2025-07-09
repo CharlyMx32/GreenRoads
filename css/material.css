@@ -7,7 +7,7 @@ body {
     height: auto;
     margin: 0;
     padding: 0;
-    background-color:#ecf0f1;
+    background-color: #ecf0f1;
     display: flex;
     flex-wrap: wrap;
     overflow-x: hidden;
@@ -21,7 +21,7 @@ body::-webkit-scrollbar:vertical {
     display: block;
     width: 8px;
 }
-  
+
 body::-webkit-scrollbar-track:vertical {
     background: #929292;
 }
@@ -33,6 +33,7 @@ body::-webkit-scrollbar-thumb:vertical {
 input[type=date]:required:invalid::-webkit-datetime-edit {
     color: transparent;
 }
+
 input[type=date]:focus::-webkit-datetime-edit {
     color: #5b5b5b !important;
 }
@@ -40,6 +41,7 @@ input[type=date]:focus::-webkit-datetime-edit {
 input[type=time]:required:invalid::-webkit-datetime-edit {
     color: transparent;
 }
+
 input[type=time]:focus::-webkit-datetime-edit {
     color: #5b5b5b !important;
 }
@@ -59,7 +61,7 @@ input[type=time]:focus::-webkit-datetime-edit {
     transition: 0.6s all ease-out;
     -webkit-transition: 0.6s all ease-out;
 }
-  
+
 .sombra.active {
     display: block;
 }
@@ -139,7 +141,7 @@ input[type=time]:focus::-webkit-datetime-edit {
 .buscador-navegador.active {
     display: none;
 }
-  
+
 .textfield-buscador-navegador {
     width: 100%;
     height: 36px;
@@ -161,11 +163,11 @@ input[type=time]:focus::-webkit-datetime-edit {
     color: #000;
     border-radius: 5px;
 }
-  
+
 .textfield-buscador-navegador::placeholder {
     color: #000;
 }
-  
+
 .lupa-buscador-navegador {
     position: absolute;
     width: 30px;
@@ -264,7 +266,7 @@ input[type=time]:focus::-webkit-datetime-edit {
     border-radius: 100%;
     z-index: 92;
 }
-  
+
 .indicador-notifications-alt {
     position: absolute;
     top: 12px;
@@ -286,7 +288,7 @@ input[type=time]:focus::-webkit-datetime-edit {
 /* ********* NOTIFICACIONES */
 
 .contenedor-notificaciones {
-    all:initial;
+    all: initial;
     width: 100%;
     display: -webkit-box;
     display: -ms-flexbox;
@@ -309,7 +311,7 @@ input[type=time]:focus::-webkit-datetime-edit {
     background-color: #404e5a;
     cursor: pointer;
 }
-  
+
 .notificacion.active {
     width: 100%;
     max-width: 400px;
@@ -324,13 +326,13 @@ input[type=time]:focus::-webkit-datetime-edit {
     .notificacion {
         margin: 1px auto;
     }
-      
+
     .notificacion.active {
         width: 100%;
         margin: 1px auto;
     }
 }
-  
+
 .foto-notificacion {
     width: 60px;
     height: 60px;
@@ -341,14 +343,14 @@ input[type=time]:focus::-webkit-datetime-edit {
     background-position: center;
     border-radius: 5px;
 }
-  
+
 .content-notificacion {
     width: 270px;
     height: auto;
     margin: 10px auto;
     margin-left: 85px;
 }
-  
+
 .descripcion-content-notificacion {
     width: 100%;
     height: auto;
@@ -361,8 +363,8 @@ input[type=time]:focus::-webkit-datetime-edit {
 }
 
 .descripcion-content-notificacion a {
-   color: #ddd;
-   text-decoration: none;
+    color: #ddd;
+    text-decoration: none;
 }
 
 .fecha-content-notificacion {
@@ -447,7 +449,7 @@ input[type=time]:focus::-webkit-datetime-edit {
     color: #fff;
     margin: 0 auto;
 }
-  
+
 .desc-seccion-ajustes {
     width: 90%;
     height: 40px;
@@ -523,12 +525,12 @@ input[type=time]:focus::-webkit-datetime-edit {
     position: relative;
     margin: 60px auto;
 }
-  
+
 .formulario.active {
     display: flex;
     flex-wrap: wrap;
 }
-  
+
 .titulo-formulario {
     width: 90%;
     margin: 20px auto;
@@ -537,7 +539,7 @@ input[type=time]:focus::-webkit-datetime-edit {
     color: #7dc042;
     text-align: center;
 }
-  
+
 .subtitulo-formulario {
     width: 90%;
     margin: 20px auto;
@@ -559,7 +561,7 @@ input[type=time]:focus::-webkit-datetime-edit {
     align-content: flex-start;
     justify-content: center;
 }
-  
+
 .seccion-formulario {
     width: 90%;
     max-width: 400px;
@@ -574,7 +576,7 @@ input[type=time]:focus::-webkit-datetime-edit {
         margin: 10px auto;
     }
 }
-  
+
 form {
     width: 320px;
     margin: 0 auto;
@@ -609,15 +611,16 @@ form {
     z-index: 81;
     cursor: pointer;
 }
-  
-input, textarea {
+
+input,
+textarea {
     font-family: inherit;
     font-size: 100%;
     margin: 0;
     -webkit-box-sizing: border-box;
     box-sizing: border-box;
 }
-  
+
 label {
     -webkit-box-sizing: border-box;
     box-sizing: border-box;
@@ -653,12 +656,12 @@ label {
     border: 1px solid #7dc042;
 }
 
-.textfield:focus + label:before,
-.textfield:active + label:before {
+.textfield:focus+label:before,
+.textfield:active+label:before {
     color: #7dc042;
 }
 
-.textfield + label {
+.textfield+label {
     display: block;
     font-size: 1em;
     height: 3em;
@@ -668,7 +671,7 @@ label {
     pointer-events: none;
 }
 
-.textfield + label:before {
+.textfield+label:before {
     content: attr(placeholder);
     display: inline-block;
     color: #5b5b5b;
@@ -689,9 +692,9 @@ label {
     transform-origin: left center;
 }
 
-.textfield:focus + label:before,
-.textfield.active + label:before,
-.textfield:valid + label:before {
+.textfield:focus+label:before,
+.textfield.active+label:before,
+.textfield:valid+label:before {
     background: #ecf0f1;
     line-height: 1;
     padding: 0 1.5px;
@@ -726,12 +729,12 @@ label {
     border: 1px solid #7dc042;
 }
 
-.textfield-readonly:focus + label:before,
-.textfield-readonly:active + label:before {
+.textfield-readonly:focus+label:before,
+.textfield-readonly:active+label:before {
     color: #7dc042;
 }
 
-.textfield-readonly + label {
+.textfield-readonly+label {
     display: block;
     font-size: 1em;
     height: 3em;
@@ -741,7 +744,7 @@ label {
     pointer-events: none;
 }
 
-.textfield-readonly + label:before {
+.textfield-readonly+label:before {
     content: attr(placeholder);
     display: inline-block;
     color: #5b5b5b;
@@ -794,12 +797,12 @@ textarea:active {
     border: 1px solid #7dc042;
 }
 
-textarea:focus + label:before,
-textarea:active + label:before {
+textarea:focus+label:before,
+textarea:active+label:before {
     color: #7dc042;
 }
 
-textarea + label {
+textarea+label {
     display: block;
     font-size: 1em;
     height: calc(18em + 2px);
@@ -810,7 +813,7 @@ textarea + label {
     pointer-events: none;
 }
 
-textarea + label:before {
+textarea+label:before {
     content: attr(placeholder);
     display: inline-block;
     color: #5b5b5b;
@@ -831,9 +834,9 @@ textarea + label:before {
     transform-origin: left center;
 }
 
-textarea:focus + label:before,
-textarea.active + label:before,
-textarea:valid + label:before {
+textarea:focus+label:before,
+textarea.active+label:before,
+textarea:valid+label:before {
     background: #ecf0f1;
     line-height: 1;
     padding: 0 1.5px;
@@ -886,7 +889,7 @@ textarea:valid + label:before {
     background-color: #7dc042;
     display: none;
 }
-  
+
 .icono-popup {
     width: 60px;
     height: 60px;
@@ -900,7 +903,7 @@ textarea:valid + label:before {
     font-size: 40px;
     border-radius: 1000px;
 }
-  
+
 .mensaje-popup {
     width: 95%;
     height: 30px;
@@ -912,7 +915,7 @@ textarea:valid + label:before {
     margin: 0 auto;
     margin-top: 20px;
 }
-  
+
 .spinner-popup {
     width: 60px;
     height: 60px;
@@ -924,7 +927,7 @@ textarea:valid + label:before {
     color: #fff;
     font-size: 50px;
 }
-  
+
 .btn-popup {
     width: 160px;
     height: 40px;
@@ -940,7 +943,7 @@ textarea:valid + label:before {
 }
 
 /* CONTENT */
-  
+
 .content {
     width: 100%;
     max-width: 1320px;
@@ -977,7 +980,7 @@ ul {
     display: flex;
     flex-wrap: wrap;
 }
-  
+
 ul.active {
     display: none;
 }
@@ -1016,11 +1019,11 @@ ul.active {
 .hiding {
     opacity: 0.5;
 }
-  
+
 .hidden {
     display: none;
 }
-  
+
 .list-element-textos {
     width: 90%;
     height: auto;
@@ -1028,7 +1031,7 @@ ul.active {
     margin-top: 12px;
     cursor: pointer;
 }
-  
+
 .list-element-textos-titulo {
     width: 100%;
     height: 28px;
@@ -1038,8 +1041,8 @@ ul.active {
     font-size: 15px;
     color: #7dc042;
     font-weight: bold;
-    white-space:nowrap;
-    overflow:hidden;
+    white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
 }
 
@@ -1051,11 +1054,11 @@ ul.active {
     font-family: "Montserrat", sans-serif;
     font-size: 12px;
     color: #5b5b5b;
-    white-space:nowrap;
-    overflow:hidden;
+    white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
 }
-  
+
 .list-element-textos-texto i {
     color: #5b5b5b;
     padding-right: 7px;
@@ -1106,15 +1109,15 @@ ul.active {
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
 }
-  
+
 .panel-opciones.show {
     bottom: 0;
 }
-  
+
 .transicion {
     transition: 0.6s all ease-out;
 }
-  
+
 .swipe-panel-opciones {
     width: 55px;
     height: 4px;
@@ -1124,7 +1127,7 @@ ul.active {
     cursor: pointer;
     border-radius: 25px;
 }
-  
+
 .barra-panel {
     width: 100%;
     height: 40px;
@@ -1133,7 +1136,7 @@ ul.active {
     justify-content: center;
     align-items: center;
 }
-  
+
 .opcion-panel-opciones {
     width: 90%;
     max-width: 500px;
@@ -1147,7 +1150,7 @@ ul.active {
     color: #fff;
     cursor: pointer;
 }
-  
+
 .opcion-panel-opciones i {
     width: 30px;
     text-align: left;
@@ -1262,7 +1265,7 @@ ul.active {
     display: block;
     height: 8px;
 }
-  
+
 .container-tracking-report::-webkit-scrollbar-track {
     background: #929292;
 }
@@ -1351,7 +1354,7 @@ ul.active {
     display: block;
     height: 8px;
 }
-  
+
 .container-tracking-report2::-webkit-scrollbar-track {
     background: #929292;
 }
@@ -1440,7 +1443,7 @@ ul.active {
     font-family: 'Montserrat', sans-serif;
 }
 
-.textfield-tabla + label {
+.textfield-tabla+label {
     display: block;
     font-size: 1em;
     height: 3em;
@@ -1450,7 +1453,7 @@ ul.active {
     pointer-events: none;
 }
 
-.textfield-tabla + label:before {
+.textfield-tabla+label:before {
     content: attr(placeholder);
     display: inline-block;
     color: #5b5b5b;
@@ -1471,9 +1474,9 @@ ul.active {
     transform-origin: left center;
 }
 
-.textfield-tabla:focus + label:before,
-.textfield-tabla.active + label:before,
-.textfield-tabla:valid + label:before {
+.textfield-tabla:focus+label:before,
+.textfield-tabla.active+label:before,
+.textfield-tabla:valid+label:before {
     background: #ecf0f1;
     line-height: 1;
     padding: 0 1.5px;
@@ -1497,8 +1500,8 @@ ul.active {
     user-select: none;
     font-family: 'Montserrat', sans-serif;
     color: #fff;
-  }
-  
+}
+
 .container-checkbox input {
     position: absolute;
     opacity: 0;
@@ -1522,7 +1525,7 @@ ul.active {
     border: 1px solid #fff;
 }
 
-.container-checkbox input:checked ~ .checkmark {
+.container-checkbox input:checked~.checkmark {
     background-color: #009ed6;
 }
 
@@ -1569,7 +1572,7 @@ ul.active {
     display: flex;
     flex-wrap: wrap;
     padding: 10px 10px 10px 10px;
-    background-color:#2a3743;
+    background-color: #2a3743;
     border-radius: 5px;
     -webkit-border-radius: 5px;
     -moz-border-radius: 5px;
@@ -1728,7 +1731,7 @@ ul.active {
     -moz-box-shadow: 0px 0px 2px 2px #2d363f;
     border-radius: 5px;
 }
-  
+
 .tfbuscador-filtro::placeholder {
     color: #cecece;
 }
@@ -1752,15 +1755,15 @@ ul.active {
     font-style: normal;
     color: #5b5b5b;
 }
-  
+
 .container-checkbox-filtro input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
 }
-  
+
 .checkmark2 {
     position: absolute;
     top: 0;
@@ -1770,24 +1773,24 @@ ul.active {
     border: 1px solid #bdbdbd;
     background-color: transparent;
 }
-  
-.container-checkbox-filtro:hover input ~ .checkmark2 {
+
+.container-checkbox-filtro:hover input~.checkmark2 {
     border: 1px solid #545454;
 }
-  
+
 /* Create the checkmark/indicator (hidden when not checked) */
 .checkmark2:after {
     content: "";
     position: absolute;
     display: none;
 }
-  
+
 /* Show the checkmark when checked */
-.container-checkbox-filtro input:checked ~ .checkmark2:after {
+.container-checkbox-filtro input:checked~.checkmark2:after {
     display: block;
 }
-  
-  /* Style the checkmark/indicator */
+
+/* Style the checkmark/indicator */
 .container-checkbox-filtro .checkmark2:after {
     left: 5px;
     top: 1px;
@@ -1822,7 +1825,7 @@ ul.active {
     width: 15px;
     height: 15px;
     margin: 0 auto;
-    display:block;
+    display: block;
     position: relative;
     cursor: pointer;
     -webkit-user-select: none;
@@ -1850,7 +1853,7 @@ ul.active {
     cursor: pointer;
 }
 
-.contenedor-checkbox-square input:checked ~ .input-checkbox-square {
+.contenedor-checkbox-square input:checked~.input-checkbox-square {
     background-color: #56e049;
 }
 
@@ -1874,15 +1877,15 @@ ul.active {
     font-style: normal;
     color: #5b5b5b;
 }
-  
+
 .container-checkbox-tabla input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
 }
-  
+
 .checkmark-tabla {
     position: absolute;
     top: 0;
@@ -1892,24 +1895,24 @@ ul.active {
     border: 1px solid #bdbdbd;
     background-color: transparent;
 }
-  
-.container-checkbox-tabla:hover input ~ .checkmark-tabla {
+
+.container-checkbox-tabla:hover input~.checkmark-tabla {
     border: 1px solid #545454;
 }
-  
+
 /* Create the checkmark/indicator (hidden when not checked) */
 .checkmark-tabla:after {
     content: "";
     position: absolute;
     display: none;
 }
-  
+
 /* Show the checkmark when checked */
-.container-checkbox-tabla input:checked ~ .checkmark-tabla:after {
+.container-checkbox-tabla input:checked~.checkmark-tabla:after {
     display: block;
 }
-  
-  /* Style the checkmark/indicator */
+
+/* Style the checkmark/indicator */
 .container-checkbox-tabla .checkmark-tabla:after {
     left: 5px;
     top: 1px;
@@ -2053,7 +2056,7 @@ ul.active {
     display: none;
 }
 
-.checkbox-input:checked ~ .checkbox-span:after {
+.checkbox-input:checked~.checkbox-span:after {
     display: block;
 }
 
@@ -2073,8 +2076,8 @@ ul.active {
     font-size: 15px;
     font-family: 'Montserrat', sans-serif;
     height: auto;
-    white-space:nowrap;
-    overflow:hidden;
+    white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
 }
 
@@ -2117,7 +2120,7 @@ ul.active {
     display: block;
     height: 8px;
 }
-  
+
 .contenedor-tabla::-webkit-scrollbar-track {
     background: #929292;
 }
@@ -2278,7 +2281,7 @@ ul.active {
     justify-content: center;
     align-items: center;
 }
-  
+
 .contenedor-spinner i {
     font-size: 32px;
     color: #000;
@@ -2322,16 +2325,16 @@ ul.active {
 }
 
 .elemento-contenedor-flex {
-    width: 100%; 
-    display: flex; 
-    justify-content: space-between; 
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
 }
 
 .elemento-btn-eliminar {
-    color: #FF2A2A; 
-    font-size: 10px; 
-    text-decoration: underline; 
+    color: #FF2A2A;
+    font-size: 10px;
+    text-decoration: underline;
     cursor: pointer;
     font-family: 'Montserrat', sans-serif;
 }
@@ -2358,7 +2361,7 @@ ul.active {
     -o-border-radius: 100%;
 }
 
-.icono-eliminar-imagen{
+.icono-eliminar-imagen {
     width: 15px;
     height: 15px;
     top: -2px;
@@ -2475,8 +2478,8 @@ ul.active {
 
 .texto-espec {
     width: 90%;
-    white-space:nowrap;
-    overflow:hidden;
+    white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
     display: inline;
     color: #5b5b5b;
@@ -2539,7 +2542,8 @@ ul.active {
     font-size: 2rem;
     font-weight: 600;
     color: #fff;
-    background-color: #7dc042; /* Combina con los colores de los botones */
+    background-color: #7dc042;
+    /* Combina con los colores de los botones */
     border-radius: 10px;
     padding: 10px 20px;
     box-shadow: 0px 0px 4px 2px #cecece;
@@ -2549,11 +2553,13 @@ ul.active {
 
 .digital-clock span {
     display: inline-block;
-    min-width: 40px; /* Asegura que los dígitos tengan el mismo ancho */
+    min-width: 40px;
+    /* Asegura que los dígitos tengan el mismo ancho */
 }
 
 .digital-clock:hover {
-    background-color: #6bb536; /* Efecto hover */
+    background-color: #6bb536;
+    /* Efecto hover */
     box-shadow: 0px 0px 6px 3px #b3ddb1;
 }
 

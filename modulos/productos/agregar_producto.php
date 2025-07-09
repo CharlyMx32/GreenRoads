@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Controlador para creación de nuevos productos
  * 
@@ -36,6 +37,19 @@ if ($result = mysqli_query($conn, $query)) {
     // Manejo de error en consulta
     error_log("Error al obtener tipos de producto: " . mysqli_error($conn));
 }
+
+// Obtener modelos de pasto
+$modelos = [];
+$query = "SELECT id, nombre FROM modelos ORDER BY nombre ASC";
+if ($result = mysqli_query($conn, $query)) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $modelos[] = $row;
+    }
+    mysqli_free_result($result);
+} else {
+    error_log("Error al obtener modelos: " . mysqli_error($conn));
+}
+
 
 // Obtener unidades de medida
 $query = "SELECT id, nombre FROM unidades ORDER BY nombre ASC";
@@ -134,14 +148,14 @@ if ($result = mysqli_query($conn, $query)) {
 
                     <!-- Campos del formulario -->
                     <div class="textfield-container">
-                        <input required type="text" class="textfield" name="nombre" id="nombre" 
-                               aria-required="true" aria-label="Nombre del producto">
+                        <input required type="text" class="textfield" name="nombre" id="nombre"
+                            aria-required="true" aria-label="Nombre del producto">
                         <label for="nombre" placeholder="Nombre *"></label>
                     </div>
 
                     <div class="textfield-container">
-                        <select name="tipo_producto" class="textfield" required id="tipoProducto" 
-                                aria-required="true" aria-label="Tipo de producto">
+                        <select name="tipo_producto" class="textfield" required id="tipoProducto"
+                            aria-required="true" aria-label="Tipo de producto">
                             <option value=""></option>
                             <?php foreach ($tiposProducto as $valor => $texto): ?>
                                 <option value="<?= htmlspecialchars($valor) ?>"><?= htmlspecialchars($texto) ?></option>
@@ -151,8 +165,8 @@ if ($result = mysqli_query($conn, $query)) {
                     </div>
 
                     <div class="textfield-container">
-                        <select name="id_unidad" class="textfield" required 
-                                aria-required="true" aria-label="Unidad de medida">
+                        <select name="id_unidad" class="textfield" required
+                            aria-required="true" aria-label="Unidad de medida">
                             <option value=""></option>
                             <?php foreach ($unidades as $unidad): ?>
                                 <option value="<?= htmlspecialchars($unidad['id']) ?>"><?= htmlspecialchars($unidad['nombre']) ?></option>
@@ -163,7 +177,7 @@ if ($result = mysqli_query($conn, $query)) {
 
                     <div class="textfield-container">
                         <select name="tipo_inventario" class="textfield" id="tipoInventario" required
-                                aria-required="true" aria-label="Tipo de inventario">
+                            aria-required="true">
                             <option value="">Selecciona tipo de inventario</option>
                             <option value="unidad">Unidad</option>
                             <option value="rollo">Rollo</option>
@@ -171,17 +185,30 @@ if ($result = mysqli_query($conn, $query)) {
                         <label for="tipoInventario" placeholder="Tipo de inventario *"></label>
                     </div>
 
+                    <div class="textfield-container" id="campoModelo" style="display:none;">
+                        <select name="id_modelo" class="textfield" aria-label="Modelo de pasto">
+                            <option value="">Selecciona modelo</option>
+                            <?php foreach ($modelos as $modelo): ?>
+                                <option value="<?= htmlspecialchars($modelo['id']) ?>">
+                                    <?= htmlspecialchars($modelo['nombre']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <label placeholder="Modelo (solo para pasto)"></label>
+                    </div>
+
+
                     <div class="textfield-container">
                         <input type="number" class="textfield" name="precio_unitario" step="0.01" min="0"
-                               aria-label="Precio unitario">
+                            aria-label="Precio unitario">
                         <label placeholder="Precio unitario"></label>
                     </div>
                 </div>
             </div>
         </form>
 
-        <button type="button" class="btnadd" style="margin-top: -15px;" onclick="agregar()" 
-                aria-label="Agregar nuevo producto">
+        <button type="button" class="btnadd" style="margin-top: -15px;" onclick="agregar()"
+            aria-label="Agregar nuevo producto">
             Agregar
         </button>
     </div>
@@ -190,122 +217,134 @@ if ($result = mysqli_query($conn, $query)) {
 
     <!-- JavaScript más organizado y con manejo de errores -->
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Elementos del DOM
-        const inputImagen = document.getElementById('imagenInput');
-        const contenedorFoto = document.getElementById('contenedorFoto');
-        const contenedorNoFoto = document.getElementById('contenedorNoFoto');
-        const preview = document.getElementById('imagenPreview');
-        const tipoProducto = document.getElementById('tipoProducto');
-        const btnAdd = document.querySelector('.btnadd');
-        const form = document.getElementById('formProducto');
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elementos del DOM
+            const inputImagen = document.getElementById('imagenInput');
+            const contenedorFoto = document.getElementById('contenedorFoto');
+            const contenedorNoFoto = document.getElementById('contenedorNoFoto');
+            const preview = document.getElementById('imagenPreview');
+            const tipoProducto = document.getElementById('tipoProducto');
+            const btnAdd = document.querySelector('.btnadd');
+            const form = document.getElementById('formProducto');
 
-        // Configurar eventos
-        document.getElementById('btnSubirImg').onclick = 
-        document.getElementById('btnSubirSinImg').onclick = () => inputImagen.click();
+            // Configurar eventos
+            document.getElementById('btnSubirImg').onclick =
+                document.getElementById('btnSubirSinImg').onclick = () => inputImagen.click();
 
-        // Manejar cambio de imagen
-        inputImagen.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const maxSize = 2 * 1024 * 1024; // 2MB
+            // Manejar cambio de imagen
+            inputImagen.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                const maxSize = 2 * 1024 * 1024; // 2MB
 
-            if (!file) return;
+                if (!file) return;
 
-            // Validar tipo de archivo
-            if (!file.type.startsWith('image/')) {
-                displayMensajeError("Por favor seleccione un archivo de imagen válido.");
-                return;
-            }
-
-            // Validar tamaño de archivo
-            if (file.size > maxSize) {
-                displayMensajeError("La imagen es demasiado grande (máximo 2MB).");
-                return;
-            }
-
-            // Mostrar previsualización
-            const reader = new FileReader();
-            reader.onload = function(ev) {
-                preview.src = ev.target.result;
-                preview.alt = "Previsualización de nueva imagen del producto";
-                contenedorFoto.style.display = 'flex';
-                contenedorNoFoto.style.display = 'none';
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // Actualizar campos según tipo de producto
-        tipoProducto.addEventListener('change', actualizarCamposPasto);
-        actualizarCamposPasto();
-
-        // Función para agregar nuevo producto
-        window.agregar = function() {
-            const formData = new FormData(form);
-            const nombre = formData.get("nombre")?.trim();
-
-            // Validaciones básicas
-            if (!nombre) {
-                displayMensajeError("Favor de indicar el nombre del producto.");
-                form.nombre.focus();
-                return;
-            }
-
-            if (!formData.get("id_unidad")) {
-                displayMensajeError("Favor de seleccionar una unidad de medida.");
-                return;
-            }
-
-            if (!formData.get("tipo_inventario")) {
-                displayMensajeError("Seleccione el tipo de inventario: unidad o rollo.");
-                return;
-            }
-
-            if (!confirm("¿Está seguro que desea agregar este producto?")) return;
-
-            // Deshabilitar botón durante el envío
-            btnAdd.disabled = true;
-            btnAdd.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-            displayPopUp("Agregando producto...");
-
-            // Enviar datos al servidor
-            fetch('../../php/productos/agregar.php?t=' + Date.now(), {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Error en la respuesta del servidor');
-                return response.json();
-            })
-            .then(data => {
-                if (data.status == 0) {
-                    throw new Error(data.mensaje || "Error desconocido del servidor");
+                // Validar tipo de archivo
+                if (!file.type.startsWith('image/')) {
+                    displayMensajeError("Por favor seleccione un archivo de imagen válido.");
+                    return;
                 }
-                displayMensajeExitoso(data.mensaje, "window.history.back()");
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                displayMensajeError("Error: " + error.message);
-            })
-            .finally(() => {
-                btnAdd.disabled = false;
-                btnAdd.innerHTML = 'Agregar';
+
+                // Validar tamaño de archivo
+                if (file.size > maxSize) {
+                    displayMensajeError("La imagen es demasiado grande (máximo 2MB).");
+                    return;
+                }
+
+                // Mostrar previsualización
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    preview.src = ev.target.result;
+                    preview.alt = "Previsualización de nueva imagen del producto";
+                    contenedorFoto.style.display = 'flex';
+                    contenedorNoFoto.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
             });
-        };
 
-        // Función para actualizar campos según tipo de producto
-        function actualizarCamposPasto() {
-            const tipoProductoValue = parseInt(tipoProducto.value);
-            const tipoInventario = document.getElementById('tipoInventario');
+            // Actualizar campos según tipo de producto
+            tipoProducto.addEventListener('change', actualizarCamposPasto);
+            actualizarCamposPasto();
 
-            if (tipoProductoValue === 1) { // Si es tipo rollo
-                tipoInventario.value = 'rollo';
-                tipoInventario.disabled = true;
-            } else {
-                tipoInventario.value = 'unidad';
-                tipoInventario.disabled = false;
+            // Función para actualizar campos según tipo de producto
+            function actualizarCamposPasto() {
+                const tipoProductoValue = parseInt(tipoProducto.value);
+                const tipoInventario = document.getElementById('tipoInventario');
+
+                if (tipoProductoValue === 1) { // Si es tipo rollo
+                    tipoInventario.value = 'rollo';
+                    tipoInventario.disabled = false;
+
+                    campoModelo.style.display = 'block';
+
+                } else {
+                    tipoInventario.value = 'unidad';
+                    tipoInventario.disabled = false;
+
+                    campoModelo.style.display = 'none';
+
+                }
             }
-        }
-    });
+
+            // Función para agregar nuevo producto
+            window.agregar = function() {
+                const formData = new FormData(form);
+                const nombre = formData.get("nombre")?.trim();
+
+                // Validaciones básicas
+                if (!nombre) {
+                    displayMensajeError("Favor de indicar el nombre del producto.");
+                    form.nombre.focus();
+                    return;
+                }
+
+                if (!formData.get("id_unidad")) {
+                    displayMensajeError("Favor de seleccionar una unidad de medida.");
+                    return;
+                }
+
+                if (!formData.get("tipo_inventario")) {
+                    displayMensajeError("Seleccione el tipo de inventario: unidad o rollo.");
+                    return;
+                }
+
+                if (tipoProducto.value == '1' && !formData.get("id_modelo")) {
+                    displayMensajeError("Seleccione un modelo para el pasto.");
+                    return;
+                }
+
+
+                if (!confirm("¿Está seguro que desea agregar este producto?")) return;
+
+                btnAdd.disabled = true;
+                btnAdd.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+                displayPopUp("Agregando producto...");
+
+                // Enviar datos
+                fetch('../../php/productos/agregar.php?t=' + Date.now(), {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Error en la respuesta del servidor');
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status == 0) {
+                            throw new Error(data.mensaje || "Error desconocido del servidor");
+                        }
+                        displayMensajeExitoso(data.mensaje, "window.history.back()");
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        displayMensajeError("Error: " + error.message);
+                    })
+                    .finally(() => {
+                        btnAdd.disabled = false;
+                        btnAdd.innerHTML = 'Agregar';
+                    });
+            };
+        });
     </script>
 </body>
+
 </html>

@@ -202,7 +202,7 @@ $unidad = htmlspecialchars($producto['simbolo']);
 
                 try {
                     const formData = new FormData(formulario);
-                    const response = await fetch('../../php/inventario/guardar_cantidad.php', {
+                    const response = await fetch('../../php/inventario/guardar_unidad.php', {
                         method: 'POST',
                         body: formData
                     });

@@ -34,8 +34,10 @@ $sql = "SELECT
     p.estado,
     p.id_tipo_producto,
     p.tipo_inventario,
+    m.altura_mm,
     tp.nombre AS tipo_producto,
     u.simbolo AS unidad,
+    m.nombre AS nombre_modelo,
     (
         SELECT COUNT(*) 
         FROM inventario_rollos ir 
@@ -53,7 +55,17 @@ $sql = "SELECT
 FROM productos p
 JOIN unidades u ON u.id = p.id_unidad
 JOIN tipo_productos tp ON tp.id = p.id_tipo_producto
+LEFT JOIN modelos m ON m.id = p.id_modelo
 WHERE p.estado = 'activo'
+AND (
+    (p.tipo_inventario = 'rollo' AND EXISTS (
+        SELECT 1 FROM inventario_rollos ir WHERE ir.id_producto = p.id
+    ))
+    OR
+    (p.tipo_inventario = 'unidad' AND EXISTS (
+        SELECT 1 FROM movimientos_inventario mi WHERE mi.id_producto = p.id
+    ))
+)
 ORDER BY cantidad_base DESC, p.nombre ASC";
 
 $stmt = $conn->prepare($sql);
@@ -156,7 +168,7 @@ function formatCantidad($item)
 function getEditarURL($tipo_producto)
 {
     return match ($tipo_producto) {
-        1 => "editar_rollo.php",
+        1 => "editar_rollos.php",
         default => "editar_cantidad.php"
     };
 }
@@ -305,6 +317,18 @@ function getEditarURL($tipo_producto)
                                         <span class="toggle-detalle">Ver mas detalle...</span>
                                     <?php endif; ?>
                                     <strong><?= htmlspecialchars($item['nombre_producto']) ?></strong>
+                                    <?php if (!empty($item['nombre_modelo'])): ?>
+                                        <div style="font-size: 0.9em; color: #666; margin-top: 4px;">
+                                            Modelo: <?= htmlspecialchars($item['nombre_modelo']) ?>
+                                            <?php if (!empty($item['altura_mm'])): ?>
+                                                | Altura: <?= htmlspecialchars($item['altura_mm']) ?> mm
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php elseif (!empty($item['altura_mm'])): ?>
+                                        <div style="font-size: 0.9em; color: #666; margin-top: 4px;">
+                                            Altura: <?= htmlspecialchars($item['altura_mm']) ?> mm
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?= $esRollo ? formatCantidad($item) : formatCantidad($item) ?></td>
                                 <td><?= date('d/m/Y H:i', strtotime($item['actualizado_en'])) ?></td>
@@ -343,7 +367,7 @@ function getEditarURL($tipo_producto)
                                                             </div>
                                                         </div>
                                                         <div style="text-align: center; margin-top: 10px;">
-                                                            <a href="editar_rollos_color.php?id_producto=<?= $item['id_producto'] ?>&id_color=<?= $d['id_color'] ?>"
+                                                            <a href="editar_rollo_color.php?id_producto=<?= $item['id_producto'] ?>&id_color=<?= $d['id_color'] ?>"
                                                                 class="btn-editar-color">
                                                                 Editar
                                                             </a>

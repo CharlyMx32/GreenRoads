@@ -1,0 +1,223 @@
+:root {
+    --color-primario: #7DC042;
+    --color-secundario: #FF8C42;
+    --color-error: #fc4903;
+    --color-borde: #ccc;
+    --sombra: 0 2px 6px rgba(0, 0, 0, 0.05);
+    --radio-borde: 10px;
+}
+
+body {
+    font-family: "Montserrat", sans-serif;
+}
+
+/* Estructura principal */
+.form-container-grid {
+    margin-top: 45px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    padding: 20px;
+}
+
+.grid-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Secciones de formulario */
+.form-section {
+    background: #fff;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    padding: 20px;
+    box-shadow: var(--sombra);
+}
+
+/* Grupos de formulario */
+.form-group {
+    margin-bottom: 15px;
+}
+
+/* Elementos de formulario */
+.textfield,
+select,
+input[type="number"],
+input[type="text"] {
+    font-family: inherit;
+    padding: 8px 12px;
+    border: 1px solid var(--color-borde);
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Items de productos */
+.product-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-select {
+    flex: 2;
+}
+
+.product-item input[type="number"] {
+    width: 70px;
+}
+
+.product-item span {
+    flex: 1;
+    text-align: right;
+    min-width: 80px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+.actions-container {
+    position: fixed;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    background: white;
+    padding: 15px 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    z-index: 10;
+}
+
+
+@media (max-width: 1000px) {
+    .actions-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+    }
+}
+
+.btncancel {
+    width: 180px;
+    height: 38px;
+    line-height: 38px;
+    text-align: center;
+    background-color: var(--color-secundario);
+    cursor: pointer;
+    color: #ffffff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    border-radius: 5px;
+    margin: 0;
+    border: none;
+    transition: var(--transicion);
+}
+
+.btncancel:hover {
+    background-color: #E67339;
+}
+
+.btnadd {
+    width: 180px;
+    height: 38px;
+    line-height: 38px;
+    text-align: center;
+    background-color: var(--color-primario);
+    cursor: pointer;
+    color: #ffffff;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    border-radius: 5px;
+    margin: 0;
+    border: none;
+    transition: var(--transicion);
+}
+
+.btnadd:hover {
+    background-color: rgb(109, 168, 58);
+}
+
+.eliminar {
+    color: var(--color-error);
+}
+
+@media (max-width: 1000px) {
+    .form-container-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.forma-item {
+    background: #f9f9f9;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.forma-item:hover {
+    background: #f0f0f0;
+}
+
+.forma-inputs {
+    transition: all 0.3s ease;
+}
+
+.hidden-section {
+    display: none;
+}
+
+/* Scroll independiente en columnas para pantallas grandes */
+@media (min-width: 1001px) {
+    .form-container-grid {
+        height: calc(100vh - 150px);
+        align-items: start;
+        overflow-y: auto;
+    }
+
+    .grid-col {
+        height: 100%;
+        overflow-y: auto;
+        padding-right: 10px;
+        margin-right: -10px;
+    }
+
+    .grid-col::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .form-container-grid {
+        height: calc(100vh - 230px);
+    }
+
+    .grid-col::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+
+    .grid-col::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    .grid-col::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+}
+
+/* En móviles mantener scroll general */
+@media (max-width: 1000px) {
+    .form-container-grid {
+        overflow-y: auto;
+    }
+
+    .grid-col {
+        overflow-y: visible;
+    }
+}
+

@@ -43,6 +43,7 @@ $tipo_producto = intval($_POST['tipo_producto'] ?? 0);
 $id_unidad = intval($_POST['id_unidad'] ?? 0);
 $tipo_inventario = $_POST['tipo_inventario'] ?? 'unidad';
 $tipo_inventario = in_array($tipo_inventario, ['unidad', 'rollo']) ? $tipo_inventario : 'unidad';
+$id_modelo = null;
 
 // Validaciones
 if (empty($nombre)) {
@@ -60,6 +61,15 @@ if ($tipo_producto <= 0) {
 if (!in_array($tipo_inventario, ['unidad', 'rollo'])) {
     die(json_encode(['status' => 0, 'mensaje' => 'Tipo de inventario inválido']));
 }
+
+if ($tipo_inventario === 'rollo') {
+    $id_modelo = isset($_POST['id_modelo']) ? intval($_POST['id_modelo']) : null;
+
+    if ($id_modelo <= 0) {
+        die(json_encode(['status' => 0, 'mensaje' => 'Seleccione un modelo válido para el pasto']));
+    }
+}
+
 
 // Manejo de imagen
 $nombreImagen = null;
@@ -86,21 +96,26 @@ try {
     }
 
     $stmt = $conn->prepare("INSERT INTO productos (
-        nombre, precio_unitario, id_unidad, id_tipo_producto, tipo_inventario, imagen, estado
-    ) VALUES (?, ?, ?, ?, ?, ?, 'activo')");
+        nombre, precio_unitario, id_unidad, id_tipo_producto, tipo_inventario, imagen, id_modelo, estado
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo')");
 
     if (!$stmt) {
         throw new Exception('Error al preparar la consulta: ' . $conn->error);
     }
 
-    $stmt->bind_param('sdiiss',
+    $id_modelo_sql = $id_modelo > 0 ? $id_modelo : null;
+
+    $stmt->bind_param(
+        'sdiisss', 
         $nombre,
         $precio_unitario,
         $id_unidad,
         $tipo_producto,
         $tipo_inventario,
-        $nombreImagen
+        $nombreImagen,
+        $id_modelo
     );
+
 
     if (!$stmt->execute()) {
         throw new Exception('Error al ejecutar la consulta: ' . $stmt->error);
@@ -111,7 +126,6 @@ try {
         'mensaje' => 'Producto agregado correctamente',
         'id' => $stmt->insert_id
     ]);
-
 } catch (Exception $e) {
     if ($nombreImagen && file_exists($destino)) {
         unlink($destino);
@@ -125,4 +139,3 @@ try {
         'mensaje' => 'Error interno del servidor'
     ]);
 }
-?>

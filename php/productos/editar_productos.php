@@ -16,13 +16,18 @@ if (!tieneSesion()) {
     exit;
 }
 
+// Obtener datos del formulario
 $id = intval($_POST['id'] ?? 0);
 $nombre = trim($_POST['nombre'] ?? '');
 $precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
+$tipo_producto = intval($_POST['tipo_producto'] ?? 0);
+$tipo_inventario = in_array($_POST['tipo_inventario'] ?? '', ['unidad', 'rollo']) ? $_POST['tipo_inventario'] : 'unidad';
+$id_modelo = intval($_POST['id_modelo'] ?? 0);
 $id_unidad = intval($_POST['id_unidad'] ?? 0);
 
-if ($id <= 0 || $nombre == '' || !$id_unidad) {
-    echo json_encode(["status" => 0, "mensaje" => "Datos incompletos."]);
+// Validaciones básicas
+if ($id <= 0 || empty($nombre) || $tipo_producto <= 0 || $id_unidad <= 0) {
+    echo json_encode(["status" => 0, "mensaje" => "Datos incompletos o inválidos."]);
     exit;
 }
 
@@ -34,19 +39,30 @@ if (!$producto) {
     exit;
 }
 
-// Validar unidad existente
-$qUnidad = mysqli_query($conn, "SELECT id FROM unidades WHERE id = $id_unidad");
-if (mysqli_num_rows($qUnidad) == 0) {
-    echo json_encode(["status" => 0, "mensaje" => "Unidad no válida."]);
-    exit;
+// Validar que los IDs de referencia existen
+$validaciones = [
+    'tipo_producto' => "SELECT id FROM tipo_productos WHERE id = $tipo_producto",
+    'unidad' => "SELECT id FROM unidades WHERE id = $id_unidad"
+];
+
+if ($id_modelo > 0) {
+    $validaciones['modelo'] = "SELECT id FROM modelos WHERE id = $id_modelo";
 }
 
-// Manejo de imagen
+foreach ($validaciones as $campo => $query) {
+    $result = mysqli_query($conn, $query);
+    if (mysqli_num_rows($result) == 0) {
+        echo json_encode(["status" => 0, "mensaje" => ucfirst($campo) . " no válido."]);
+        exit;
+    }
+}
+
 $nombreImagen = $producto['imagen'];
 
 if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
     $ext = pathinfo($_FILES['imagen']['name'], PATHINFO_EXTENSION);
-    $nuevoNombreImagen = uniqid('producto_') . '.' . strtolower($ext);
+    $ext = in_array(strtolower($ext), ['jpg', 'jpeg', 'png', 'gif', 'webp']) ? strtolower($ext) : 'jpg';
+    $nuevoNombreImagen = uniqid('producto_') . '.' . $ext;
     $rutaDestino = $ROOT . "/img/productos/" . $nuevoNombreImagen;
 
     if (!move_uploaded_file($_FILES['imagen']['tmp_name'], $rutaDestino)) {
@@ -54,9 +70,9 @@ if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
         exit;
     }
 
-    // eliminar imagen anterior si existe
+    // Eliminar imagen anterior si existe
     if ($nombreImagen && file_exists($ROOT . "/img/productos/" . $nombreImagen)) {
-        unlink($ROOT . "/img/productos/" . $nombreImagen);
+        @unlink($ROOT . "/img/productos/" . $nombreImagen);
     }
 
     $nombreImagen = $nuevoNombreImagen;
@@ -64,17 +80,37 @@ if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] === UPLOAD_ERR_OK) {
 
 // Actualizar en la base de datos
 $stmt = mysqli_prepare($conn, "
-    UPDATE productos
-    SET nombre = ?, precio_unitario = ?, id_unidad = ?, imagen = ?
+    UPDATE productos 
+    SET 
+        nombre = ?, 
+        precio_unitario = ?, 
+        id_tipo_producto = ?,
+        tipo_inventario = ?,
+        id_modelo = ?,
+        id_unidad = ?,
+        imagen = ?
     WHERE id = ?
 ");
 
-mysqli_stmt_bind_param($stmt, 'sdssi', $nombre, $precio_unitario, $id_unidad, $nombreImagen, $id);
- 
+$id_modelo = $id_modelo > 0 ? $id_modelo : NULL;
+
+mysqli_stmt_bind_param(
+    $stmt, 
+    'sdissssi',
+    $nombre,
+    $precio_unitario,
+    $tipo_producto,
+    $tipo_inventario,
+    $id_modelo,
+    $id_unidad,
+    $nombreImagen,
+    $id
+);
+
 if (mysqli_stmt_execute($stmt)) {
     echo json_encode(["status" => 1, "mensaje" => "Producto actualizado correctamente."]);
 } else {
-    echo json_encode(["status" => 0, "mensaje" => "Error al actualizar el producto."]);
+    echo json_encode(["status" => 0, "mensaje" => "Error al actualizar el producto: " . mysqli_error($conn)]);
 }
 
 mysqli_stmt_close($stmt);

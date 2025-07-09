@@ -6,33 +6,50 @@ include_once "$ROOT/includes/config.php";
 
 header('Content-Type: application/json');
 
-$response = [
-    'success' => false,
-    'message' => 'Error desconocido',
-    'redirect' => ''
-];
+// Función para enviar respuestas JSON consistentes
+function jsonResponse($success, $message, $redirect = '') {
+    echo json_encode([
+        'status' => $success ? 1 : 0,
+        'mensaje' => $message,
+        'redirect' => $redirect
+    ]);
+    exit;
+}
 
 try {
     // Verificar sesión activa
     if (!tieneSesion()) {
-        throw new Exception('Sesión no iniciada');
+        jsonResponse(false, 'Sesión no iniciada', "$URL_ROOT/login");
     }
 
     // Validar método HTTP
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Método no permitido');
+        jsonResponse(false, 'Método no permitido');
     }
 
     // Validar y sanitizar entrada
     $id_producto = isset($_POST['id_producto']) ? intval($_POST['id_producto']) : 0;
     $nueva_cantidad = isset($_POST['nueva_cantidad']) ? floatval($_POST['nueva_cantidad']) : null;
+    $motivo = isset($_POST['motivo']) ? trim($_POST['motivo']) : 'Ajuste manual';
 
     if ($id_producto <= 0) {
-        throw new Exception('ID de producto inválido');
+        jsonResponse(false, 'ID de producto inválido');
     }
 
-    if (!is_numeric($nueva_cantidad) || $nueva_cantidad < 0) {
-        throw new Exception('La cantidad debe ser un número positivo');
+    if (!is_numeric($nueva_cantidad) || $nueva_cantidad <= 0) {
+        jsonResponse(false, 'La cantidad debe ser un número positivo mayor a cero');
+    }
+
+    // Obtener información del producto
+    $sql_producto = "SELECT id, nombre FROM productos WHERE id = ? LIMIT 1";
+    $stmt = $conn->prepare($sql_producto);
+    $stmt->bind_param("i", $id_producto);
+    $stmt->execute();
+    $producto = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$producto) {
+        jsonResponse(false, 'Producto no encontrado');
     }
 
     // Obtener la cantidad actual de inventario
@@ -57,11 +74,7 @@ try {
 
     // Si no hay diferencia, no se realiza ningún cambio
     if (abs($diferencia) < 0.01) {
-        $response['success'] = true;
-        $response['message'] = 'No se realizaron cambios (la cantidad es la misma)';
-        $response['redirect'] = "../../modulos/inventario/editar_cantidad.php?id=$id_producto";
-        echo json_encode($response);
-        exit;
+        jsonResponse(true, 'No se realizaron cambios (la cantidad es la misma)', "../../modulos/inventario/editar_cantidad.php?id=$id_producto");
     }
 
     // Preparar el ajuste como movimiento de entrada o salida
@@ -69,35 +82,27 @@ try {
     $cantidad_ajuste = abs($diferencia);
     $id_admin = $_SESSION['usuario_id'] ?? null;
 
-
     if (!$id_admin || !is_numeric($id_admin)) {
-        throw new Exception('ID de administrador no definido en sesión');
+        jsonResponse(false, 'ID de administrador no válido');
     }
 
-
-    // Registrar el movimiento de ajuste manual
+    // Registrar el movimiento de ajuste
     $sql_mov = "
         INSERT INTO movimientos_inventario 
             (id_producto, cantidad, tipo_movimiento, motivo, id_admin) 
-        VALUES (?, ?, ?, 'Ajuste manual', ?)
+        VALUES (?, ?, ?, ?, ?)
     ";
     $stmt = $conn->prepare($sql_mov);
-    $stmt->bind_param("idsi", $id_producto, $cantidad_ajuste, $tipo, $id_admin);
+    $stmt->bind_param("idssi", $id_producto, $cantidad_ajuste, $tipo, $motivo, $id_admin);
 
-        if ($stmt->execute()) {
-        echo json_encode(['status' => 1, 'mensaje' => 'Producto actualizado correctamente']);
+    if ($stmt->execute()) {
+        jsonResponse(true, 'Inventario actualizado correctamente', "../../modulos/inventario/lista.php");
     } else {
-        throw new Exception('Error al guardar el ajuste en la base de datos');
+        throw new Exception('Error al guardar el ajuste: ' . $stmt->error);
     }
-
-    $stmt->close();
 
 } catch (Exception $e) {
-    if ($_ENV['APP_ENV'] ?? 'dev' === 'dev') {
-        error_log("Error en guardar_cantidad.php: " . $e->getMessage());
-    }
-
-    echo json_encode(['status' => 0, 'mensaje' => 'Error al actualizar el producto']);
-
+    error_log("Error en guardar_unidad.php: " . $e->getMessage());
+    jsonResponse(false, 'Error al procesar la solicitud: ' . $e->getMessage());
 }
-
+?>
