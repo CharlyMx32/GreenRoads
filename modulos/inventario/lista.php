@@ -167,10 +167,12 @@ function formatCantidad($item)
 
 function getEditarURL($tipo_producto)
 {
-    return match ($tipo_producto) {
-        1 => "editar_rollos.php",
-        default => "editar_cantidad.php"
-    };
+    switch ($tipo_producto) {
+        case 1:
+            return "editar_rollos.php";
+        default:
+            return "editar_cantidad.php";
+    }
 }
 ?>
 <!DOCTYPE html>

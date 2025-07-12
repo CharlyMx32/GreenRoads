@@ -32,29 +32,43 @@ if ($id <= 0 || empty($nombre) || $tipo_producto <= 0 || $id_unidad <= 0) {
 }
 
 // Verificar que el producto existe
-$consulta = mysqli_query($conn, "SELECT imagen FROM productos WHERE id = $id AND estado <> 'eliminado'");
-$producto = mysqli_fetch_assoc($consulta);
+$stmt = $conn->prepare("SELECT imagen FROM productos WHERE id = ? AND estado <> 'eliminado'");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$producto = $stmt->get_result()->fetch_assoc();
 if (!$producto) {
     echo json_encode(["status" => 0, "mensaje" => "Producto no encontrado."]);
     exit;
 }
 
-// Validar que los IDs de referencia existen
-$validaciones = [
-    'tipo_producto' => "SELECT id FROM tipo_productos WHERE id = $tipo_producto",
-    'unidad' => "SELECT id FROM unidades WHERE id = $id_unidad"
-];
+// Validar que los IDs de referencia existen usando prepared statements
+$stmt = $conn->prepare("SELECT id FROM tipo_productos WHERE id = ?");
+$stmt->bind_param("i", $tipo_producto);
+$stmt->execute();
+if ($stmt->get_result()->num_rows == 0) {
+    echo json_encode(["status" => 0, "mensaje" => "Tipo de producto no válido."]);
+    exit;
+}
+$stmt->close();
+
+$stmt = $conn->prepare("SELECT id FROM unidades WHERE id = ?");
+$stmt->bind_param("i", $id_unidad);
+$stmt->execute();
+if ($stmt->get_result()->num_rows == 0) {
+    echo json_encode(["status" => 0, "mensaje" => "Unidad no válida."]);
+    exit;
+}
+$stmt->close();
 
 if ($id_modelo > 0) {
-    $validaciones['modelo'] = "SELECT id FROM modelos WHERE id = $id_modelo";
-}
-
-foreach ($validaciones as $campo => $query) {
-    $result = mysqli_query($conn, $query);
-    if (mysqli_num_rows($result) == 0) {
-        echo json_encode(["status" => 0, "mensaje" => ucfirst($campo) . " no válido."]);
+    $stmt = $conn->prepare("SELECT id FROM modelos WHERE id = ?");
+    $stmt->bind_param("i", $id_modelo);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows == 0) {
+        echo json_encode(["status" => 0, "mensaje" => "Modelo no válido."]);
         exit;
     }
+    $stmt->close();
 }
 
 $nombreImagen = $producto['imagen'];

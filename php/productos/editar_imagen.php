@@ -20,7 +20,10 @@ if ($id <= 0) {
     exit;
 }
 
-$producto = mysqli_fetch_assoc(mysqli_query($conn, "SELECT imagen FROM productos WHERE id = $id"));
+$stmt = $conn->prepare("SELECT imagen FROM productos WHERE id = ?");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$producto = $stmt->get_result()->fetch_assoc();
 if (!$producto) {
     echo json_encode(["status" => 0, "mensaje" => "Producto no encontrado."]);
     exit;
@@ -44,7 +47,9 @@ if ($producto['imagen'] && file_exists($ROOT . "/img/productos/" . $producto['im
     unlink($ROOT . "/img/productos/" . $producto['imagen']);
 }
 
-mysqli_query($conn, "UPDATE productos SET imagen = '$nombreImagen' WHERE id = $id");
+$stmt = $conn->prepare("UPDATE productos SET imagen = ? WHERE id = ?");
+$stmt->bind_param("si", $nombreImagen, $id);
+$stmt->execute();
 
 echo json_encode(["status" => 1, "mensaje" => "Imagen actualizada correctamente.", "imagen" => $nombreImagen]);
 exit;

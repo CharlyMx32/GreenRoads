@@ -28,9 +28,11 @@ if (!isset($_GET['p'])) {
 
 // Obtener y validar ID del producto
 $id = intval($_GET['p']);
-$sql = "SELECT * FROM productos WHERE id = $id AND estado <> 'eliminado'";
-$resultado = mysqli_query($conn, $sql);
-$producto = mysqli_fetch_assoc($resultado);
+$stmt = $conn->prepare("SELECT * FROM productos WHERE id = ? AND estado <> 'eliminado'");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$resultado = $stmt->get_result();
+$producto = $resultado->fetch_assoc();
 
 if (!$producto) {
     header("Location: $URL_ROOT/productos");
