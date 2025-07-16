@@ -143,7 +143,10 @@ foreach ($colores_disponibles as $c) {
 
 <body>
     <?php
-    $headerParams = ["titulo" => $TITULO, "btn_atras" => "window.history.back()"];
+    $headerParams = [
+        "titulo" => $TITULO, 
+        "btn_atras" => "window.location.href='lista.php'"
+    ];
     include_once '../../includes/header.php';
     ?>
 

@@ -76,6 +76,11 @@
                     <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
                     <div class="texto-btn-ajustes">Clientes</div>
                 </li>
+
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../clientes/lista'">
+                    <div class="icono-btn-ajustes"><i class="fa-light fa-gears"></i></div>
+                    <div class="texto-btn-ajustes">Parametros</div>
+                </li>
             </ul>
         </div>
     </body>

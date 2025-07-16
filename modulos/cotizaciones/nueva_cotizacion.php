@@ -128,28 +128,26 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <select class="rollo-select textfield" onchange="actualizarRollos(this)">
                                 <option value="">-- Selecciona Rollo --</option>
                                 <?php
-                                // Consulta para obtener solo productos tipo rollo
                                 $sql_rollos = "SELECT p.id, p.nombre, p.precio_unitario, m.nombre AS modelo, 
-                                        GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS colores
-                                        FROM productos p
-                                        JOIN modelos m ON p.id_modelo = m.id
-                                        JOIN inventario_rollos ir ON p.id = ir.id_producto
-                                        JOIN colores c ON ir.id_color = c.id
-                                        WHERE p.tipo_inventario = 'rollo' AND p.estado = 'activo'
-                                        AND ir.estado = 'disponible'
-                                        GROUP BY p.id";
+                            GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS colores
+                            FROM productos p
+                            JOIN modelos m ON p.id_modelo = m.id
+                            JOIN inventario_rollos ir ON p.id = ir.id_producto
+                            JOIN colores c ON ir.id_color = c.id
+                            WHERE p.tipo_inventario = 'rollo' AND p.estado = 'activo'
+                            AND ir.estado = 'disponible'
+                            GROUP BY p.id";
                                 $result_rollos = mysqli_query($conn, $sql_rollos);
                                 while ($rollo = mysqli_fetch_assoc($result_rollos)) : ?>
                                     <option value="<?= $rollo['id'] ?>"
                                         data-precio="<?= $rollo['precio_unitario'] ?>"
                                         data-modelo="<?= $rollo['modelo'] ?>"
                                         data-colores="<?= $rollo['colores'] ?>">
-                                        <?= htmlspecialchars($rollo['nombre']) ?> (<?= $rollo['modelo'] ?>) - $<?= number_format($rollo['precio_unitario'], 2) ?>
+                                        <?= htmlspecialchars($rollo['nombre']) ?> (<?= $rollo['modelo'] ?>)
                                     </option>
                                 <?php endwhile; ?>
                             </select>
                             <input type="number" class="textfield" placeholder="m²" min="1" step="0.01" style="width: 80px;" onchange="actualizarRollos(this)">
-                            <span style="min-width: 80px; text-align: right;">$0.00</span>
                             <div class="eliminar">
                                 <i class="fa-solid fa-trash" type="button" onclick="removerRollo(this)"></i>
                             </div>
@@ -172,25 +170,22 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <select class="product-select textfield" onchange="actualizarProductos(this)">
                                 <option value="">-- Selecciona Producto --</option>
                                 <?php
-                                // Consulta para obtener solo productos tipo unidad
                                 $sql_productos = "SELECT p.id, p.nombre, p.precio_unitario, u.simbolo AS unidad
-                                             FROM productos p
-                                             JOIN unidades u ON p.id_unidad = u.id
-                                             WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
+                                 FROM productos p
+                                 JOIN unidades u ON p.id_unidad = u.id
+                                 WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
                                 $result_productos = mysqli_query($conn, $sql_productos);
                                 while ($producto = mysqli_fetch_assoc($result_productos)) : ?>
                                     <option value="<?= $producto['id'] ?>"
                                         data-precio="<?= $producto['precio_unitario'] ?>"
                                         data-unidad="<?= $producto['unidad'] ?>">
-                                        <?= htmlspecialchars($producto['nombre']) ?> ($<?= number_format($producto['precio_unitario'], 2) ?> <?= $producto['unidad'] ?>)
+                                        <?= htmlspecialchars($producto['nombre']) ?> (<?= $producto['unidad'] ?>)
                                     </option>
                                 <?php endwhile; ?>
                             </select>
                             <input type="number" class="textfield" placeholder="Cantidad" min="1" value="1" style="width: 80px;" onchange="actualizarProductos(this)">
-                            <span style="min-width: 80px; text-align: right;">$0.00</span>
                             <div class="eliminar">
                                 <i class="fa-solid fa-trash" type="button" onclick="removerProducto(this)"></i>
-
                             </div>
                         </div>
                     </div>
@@ -209,10 +204,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 <input type="checkbox" class="extra-check"
                                     data-id="<?= $extra['id'] ?>"
                                     data-precio="<?= $extra['precio'] ?>">
-                                <?= htmlspecialchars($extra['nombre']) ?> ($<?= number_format($extra['precio'], 2) ?>)
+                                <?= htmlspecialchars($extra['nombre']) ?>
                             </label><br>
                         <?php endwhile; ?>
-
                     </div>
                 </div>
             </div>

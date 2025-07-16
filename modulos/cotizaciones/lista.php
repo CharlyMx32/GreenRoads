@@ -81,7 +81,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <td colspan="11">No hay cotizaciones registradas.</td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($cotizaciones as $cotizacion): ?>
+                        <?php foreach ($cotizaciones as $cotizacion): 
+                            $estado_final = in_array($cotizacion['estado'], ['rechazada', 'cancelada', 'aceptada']);
+                        ?>
                             <tr>
                                 <td>#<?= $cotizacion['id'] ?></td>
                                 <td><?= htmlspecialchars($cotizacion['nombre_cliente'] ?? '') ?></td>
@@ -102,30 +104,34 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 </td>
                                 <td>
                                     <div class="opciones-tabla-lista">
-                                        <!-- Botón editar -->
-                                        <div class="editar"
-                                            onclick="location.href='<?php echo $ROOT ?>/cotizaciones/editar_cotizacion?id=<?php echo $cotizacion['id'] ?>'">
+                                        <!-- Botón editar-->
+                                        <div class="editar <?= $estado_final ? 'disabled' : '' ?>"
+                                            onclick="<?= !$estado_final ? "location.href='{$ROOT}/cotizaciones/editar_cotizacion?id={$cotizacion['id']}'" : '' ?>"
+                                            <?= $estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '' ?>>
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </div>
 
-                                        <!-- Botón aceptar -->
-                                        <div class="aceptar"
-                                            onclick="changeStatus(<?= $cotizacion['id'] ?>, 'aceptada')"
-                                            <?php if ($cotizacion['estado'] == 'aceptada') echo 'style="color: #00dd0b;"'; ?>>
+                                        <!-- Botón aceptar-->
+                                        <div class="aceptar <?= $estado_final ? 'disabled' : '' ?>"
+                                            onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'aceptada')" : '' ?>"
+                                            <?= ($cotizacion['estado'] == 'aceptada') ? 'style="color: #00dd0b;"' : 
+                                                ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
                                             <i class="fa-solid fa-check"></i>
                                         </div>
 
-                                        <!-- Botón rechazar -->
-                                        <div class="rechazar"
-                                            onclick="changeStatus(<?= $cotizacion['id'] ?>, 'rechazada')"
-                                            <?php if ($cotizacion['estado'] == 'rechazada') echo 'style="color: #ff0000;"'; ?>>
+                                        <!-- Botón rechazar-->
+                                        <div class="rechazar <?= $estado_final ? 'disabled' : '' ?>"
+                                            onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'rechazada')" : '' ?>"
+                                            <?= ($cotizacion['estado'] == 'rechazada') ? 'style="color: #ff0000;"' : 
+                                                ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
                                             <i class="fa-solid fa-times"></i>
                                         </div>
 
-                                        <!-- Botón cancelar -->
-                                        <div class="cancelar"
-                                            onclick="changeStatus(<?= $cotizacion['id'] ?>, 'cancelada')"
-                                            <?php if ($cotizacion['estado'] == 'cancelada') echo 'style="color: #ff9900;"'; ?>>
+                                        <!-- Botón cancelar-->
+                                        <div class="cancelar <?= $estado_final ? 'disabled' : '' ?>"
+                                            onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'cancelada')" : '' ?>"
+                                            <?= ($cotizacion['estado'] == 'cancelada') ? 'style="color: #ff9900;"' : 
+                                                ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
                                             <i class="fa-solid fa-ban"></i>
                                         </div>
                                     </div>
@@ -145,6 +151,18 @@ while ($row = mysqli_fetch_assoc($result)) {
     <?php include_once '../../includes/popup.php'; ?>
 
     <script>
+        function confirmChangeStatus(idCotizacion, nuevoEstado) {
+            const mensajes = {
+                'aceptada': '¿Estás seguro de que deseas ACEPTAR esta cotización?',
+                'rechazada': '¿Estás seguro de que deseas RECHAZAR esta cotización?',
+                'cancelada': '¿Estás seguro de que deseas CANCELAR esta cotización?'
+            };
+            
+            if (confirm(mensajes[nuevoEstado])) {
+                changeStatus(idCotizacion, nuevoEstado);
+            }
+        }
+
         function changeStatus(idCotizacion, nuevoEstado) {
             fetch(`../../php/cotizaciones/cambiar_estado.php?id=${idCotizacion}&estado=${nuevoEstado}`)
                 .then(response => response.json())
