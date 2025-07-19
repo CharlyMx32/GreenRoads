@@ -1,3 +1,46 @@
+let parametrosSistema = {
+    precioInstalacion: 0,
+    garantiaDefault: 5,
+    ivaPorcentaje: 0.16
+};
+
+function obtenerIdColorPorNombre(nombreColor) {
+    // Colores de pasto
+    const colores = {
+        "Verde Claro": 1,
+        "Verde Oscuro": 2,
+        "Verde Olivo": 3,
+        "Verde Pasto": 4,
+        "Verde Limón": 5,
+        "Verde Natural": 6,
+        "Verde Primavera": 7,
+        "Verde Jade": 8,
+        "Verde Esmeralda": 9,
+        "Verde Césped": 10
+    };
+    return colores[nombreColor] || null;
+}
+
+// Función para cargar parámetros del sistema
+async function cargarParametrosSistema() {
+    try {
+        const response = await fetch('../../php/configuracion/obtener_parametros.php');
+        const data = await response.json();
+
+        if (data.status === 1) {
+            parametrosSistema.precioInstalacion = parseFloat(data.parametros.precio_instalacion_m2) || 0;
+            parametrosSistema.garantiaDefault = parseInt(data.parametros.garantia_default_anios) || 5;
+            parametrosSistema.ivaPorcentaje = (parseFloat(data.parametros.iva_porcentaje) || 16) / 100;
+
+            // Aplicar valores por defecto
+            document.getElementById('precio_instalacion').value = parametrosSistema.precioInstalacion;
+            document.getElementById('garantia').value = parametrosSistema.garantiaDefault;
+        }
+    } catch (error) {
+        console.error('Error al cargar parámetros:', error);
+    }
+}
+
 // Función para alternar entre terreno regular e irregular
 function toggleTerreno() {
     const tipoTerreno = document.getElementById('tipo_terreno').value;
@@ -70,7 +113,7 @@ function actualizarRollos(element) {
     const item = element.closest('.product-item');
     const select = item.querySelector('.rollo-select');
     const cantidad = item.querySelector('input[type="number"]');
-    const subtotal = item.querySelector('span');
+    const subtotal = item.querySelector('.product-price');
     const detalles = item.querySelector('.rollo-details');
 
     // Mostrar detalles si hay producto seleccionado
@@ -78,7 +121,35 @@ function actualizarRollos(element) {
         detalles.style.display = 'block';
         detalles.querySelector('.modelo-text').textContent = select.selectedOptions[0].dataset.modelo;
         detalles.querySelector('.colores-text').textContent = select.selectedOptions[0].dataset.colores;
-        detalles.querySelector('.area-text').textContent = 'Consultar';
+        detalles.querySelector('.area-text').textContent = `${cantidad.value} m² disponibles`;
+
+        // Limpiar cualquier selector de color existente
+        const existingColorSelect = detalles.querySelector('.color-select');
+        if (existingColorSelect) {
+            existingColorSelect.remove();
+        }
+
+        // Permitir seleccionar el color del Rollo
+        const coloresDisponibles = select.selectedOptions[0].dataset.colores.split(', ');
+        const colorSelect = document.createElement('select');
+        colorSelect.className = 'color-select textfield';
+        colorSelect.setAttribute('required', 'true');
+
+        // Agregar opción por defecto
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '-- Selecciona Color --';
+        colorSelect.appendChild(defaultOption);
+
+        coloresDisponibles.forEach(color => {
+            const option = document.createElement('option');
+            option.value = color.trim();
+            option.textContent = color.trim();
+            option.dataset.id = obtenerIdColorPorNombre(color.trim()); // Asignar ID
+            colorSelect.appendChild(option);
+        });
+
+        detalles.appendChild(colorSelect);
     } else {
         detalles.style.display = 'none';
     }
@@ -99,8 +170,14 @@ function agregarRollo() {
     // Resetear valores
     item.querySelector('.rollo-select').value = '';
     item.querySelector('input[type="number"]').value = '';
-    item.querySelector('span').textContent = '$0.00';
+    item.querySelector('.product-price').textContent = '$0.00';
     item.querySelector('.rollo-details').style.display = 'none';
+
+    // Limpiar cualquier selector de color existente
+    const existingColorSelect = item.querySelector('.color-select');
+    if (existingColorSelect) {
+        existingColorSelect.remove();
+    }
 
     item.querySelector('.rollo-select').addEventListener('change', function () {
         actualizarRollos(this);
@@ -127,7 +204,7 @@ function actualizarProductos(element) {
     const item = element.closest('.product-item');
     const select = item.querySelector('.product-select');
     const cantidad = item.querySelector('input[type="number"]');
-    const subtotal = item.querySelector('span');
+    const subtotal = item.querySelector('.product-price');
 
     const precio = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
     const cant = parseFloat(cantidad.value) || 0;
@@ -143,7 +220,7 @@ function agregarProducto() {
 
     item.querySelector('.product-select').value = '';
     item.querySelector('input[type="number"]').value = '1';
-    item.querySelector('span').textContent = '$0.00';
+    item.querySelector('.product-price').textContent = '$0.00';
 
     item.querySelector('.product-select').addEventListener('change', function () {
         actualizarProductos(this);
@@ -194,14 +271,17 @@ function actualizarTotales() {
     let precioInstalacion = parseFloat(document.getElementById('precio_instalacion').value) || 0;
     let instalacion = area * precioInstalacion;
 
-    // Calcular totales
+    // Calcular total sin IVA
     let totalSinIVA = subtotalRollos + subtotalProductos + extras + instalacion;
-    let iva = totalSinIVA * 0.16;
-    let totalConIVA = totalSinIVA + iva;
 
+    // Calcular IVA y total con IVA usando los parámetros
+    // let iva = totalSinIVA * parametrosSistema.ivaPorcentaje;
+    // let totalConIVA = totalSinIVA + iva;
+
+    // Actualizar la interfaz
     document.getElementById('total_sin_iva').textContent = `$${totalSinIVA.toFixed(2)}`;
-    document.getElementById('iva').textContent = `$${iva.toFixed(2)}`;
-    document.getElementById('total_con_iva').textContent = `$${totalConIVA.toFixed(2)}`;
+    // document.getElementById('iva').textContent = `$${iva.toFixed(2)}`;
+    // document.getElementById('total_con_iva').textContent = `$${totalConIVA.toFixed(2)}`;
 }
 
 // Función para validar el formulario
@@ -262,10 +342,50 @@ function validarFormulario() {
 function guardarCotizacion() {
     if (!validarFormulario()) return;
 
+    // Validar precio de instalación mínimo
+    const precioInstalacion = parseFloat(document.getElementById('precio_instalacion').value);
+    if (precioInstalacion < (parametrosSistema.precioInstalacion * 0.8)) {
+        if (!confirm(`El precio de instalación es menor que el 80% del valor recomendado ($${parametrosSistema.precioInstalacion}). ¿Desea continuar?`)) {
+            return;
+        }
+    }
+
     displayPopUp();
     $('#iconAccion').html('<i class="fas fa-spinner fa-spin"></i>');
     $('#mensajeAccion').html('Guardando cotización...');
     $('#btnAccion').css('display', 'none');
+
+    // Calcular total correctamente
+    let totalSinIVA = 0;
+    const rollos = [];
+    document.querySelectorAll('#rollos_container .product-item').forEach(item => {
+        const select = item.querySelector('.rollo-select');
+        const input = item.querySelector('input[type="number"]');
+        const colorSelect = item.querySelector('.color-select'); // Nuevo selector de color
+        
+        if (select.value && input.value && colorSelect.value) {
+            rollos.push({
+                id_producto: select.value,
+                cantidad: parseFloat(input.value),
+                precio_unitario: parseFloat(select.selectedOptions[0].dataset.precio),
+                id_color: colorSelect.value  // Color seleccionado
+            });
+        }
+    });s
+
+    document.querySelectorAll('#productos_container .product-item').forEach(item => {
+        const precio = parseFloat(item.querySelector('.product-select').selectedOptions[0]?.dataset.precio) || 0;
+        const cantidad = parseFloat(item.querySelector('input[type="number"]').value) || 0;
+        totalSinIVA += precio * cantidad;
+    });
+
+    document.querySelectorAll('.extra-check:checked').forEach(ck => {
+        totalSinIVA += parseFloat(ck.dataset.precio);
+    });
+
+    let area = parseFloat(document.getElementById('area_total').value) || 0;
+    let precioInst = parseFloat(document.getElementById('precio_instalacion').value) || 0;
+    totalSinIVA += area * precioInst;
 
     // Recolectar datos principales
     const datos = {
@@ -277,9 +397,8 @@ function guardarCotizacion() {
         area_total: $('#area_total').val(),
         tipo_instalacion: $('#tipo_instalacion').val(),
         garantia: $('#garantia').val(),
-        precio_instalacion: parseFloat($('#precio_instalacion').val()) || 0,
-        total: parseFloat($('#total_con_iva').text().replace('$', '')) || 0,
-
+        precio_instalacion: precioInst,
+        total: totalSinIVA, // Usar el total calculado aquí
         rollos: [],
         productos: [],
         extras: []
@@ -288,9 +407,20 @@ function guardarCotizacion() {
     $('#rollos_container .product-item').each(function () {
         const select = $(this).find('.rollo-select');
         const input = $(this).find('input[type="number"]');
+        const colorSelect = $(this).find('.color-select');
         const precio = parseFloat(select.find('option:selected').data('precio')) || 0;
         const cantidad = parseFloat(input.val()) || 0;
+        const id_color = obtenerIdColorPorNombre(colorSelect.val()); // Función nueva
 
+        if (select.val() && cantidad > 0 && id_color) {
+            datos.rollos.push({
+                id_producto: select.val(),
+                cantidad: cantidad,
+                precio_unitario: precio,
+                id_color: id_color,
+                cantidad_rollos: Math.ceil(cantidad / areaPorRollo) // Calcula cuántos rollos completos necesita
+            });
+        }
     });
 
     $('#productos_container .product-item').each(function () {
@@ -318,34 +448,65 @@ function guardarCotizacion() {
     fetch('../../php/cotizaciones/guardar_cotizacion.php', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify(datos)
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.status === 1) {
-            displayMensajeExitoso(
-                'Cotización guardada correctamente',
-                `window.location.href = 'ver_cotizacion.php?id=${data.id_cotizacion}'`
-            );
-        } else {
-            displayMensajeError(data.mensaje || 'Error desconocido al guardar la cotización');
-        }
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        displayMensajeError('Error al guardar la cotización: ' + err.message);
-        $('#btnAccion').css('display', 'block');
-    });
+        .then(response => {
+            // Primero verificar si la respuesta es JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return response.text().then(text => {
+                    throw new Error(`Respuesta no JSON: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 1) {
+                displayMensajeExitoso(
+                    'Cotización guardada correctamente',
+                    `window.location.href = 'lista.php';`
+                );
+            } else {
+                displayMensajeError(data.mensaje || 'Error desconocido al guardar la cotización');
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            displayMensajeError(`Error al guardar: ${err.message}`);
+            $('#btnAccion').css('display', 'block');
+        });
 }
+
+function cargarColoresRollos(selectElement) {
+    const productoId = selectElement.value;
+    const contenedor = selectElement.closest('.product-item');
+    const colorSelect = contenedor.querySelector('.color-select');
+    
+    // Limpiar selector
+    colorSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
+    
+    if (!productoId) return;
+    
+    // Obtener colores disponibles desde el backend
+    fetch(`../../php/inventario/obtener_colores.php?id_producto=${productoId}`)
+        .then(response => response.json())
+        .then(colores => {
+            colores.forEach(color => {
+                const option = document.createElement('option');
+                option.value = color.id;
+                option.textContent = color.nombre;
+                colorSelect.appendChild(option);
+            });
+        });
+}
+
 // Asignar eventos cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
+    await cargarParametrosSistema();
+
     // Eventos para terreno
     document.getElementById('tipo_terreno').addEventListener('change', toggleTerreno);
     document.getElementById('forma_terreno').addEventListener('change', calcularArea);
@@ -384,9 +545,6 @@ document.addEventListener('DOMContentLoaded', function () {
             actualizarProductos(this);
         });
     });
-
-    // Botón guardar
-    document.querySelector('.btnadd').addEventListener('click', guardarCotizacion);
 
     // Inicializar
     toggleTerreno();

@@ -17,7 +17,7 @@ if (!tieneSesion()) {
 
 // Obtener lista de clientes y productos
 $clientes = [];
-$sql = "SELECT id, nombre FROM clientes ORDER BY nombre ASC";
+$sql = "SELECT id, nombre FROM clientes WHERE estado = 'activo' ORDER BY nombre ASC";
 $result = mysqli_query($conn, $sql);
 while ($row = mysqli_fetch_assoc($result)) {
     $clientes[] = $row;
@@ -37,6 +37,38 @@ while ($row = mysqli_fetch_assoc($result)) {
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
     <link rel="stylesheet" href="../../css/cotizaciones.css">
+    <script>
+        // Función para cargar parámetros al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarParametros();
+        });
+
+        function cargarParametros() {
+            fetch('../../php/configuracion/obtener_parametros.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 1) {
+                        const params = data.parametros;
+
+                        // Establecer precio de instalación
+                        if (params.precio_instalacion_m2) {
+                            document.getElementById('precio_instalacion').value = params.precio_instalacion_m2;
+                        }
+
+                        // Establecer garantía por defecto
+                        if (params.garantia_default_anios) {
+                            document.getElementById('garantia').value = params.garantia_default_anios;
+                        }
+
+                        // Guardar IVA para cálculos
+                        if (params.iva_porcentaje) {
+                            window.ivaPorcentaje = parseFloat(params.iva_porcentaje) / 100;
+                        }
+                    }
+                })
+                .catch(error => console.error('Error al cargar parámetros:', error));
+        }
+    </script>
 </head>
 
 <body>
@@ -125,34 +157,36 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div class="titulo-formulario" style="margin-top: -7px;">Rollos de Pasto</div>
                     <div id="rollos_container">
                         <div class="product-item">
-                            <select class="rollo-select textfield" onchange="actualizarRollos(this)">
-                                <option value="">-- Selecciona Rollo --</option>
-                                <?php
-                                $sql_rollos = "SELECT p.id, p.nombre, p.precio_unitario, m.nombre AS modelo, 
-                            GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS colores
-                            FROM productos p
-                            JOIN modelos m ON p.id_modelo = m.id
-                            JOIN inventario_rollos ir ON p.id = ir.id_producto
-                            JOIN colores c ON ir.id_color = c.id
-                            WHERE p.tipo_inventario = 'rollo' AND p.estado = 'activo'
-                            AND ir.estado = 'disponible'
-                            GROUP BY p.id";
-                                $result_rollos = mysqli_query($conn, $sql_rollos);
-                                while ($rollo = mysqli_fetch_assoc($result_rollos)) : ?>
-                                    <option value="<?= $rollo['id'] ?>"
-                                        data-precio="<?= $rollo['precio_unitario'] ?>"
-                                        data-modelo="<?= $rollo['modelo'] ?>"
-                                        data-colores="<?= $rollo['colores'] ?>">
-                                        <?= htmlspecialchars($rollo['nombre']) ?> (<?= $rollo['modelo'] ?>)
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
-                            <input type="number" class="textfield" placeholder="m²" min="1" step="0.01" style="width: 80px;" onchange="actualizarRollos(this)">
-                            <div class="eliminar">
-                                <i class="fa-solid fa-trash" type="button" onclick="removerRollo(this)"></i>
+                            <div class="product-header">
+                                <select class="rollo-select textfield" onchange="cargarColoresRollos(this)">
+                                    <option value="">-- Selecciona Rollo --</option>
+                                    <?php
+                                    $sql_rollos = "SELECT p.id, p.nombre, p.precio_unitario, m.nombre AS modelo, 
+                                GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS colores
+                                FROM productos p
+                                JOIN modelos m ON p.id_modelo = m.id
+                                JOIN inventario_rollos ir ON p.id = ir.id_producto
+                                JOIN colores c ON ir.id_color = c.id
+                                WHERE p.tipo_inventario = 'rollo' AND p.estado = 'activo'
+                                AND ir.estado = 'disponible'
+                                GROUP BY p.id";
+                                    $result_rollos = mysqli_query($conn, $sql_rollos);
+                                    while ($rollo = mysqli_fetch_assoc($result_rollos)) : ?>
+                                        <option value="<?= $rollo['id'] ?>"
+                                            data-precio="<?= $rollo['precio_unitario'] ?>"
+                                            data-modelo="<?= $rollo['modelo'] ?>"
+                                            data-colores="<?= $rollo['colores'] ?>">
+                                            <?= htmlspecialchars($rollo['nombre']) ?> (<?= $rollo['modelo'] ?>)
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                                <input type="number" class="textfield" placeholder="m²" min="1" step="0.01" style="width: 80px;" onchange="actualizarRollos(this)">
+                                <div class="eliminar">
+                                    <i class="fa-solid fa-trash" type="button" onclick="removerRollo(this)"></i>
+                                </div>
                             </div>
 
-                            <div class="rollo-details" style="display: none; margin-top: 10px; width: 100%;">
+                            <div class="rollo-details" style="display: none; margin-top: 10px; width: 95%;">
                                 <div><small>Modelo: <span class="modelo-text"></span></small></div>
                                 <div><small>Colores disponibles: <span class="colores-text"></span></small></div>
                                 <div><small>Área disponible: <span class="area-text"></span> m²</small></div>
@@ -167,29 +201,30 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div class="titulo-formulario" style="margin-top: -7px;">Otros Productos</div>
                     <div id="productos_container">
                         <div class="product-item">
-                            <select class="product-select textfield" onchange="actualizarProductos(this)">
-                                <option value="">-- Selecciona Producto --</option>
-                                <?php
-                                $sql_productos = "SELECT p.id, p.nombre, p.precio_unitario, u.simbolo AS unidad
-                                 FROM productos p
-                                 JOIN unidades u ON p.id_unidad = u.id
-                                 WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
-                                $result_productos = mysqli_query($conn, $sql_productos);
-                                while ($producto = mysqli_fetch_assoc($result_productos)) : ?>
-                                    <option value="<?= $producto['id'] ?>"
-                                        data-precio="<?= $producto['precio_unitario'] ?>"
-                                        data-unidad="<?= $producto['unidad'] ?>">
-                                        <?= htmlspecialchars($producto['nombre']) ?> (<?= $producto['unidad'] ?>)
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
-                            <input type="number" class="textfield" placeholder="Cantidad" min="1" value="1" style="width: 80px;" onchange="actualizarProductos(this)">
-                            <div class="eliminar">
-                                <i class="fa-solid fa-trash" type="button" onclick="removerProducto(this)"></i>
+                            <div class="product-header">
+                                <select class="product-select textfield" onchange="actualizarProductos(this)">
+                                    <option value="">-- Selecciona Producto --</option>
+                                    <?php
+                                    $sql_productos = "SELECT p.id, p.nombre, p.precio_unitario, u.simbolo AS unidad
+                                     FROM productos p
+                                     JOIN unidades u ON p.id_unidad = u.id
+                                     WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
+                                    $result_productos = mysqli_query($conn, $sql_productos);
+                                    while ($producto = mysqli_fetch_assoc($result_productos)) : ?>
+                                        <option value="<?= $producto['id'] ?>"
+                                            data-precio="<?= $producto['precio_unitario'] ?>"
+                                            data-unidad="<?= $producto['unidad'] ?>">
+                                            <?= htmlspecialchars($producto['nombre']) ?> (<?= $producto['unidad'] ?>)
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                                <input type="number" class="textfield" placeholder="Cantidad" min="1" value="1" style="width: 80px;" onchange="actualizarProductos(this)">
+                                <div class="eliminar">
+                                    <i class="fa-solid fa-trash" type="button" onclick="removerProducto(this)"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <button type="button" onclick="agregarProducto()" style="margin-top: 10px;">+ Agregar producto</button>
                 </div>
 
                 <!-- SECCIÓN EXTRAS -->
@@ -205,7 +240,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     data-id="<?= $extra['id'] ?>"
                                     data-precio="<?= $extra['precio'] ?>">
                                 <?= htmlspecialchars($extra['nombre']) ?>
-                            </label><br>
+                            </label>
                         <?php endwhile; ?>
                     </div>
                 </div>
@@ -246,17 +281,20 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <div class="form-section" role="region" aria-labelledby="seccion-resumen">
                     <div class="titulo-formulario" style="margin-top: -7px;">Resumen</div>
                     <div class="form-group">
-                        <div class="summary-item">
+                        <!--    
+                    <div class="summary-item">
                             <span>Total sin IVA:</span>
                             <span id="total_sin_iva">$0.00</span>
                         </div>
+                      
                         <div class="summary-item">
                             <span>IVA (16%):</span>
                             <span id="iva">$0.00</span>
                         </div>
+                        -->
                         <div class="summary-item" style="font-weight: bold;">
-                            <span>Total con IVA:</span>
-                            <span id="total_con_iva">$0.00</span>
+                            <span>Total:</span>
+                            <span id="total_sin_iva">$0.00</span>
                         </div>
                     </div>
                 </div>

@@ -20,6 +20,7 @@ $usuarios = [];
 $sql = "SELECT 
     c.* 
 FROM clientes c 
+WHERE c.estado = 'activo'
 ORDER BY c.nombre ASC";
 
 $clientes = [];
@@ -35,7 +36,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
-    <script src="<?php $ROOT ?>/js/buscador.js?cache=<?php echo uniqid(); ?>"></script>
 </head>
 
 <body>
@@ -97,18 +97,12 @@ while ($row = mysqli_fetch_assoc($result)) {
 </body>
 
 <script>
-    setSearcher({
-        input: ".textfield-buscador-navegador",
-        search_element: "table tbody tr",
-        display_type: "table-row"
-    });
-
     function changeStatus(id) {
         if (!confirm("¿Está seguro que desea eliminar al cliente?")) return false;
 
         displayPopUp();
 
-        $.post('<?php echo $ROOT ?>/php/clientes/eliminar.php', {
+        $.post('../../php/clientes/eliminar.php', {
                 id: id
             })
             .done(function(data) {

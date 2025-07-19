@@ -8,4 +8,12 @@
             return false;
         }
     }
+
+    function obtenerRol() {
+        if (isset($_SESSION['rol'])) {
+            return $_SESSION['rol'];
+        } else {
+            return null;
+        }
+    }
 ?>

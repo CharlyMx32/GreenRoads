@@ -77,7 +77,12 @@
                     <div class="texto-btn-ajustes">Clientes</div>
                 </li>
 
-                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../clientes/lista'">
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../extras/lista'">
+                    <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
+                    <div class="texto-btn-ajustes">Extras</div>
+                </li>
+
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../configuracion/parametros'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-gears"></i></div>
                     <div class="texto-btn-ajustes">Parametros</div>
                 </li>

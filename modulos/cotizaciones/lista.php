@@ -28,8 +28,8 @@ $sql = "
         c.tipo_instalacion,
         c.garantia_anios,
         c.id_admin,  
-        a.nombre AS nombre_admin,
-        a.apellido AS apellido_admin
+        COALESCE(a.nombre, 'Sin asignar') AS nombre_admin,
+        COALESCE(a.apellido, '') AS apellido_admin
     FROM cotizaciones c
     LEFT JOIN clientes cli ON c.id_cliente = cli.id
     LEFT JOIN admins a ON c.id_admin = a.id 
@@ -81,7 +81,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <td colspan="11">No hay cotizaciones registradas.</td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($cotizaciones as $cotizacion): 
+                        <?php foreach ($cotizaciones as $cotizacion):
                             $estado_final = in_array($cotizacion['estado'], ['rechazada', 'cancelada', 'aceptada']);
                         ?>
                             <tr>
@@ -92,13 +92,16 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 <td><?= ($cotizacion['garantia_anios'] ? $cotizacion['garantia_anios'] . ' años' : '-') ?></td>
                                 <td><?= date('Y-m-d', strtotime($cotizacion['fecha'])) ?></td>
                                 <td><?= ucfirst($cotizacion['estado']) ?></td>
-                                <td>$<?= number_format($cotizacion['total'], 2) ?></td>
+                                <td>$<?= isset($cotizacion['total']) ? number_format((float)$cotizacion['total'], 2) : '0.00' ?></td>
                                 <td>
                                     <?php
-                                    if (!empty($cotizacion['nombre_admin'])) {
-                                        echo htmlspecialchars($cotizacion['nombre_admin'] . ' ' . $cotizacion['apellido_admin']);
+                                    if (!empty($cotizacion['id_admin'])) {
+                                        echo htmlspecialchars(
+                                            ($cotizacion['nombre_admin'] ?? 'Admin ID: ') .
+                                                (!empty($cotizacion['apellido_admin']) ? ' ' . $cotizacion['apellido_admin'] : '')
+                                        );
                                     } else {
-                                        echo htmlspecialchars($cotizacion['id_admin'] ?? 'Sin asignar');
+                                        echo 'Sin asignar';
                                     }
                                     ?>
                                 </td>
@@ -114,24 +117,21 @@ while ($row = mysqli_fetch_assoc($result)) {
                                         <!-- Botón aceptar-->
                                         <div class="aceptar <?= $estado_final ? 'disabled' : '' ?>"
                                             onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'aceptada')" : '' ?>"
-                                            <?= ($cotizacion['estado'] == 'aceptada') ? 'style="color: #00dd0b;"' : 
-                                                ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
+                                            <?= ($cotizacion['estado'] == 'aceptada') ? 'style="color: #00dd0b;"' : ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
                                             <i class="fa-solid fa-check"></i>
                                         </div>
 
                                         <!-- Botón rechazar-->
                                         <div class="rechazar <?= $estado_final ? 'disabled' : '' ?>"
                                             onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'rechazada')" : '' ?>"
-                                            <?= ($cotizacion['estado'] == 'rechazada') ? 'style="color: #ff0000;"' : 
-                                                ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
+                                            <?= ($cotizacion['estado'] == 'rechazada') ? 'style="color: #ff0000;"' : ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
                                             <i class="fa-solid fa-times"></i>
                                         </div>
 
                                         <!-- Botón cancelar-->
                                         <div class="cancelar <?= $estado_final ? 'disabled' : '' ?>"
                                             onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'cancelada')" : '' ?>"
-                                            <?= ($cotizacion['estado'] == 'cancelada') ? 'style="color: #ff9900;"' : 
-                                                ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
+                                            <?= ($cotizacion['estado'] == 'cancelada') ? 'style="color: #ff9900;"' : ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
                                             <i class="fa-solid fa-ban"></i>
                                         </div>
                                     </div>
@@ -157,7 +157,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 'rechazada': '¿Estás seguro de que deseas RECHAZAR esta cotización?',
                 'cancelada': '¿Estás seguro de que deseas CANCELAR esta cotización?'
             };
-            
+
             if (confirm(mensajes[nuevoEstado])) {
                 changeStatus(idCotizacion, nuevoEstado);
             }

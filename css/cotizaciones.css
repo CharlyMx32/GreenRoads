@@ -5,10 +5,18 @@
     --color-borde: #ccc;
     --sombra: 0 2px 6px rgba(0, 0, 0, 0.05);
     --radio-borde: 10px;
+    --transicion: all 0.3s ease;
 }
 
 body {
     font-family: "Montserrat", sans-serif;
+}
+
+.textfield:focus, 
+select:focus {
+    border-color: var(--color-primario);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(125, 192, 66, 0.2);
 }
 
 /* Estructura principal */
@@ -18,12 +26,13 @@ body {
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
     padding: 20px;
+    margin: 45px auto 0;
 }
 
 .grid-col {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
 }
 
 /* Secciones de formulario */
@@ -37,7 +46,9 @@ body {
 
 /* Grupos de formulario */
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Elementos de formulario */
@@ -46,9 +57,9 @@ select,
 input[type="number"],
 input[type="text"] {
     font-family: inherit;
-    padding: 8px 12px;
-    border: 1px solid var(--color-borde);
-    border-radius: 4px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--color-borde);
+    border-radius: 5px;
     width: 100%;
     box-sizing: border-box;
 }
@@ -56,8 +67,16 @@ input[type="text"] {
 /* Items de productos */
 .product-item {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.product-header {
+    display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%;
 }
 
 .product-select {
@@ -72,6 +91,14 @@ input[type="text"] {
     flex: 1;
     text-align: right;
     min-width: 80px;
+}
+
+.product-price {
+    font-weight: 600;
+    color: var(--color-primario);
+    font-size: 14px;
+    min-width: 80px;
+    text-align: right;
 }
 
 .summary-item {
@@ -164,9 +191,6 @@ input[type="text"] {
     background: #f0f0f0;
 }
 
-.forma-inputs {
-    transition: all 0.3s ease;
-}
 
 .hidden-section {
     display: none;
@@ -185,10 +209,13 @@ input[type="text"] {
         overflow-y: auto;
         padding-right: 10px;
         margin-right: -10px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-primario) transparent;
     }
 
     .grid-col::-webkit-scrollbar {
-        width: 6px;
+        width: 8px;
+        height: 8px;
     }
 
     .form-container-grid {
@@ -197,16 +224,13 @@ input[type="text"] {
 
     .grid-col::-webkit-scrollbar-track {
         background: #f1f1f1;
-        border-radius: 3px;
+        border-radius: 4px;
+        margin: 2px 0;
     }
 
     .grid-col::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 3px;
-    }
-
-    .grid-col::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
+        background: var(--color-primario);
+        border-radius: 4px;
     }
 }
 
@@ -219,5 +243,130 @@ input[type="text"] {
     .grid-col {
         overflow-y: visible;
     }
+}
+
+/* Estilos mejorados para items de productos */
+.product-item {
+    background: #f8f9fa;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.product-item:hover {
+    background: #f0f0f0;
+    border-color: #dee2e6;
+}
+
+.product-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+/* Estilos para los detalles de rollos */
+.rollo-details {
+    background: #ffffff;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 5px;
+    border-left: 4px solid var(--color-primario);
+}
+
+.rollo-details small {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.rollo-details .color-select {
+    margin-top: 8px;
+    width: 100%;
+}
+
+/* Estilos para botones de acción */
+.btn-secondary {
+    background-color: var(--color-secundario);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: #E67339;
+}
+
+
+/* Estilos para labels */
+label {
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: #495057;
+    font-size: 14px;
+}
+
+/* Títulos de secciones */
+.titulo-formulario {
+    color: var(--color-primario);
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--color-primario);
+}
+
+/* Estilos para checkboxes */
+.checkbox-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Estilos para el resumen */
+.summary-item {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    border-left: 4px solid var(--color-primario);
+}
+
+
+/* Estilos para formas irregulares */
+.forma-item {
+    background: #f8f9fa;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.forma-item:hover {
+    background: #f0f0f0;
+    border-color: #dee2e6;
+}
+
+/* Icono de eliminación */
+.eliminar {
+    color: var(--color-error);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 5px;
+    transition: color 0.2s;
+}
+
+.eliminar:hover {
+    color: #dc3545;
 }
 
