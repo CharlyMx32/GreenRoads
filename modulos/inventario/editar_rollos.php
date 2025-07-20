@@ -4,36 +4,30 @@
  * Muestra y permite editar el inventario de productos tipo rollo
  */
 
-// Configuración inicial
 $ROOT = '../..';
 $TITULO = "Editar inventario";
 
-// Incluir archivos necesarios
 include_once $ROOT . '/db/conexion.php';
 include_once $ROOT . '/includes/sesion.php';
 include_once $ROOT . '/includes/config.php';
 
-// Verificar sesión
 if (!tieneSesion()) {
     header("Location: $URL_ROOT/login");
     exit();
 }
 
-// Validar ID de producto
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($id <= 0) {
     header("Location: lista.php?error=id_invalido");
     exit();
 }
 
-// Limpiar temporales si se solicita
 if (isset($_GET['limpiar_temporal'])) {
     unset($_SESSION['rollos_temporales']);
     header("Location: editar_rollos.php?id=$id&id_color=" . intval($_GET['id_color'] ?? 0));
     exit();
 }
 
-// Obtener color activo
 $id_color_activo = isset($_GET['id_color']) ? intval($_GET['id_color']) : 0;
 
 // Consultar información del producto
@@ -49,13 +43,13 @@ if (!$producto) {
     exit();
 }
 
-// Inicializar variables
+
 $rollos = [];
 $colores_disponibles = [];
 $rollos_del_color = [];
 $agrupados = [];
 
-// Procesar solo si es producto tipo rollo (id_tipo_producto == 1)
+
 if ($producto['id_tipo_producto'] == 1) {
     // Consultar colores disponibles con su inventario
     $sql_rollos = "SELECT 
@@ -138,7 +132,7 @@ foreach ($colores_disponibles as $c) {
 
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
-    <link rel="stylesheet" href="../../css/editar_rollos.css">
+    <link rel="stylesheet" href="../../css/inventario/editar_rollos.css">
 </head>
 
 <body>
@@ -333,7 +327,6 @@ foreach ($colores_disponibles as $c) {
 
         // Manejo de formularios con AJAX
         $(function() {
-            // Formulario para agregar rollos temporales
             $('.formulario-rollos').on('submit', function(e) {
                 e.preventDefault();
                 const $form = $(this);

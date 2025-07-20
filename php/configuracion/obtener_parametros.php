@@ -8,7 +8,7 @@ include_once $ROOT . '/db/conexion.php';
 
 header('Content-Type: application/json');
 
-// Validar conexión DB
+// Validar  DB
 if (!$conn) {
     http_response_code(500);
     die(json_encode([

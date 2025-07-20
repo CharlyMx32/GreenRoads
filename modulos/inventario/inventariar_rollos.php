@@ -17,19 +17,16 @@ if ($id <= 0) {
     exit();
 }
 
-// Limpiar temporal
 if (isset($_GET['limpiar_temporal'])) {
     unset($_SESSION['rollos_temporales']);
     header("Location: inventariar_rollos.php?id=$id");
     exit();
 }
 
-// Inicializar almacenamiento temporal
 if (!isset($_SESSION['rollos_temporales'])) {
     $_SESSION['rollos_temporales'] = [];
 }
 
-// Obtener datos producto
 $sql = "SELECT p.id AS id_producto, p.nombre, p.descripcion, p.id_tipo_producto, u.simbolo, u.nombre AS unidad_nombre
         FROM productos p
         JOIN unidades u ON u.id = p.id_unidad
@@ -48,7 +45,6 @@ if (!$producto) {
 
 $id_producto = $producto['id_producto'];
 
-// Procesar POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) {
     $largo = floatval($_POST['largo'] ?? 0);
     $ancho = floatval($_POST['ancho'] ?? 0);
@@ -95,116 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
 
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
-    <style>
-        .fila-inventario {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            align-items: flex-start;
-            flex-wrap: nowrap;
-            padding: 20px;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        .columna {
-            flex: 0 0 auto;
-            flex-direction: column;
-            gap: 15px;
-            width: 100%;
-            max-width: 450px;
-            box-sizing: border-box;
-        }
-
-        .tabla-rollos {
-            border-collapse: collapse;
-            width: 100%;
-            font-size: 0.95em;
-        }
-
-        .tabla-rollos th,
-        .tabla-rollos td {
-            border: 1px solid #ccc;
-            padding: 8px 10px;
-            text-align: center;
-            white-space: nowrap;
-        }
-
-        .tabla-rollos th {
-            background-color: #7dc042;
-            color: white;
-        }
-
-        .contenedor-tabla {
-            max-height: 280px;
-            overflow-y: auto;
-            width: 100%;
-        }
-
-        .formulario-rollos .textfield-container {
-            width: 100%;
-        }
-
-        .formulario-rollos .btn-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .btn-row {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .titulo-formulario {
-            font-weight: bold;
-            color: #555;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        .btnlimpiar {
-            width: 180px;
-            height: 38px;
-            line-height: 38px;
-            text-align: center;
-            margin: 20px calc(50% - 90px);
-            background-color: #e1b12c;
-            cursor: pointer;
-            color: #ffffff;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 14px;
-            border-radius: 5px;
-        }
-
-
-        @media (max-width: 992px) {
-            .fila-inventario {
-                flex-direction: row;
-                align-items: stretch;
-                gap: 15px;
-            }
-
-            .columna {
-                max-width: 100%;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .fila-inventario {
-                flex-direction: column;
-                align-items: center;
-                gap: 20px;
-            }
-
-            .columna {
-                max-width: 100%;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="../../css/inventario/inventariar_rollos.css">
 </head>
 
 <body>
@@ -336,7 +223,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
     </main>
 
     <script>
-        // Manejo del formulario de guardado
         document.querySelector('form[action*="guardar_rollos.php"]')?.addEventListener('submit', function(e) {
             e.preventDefault();
 

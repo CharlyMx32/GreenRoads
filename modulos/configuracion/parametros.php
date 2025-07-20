@@ -48,7 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Obtener parámetros y agrupar por prefijo de clave (ej: "email_", "general_")
 $parametros = [];
 $sql = "SELECT id, clave, valor, descripcion, tipo, editable, fecha_actualizacion 
         FROM parametros_sistema 
@@ -56,7 +55,6 @@ $sql = "SELECT id, clave, valor, descripcion, tipo, editable, fecha_actualizacio
 $result = mysqli_query($conn, $sql);
 
 while ($row = mysqli_fetch_assoc($result)) {
-    // Determinar categoría basada en prefijo de clave
     $partes = explode('_', $row['clave']);
     $categoria = count($partes) > 1 ? ucfirst($partes[0]) : 'General';
 
@@ -174,7 +172,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                 });
             });
 
-            // Búsqueda
             const searchInput = document.getElementById('searchParam');
             searchInput.addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
@@ -200,11 +197,8 @@ while ($row = mysqli_fetch_assoc($result)) {
                     const formData = new FormData(this);
                     const btnSubmit = this.querySelector('button[type="submit"]');
 
-                    // Deshabilitar botón durante la solicitud
                     btnSubmit.disabled = true;
                     btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-
-                    // Mostrar mensaje de carga
                     displayPopUp("Actualizando parámetro...");
 
                     fetch('../../php/configuracion/parametros.php?t=' + Date.now(), {

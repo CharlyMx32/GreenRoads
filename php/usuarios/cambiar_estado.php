@@ -2,8 +2,8 @@
     ini_set('display_errors', '1');
     ini_set('display_startup_errors', '1');
     error_reporting(E_ALL);
-    $ROOT = $_SERVER['DOCUMENT_ROOT'];
-    
+    //$ROOT = $_SERVER['DOCUMENT_ROOT'];
+    $ROOT = '../..';
     include_once $ROOT.'/db/conexion.php';
     include_once $ROOT.'/includes/sesion.php';
     include_once $ROOT.'/includes/config.php';

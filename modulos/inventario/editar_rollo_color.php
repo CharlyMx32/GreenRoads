@@ -90,7 +90,7 @@ try {
 
 <head>
     <?php include_once "../../includes/head.php"; ?>
-    <link rel="stylesheet" href="<?= $URL_ROOT ?>/css/editar_rollo_color.css">
+    <link rel="stylesheet" href="<?= $URL_ROOT ?>/css/inventario/editar_rollo_color.css">
 </head>
 
 <body>
@@ -205,7 +205,6 @@ try {
                     const inputEliminar = row.querySelector('.input-eliminar');
 
                     if (inputEliminar.value === '1') {
-                        // Restaurar
                         inputEliminar.value = '0';
                         row.classList.remove('rollo-eliminado');
                         row.querySelectorAll('input[type="number"]').forEach(input => {
@@ -213,7 +212,6 @@ try {
                         });
                         this.innerHTML = '<i class="fas fa-trash"></i> Eliminar';
                     } else {
-                        // Marcar para eliminar
                         inputEliminar.value = '1';
                         row.classList.add('rollo-eliminado');
                         row.querySelectorAll('input[type="number"]').forEach(input => {
@@ -257,7 +255,6 @@ try {
                 });
             });
 
-            // Validar inputs
             document.querySelectorAll('input[type="number"]').forEach(input => {
                 input.addEventListener('change', function() {
                     if (this.value <= 0) {
@@ -312,8 +309,6 @@ try {
                     btnGuardar.disabled = false;
                 }
             });
-
-            // Inicializar estado del botón
             actualizarEstadoGuardado();
         });
     </script>

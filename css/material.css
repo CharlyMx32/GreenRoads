@@ -11,6 +11,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     overflow-x: hidden;
+    font-family: "Montserrat", sans-serif;
 }
 
 ::-webkit-scrollbar {

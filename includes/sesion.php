@@ -1,19 +1,21 @@
 <?php
-    session_start();
+session_start();
 
-    function tieneSesion() {
-        if(isset($_SESSION['usuario'])) {
-            return true;
-        } else {
-            return false;
-        }
+function tieneSesion()
+{
+    if (isset($_SESSION['usuario'])) {
+        return true;
+    } else {
+        return false;
     }
+}
 
-    function obtenerRol() {
-        if (isset($_SESSION['rol'])) {
-            return $_SESSION['rol'];
-        } else {
-            return null;
-        }
-    }
-?>
+function rolUsuario()
+{
+    return $_SESSION['rol'] ?? null;
+}
+
+function esAdmin() {
+    return isset($_SESSION['rol']) && $_SESSION['rol'] == 1;
+}
+

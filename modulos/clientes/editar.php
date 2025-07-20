@@ -58,8 +58,7 @@ include_once '../../includes/header.php';
             <input type="email" class="textfield" name="email" value="<?= htmlspecialchars($cliente['email']) ?>">
             <label placeholder="Email"></label>
 
-            <textarea class="textfield" name="direccion"><?= htmlspecialchars($cliente['direccion']) ?></textarea>
-            <label placeholder="Dirección"></label>
+            <textarea class="textfield" name="direccion" placeholder="Dirección"><?= htmlspecialchars($cliente['direccion']) ?></textarea>
         </form>
 
         <button id="btnEditar" type="button" class="btnadd" onclick="editarCliente()">

@@ -1,13 +1,9 @@
 <?php
-// Asegurar que siempre se devuelva JSON
 header('Content-Type: application/json');
-
-// Manejar errores adecuadamente
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', 'php_errors.log');
 
-// Validación inicial estricta
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     die(json_encode(['status' => 0, 'mensaje' => 'Método no permitido']));
@@ -16,28 +12,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_once '../../db/conexion.php';
 require_once '../../includes/sesion.php';
 
-// Validación de sesión mejorada
-if (!tieneSesion()) {
-    echo json_encode(['status' => 0, 'mensaje' => 'No autorizado: Sesión no iniciada']);
+if (!tieneSesion() || !isset($_SESSION['usuario_id'])) {
+    echo json_encode(['status' => 0, 'mensaje' => 'No autorizado']);
     exit();
 }
 
-if (!isset($_SESSION['usuario_id'])) {
-    echo json_encode(['status' => 0, 'mensaje' => 'No autorizado: Administrador no identificado']);
-    exit();
-}
-
-// Obtener datos del POST
 $input = file_get_contents('php://input');
 $datos = json_decode($input, true);
 
 if (!$datos || json_last_error() !== JSON_ERROR_NONE) {
-    echo json_encode(['status' => 0, 'mensaje' => 'Datos inválidos: ' . json_last_error_msg()]);
+    echo json_encode(['status' => 0, 'mensaje' => 'Datos inválidos']);
     exit();
 }
 
 // Validar campos obligatorios
-$camposRequeridos = ['id_cliente', 'tipo_terreno', 'tipo_instalacion', 'garantia', 'total', 'precio_instalacion'];
+$camposRequeridos = ['id_cliente', 'tipo_terreno', 'tipo_instalacion', 'garantia', 'total', 'precio_instalacion', 'area_total'];
 foreach ($camposRequeridos as $campo) {
     if (!isset($datos[$campo])) {
         echo json_encode(['status' => 0, 'mensaje' => "Falta el campo requerido: $campo"]);
@@ -45,40 +34,35 @@ foreach ($camposRequeridos as $campo) {
     }
 }
 
-// Validar que el total sea numérico y positivo
-if (!is_numeric($datos['total']) || $datos['total'] <= 0) {
-    echo json_encode(['status' => 0, 'mensaje' => 'El total debe ser un valor numérico positivo']);
-    exit();
-}
-
 mysqli_begin_transaction($conn);
 
 try {
-    // Insertar la cotización principal
     $query = "INSERT INTO cotizaciones (
         id_cliente, 
         id_admin, 
         estado, 
         total, 
+        area_total,
         tipo_terreno, 
         tipo_instalacion,   
         garantia_anios,     
         precio_instalacion_m2,
         fecha
-    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, NOW())";
+    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = mysqli_prepare($conn, $query);
     if (!$stmt) {
         throw new Exception("Error al preparar la consulta: " . mysqli_error($conn));
     }
 
-    $id_admin = $_SESSION['id_admin'];
+    $id_admin = $_SESSION['usuario_id'];
     mysqli_stmt_bind_param(
         $stmt,
-        "iidsssd",
+        "iiddsssd",
         $datos['id_cliente'],
         $id_admin,
         $datos['total'],
+        $datos['area_total'],
         $datos['tipo_terreno'],
         $datos['tipo_instalacion'],
         $datos['garantia'],
@@ -93,12 +77,14 @@ try {
     mysqli_stmt_close($stmt);
 
     // Procesar rollos de pasto
-    if (!empty($datos['rollos'])) {
+    if (!empty($datos['rollos']) && is_array($datos['rollos'])) {
         foreach ($datos['rollos'] as $rollo) {
-            // 1. Verificar disponibilidad del color
-            $sql_verificar = "SELECT 
-                SUM(area_m2) AS area_disponible,
-                COUNT(*) AS rollos_disponibles
+            if (!isset($rollo['id_producto'], $rollo['id_color'], $rollo['cantidad'], $rollo['precio_unitario'])) {
+                continue;
+            }
+
+            // Verificar disponibilidad
+            $sql_verificar = "SELECT SUM(area_m2) AS area_disponible
                 FROM inventario_rollos
                 WHERE id_producto = ?
                 AND id_color = ?
@@ -109,85 +95,68 @@ try {
             mysqli_stmt_execute($stmt_verificar);
             $result_verificar = mysqli_stmt_get_result($stmt_verificar);
             $disponibilidad = mysqli_fetch_assoc($result_verificar);
-            
-            // 2. Validar disponibilidad
+
             if ($disponibilidad['area_disponible'] < $rollo['cantidad']) {
                 throw new Exception("No hay suficiente inventario para el producto {$rollo['id_producto']}, color {$rollo['id_color']}");
             }
 
-            // Insertar en detalle_cotizacion
             $query = "INSERT INTO detalle_cotizacion (
                 id_cotizacion, 
                 id_producto, 
+                id_color,
                 cantidad, 
-                precio_unitario,
-                tipo_producto
-            ) VALUES (?, ?, ?, ?, 'rollo')";
+                area_usada,
+                precio_unitario
+            ) VALUES (?, ?, ?, ?, ?, ?)";
 
             $stmt = mysqli_prepare($conn, $query);
             mysqli_stmt_bind_param(
                 $stmt,
-                "iidd",
+                "iiiddd",
                 $id_cotizacion,
                 $rollo['id_producto'],
+                $rollo['id_color'],
                 $rollo['cantidad'],
+                $rollo['cantidad'], 
                 $rollo['precio_unitario']
             );
             mysqli_stmt_execute($stmt);
             $id_detalle = mysqli_insert_id($conn);
             mysqli_stmt_close($stmt);
 
-            // Insertar en detalle_cotizacion_pasto
-            $query_pasto = "INSERT INTO detalle_cotizacion_pasto (
-                id_detalle, 
-                id_color,
-                area_usada
-            ) VALUES (?, ?, ?)";
-
-            $stmt_pasto = mysqli_prepare($conn, $query_pasto);
-            mysqli_stmt_bind_param(
-                $stmt_pasto,
-                "iid",
-                $id_detalle,
-                $rollo['id_color'],
-                $rollo['cantidad']
-            );
-            mysqli_stmt_execute($stmt_pasto);
-            mysqli_stmt_close($stmt_pasto);
-
-            // Reservar rollos en inventario
-            if (isset($rollo['cantidad_rollos']) && $rollo['cantidad_rollos'] > 0) {
+            // Reservar rollos (FIFO)
+            $m2_requeridos = $rollo['cantidad'];
+            $query_rollos = "SELECT id, area_m2 
+                FROM inventario_rollos 
+                WHERE id_producto = ? 
+                AND id_color = ? 
+                AND estado = 'disponible'
+                ORDER BY fecha_ingreso ASC";
+            
+            $stmt = mysqli_prepare($conn, $query_rollos);
+            mysqli_stmt_bind_param($stmt, "ii", $rollo['id_producto'], $rollo['id_color']);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+            
+            while (($row = mysqli_fetch_assoc($result)) && $m2_requeridos > 0) {
+                $area_a_reservar = min($row['area_m2'], $m2_requeridos);
+                
                 $query_reserva = "UPDATE inventario_rollos 
-                SET estado = 'reservado', 
-                    id_cotizacion = ?  // Nuevo campo para rastrear
-                WHERE id IN (
-                    SELECT id FROM (
-                        SELECT id 
-                        FROM inventario_rollos 
-                        WHERE id_producto = ? 
-                        AND id_color = ?
-                        AND estado = 'disponible'
-                        ORDER BY fecha_ingreso  // Primero los más antiguos
-                        LIMIT ?  // Solo la cantidad necesaria
-                    ) AS tmp
-                )";
-
+                    SET estado = 'reservado', id_cotizacion_reserva = ?
+                    WHERE id = ?";
+                
                 $stmt_reserva = mysqli_prepare($conn, $query_reserva);
-                mysqli_stmt_bind_param(
-                    $stmt_reserva,
-                    "iii",
-                    $rollo['id_producto'],
-                    $rollo['id_color'],
-                    $rollo['cantidad_rollos']
-                );
+                mysqli_stmt_bind_param($stmt_reserva, "ii", $id_cotizacion, $row['id']);
                 mysqli_stmt_execute($stmt_reserva);
                 mysqli_stmt_close($stmt_reserva);
+                
+                $m2_requeridos -= $area_a_reservar;
             }
         }
     }
 
     // Procesar productos generales
-    if (!empty($datos['productos'])) {
+    if (!empty($datos['productos']) && is_array($datos['productos'])) {
         foreach ($datos['productos'] as $producto) {
             if (empty($producto['id_producto'])) continue;
 
@@ -195,10 +164,9 @@ try {
                 id_cotizacion, 
                 id_producto, 
                 cantidad, 
-                precio_unitario,
-                tipo_producto
-            ) VALUES (?, ?, ?, ?, 'producto')";
-
+                precio_unitario
+            ) VALUES (?, ?, ?, ?)";
+            
             $stmt = mysqli_prepare($conn, $query);
             mysqli_stmt_bind_param(
                 $stmt,
@@ -214,7 +182,7 @@ try {
     }
 
     // Procesar extras
-    if (!empty($datos['extras'])) {
+    if (!empty($datos['extras']) && is_array($datos['extras'])) {
         foreach ($datos['extras'] as $extra) {
             if (empty($extra['id_extra'])) continue;
 
@@ -223,7 +191,7 @@ try {
                 id_extra, 
                 precio_aplicado
             ) VALUES (?, ?, ?)";
-
+            
             $stmt = mysqli_prepare($conn, $query);
             mysqli_stmt_bind_param(
                 $stmt,
@@ -238,23 +206,9 @@ try {
     }
 
     mysqli_commit($conn);
-
-    echo json_encode([
-        'status' => 1,
-        'mensaje' => 'Cotización guardada correctamente',
-        'id_cotizacion' => $id_cotizacion,
-        'admin_id' => $id_admin,
-        'total' => $datos['total']
-    ]);
-
+    echo json_encode(['status' => 1, 'mensaje' => 'Cotización guardada correctamente', 'id_cotizacion' => $id_cotizacion]);
 } catch (Exception $e) {
     mysqli_rollback($conn);
     error_log("Error al guardar cotización: " . $e->getMessage());
-    
-    echo json_encode([
-        'status' => 0,
-        'mensaje' => 'Error al guardar la cotización',
-        'error' => $e->getMessage(),
-        'datos_recibidos' => $datos
-    ]);
+    echo json_encode(['status' => 0, 'mensaje' => 'Error al guardar: ' . $e->getMessage()]);
 }

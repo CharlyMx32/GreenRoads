@@ -20,15 +20,6 @@
     box-sizing: border-box;
 }
 
-.centrado {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-
-
 .tabla-rollos {
     border-collapse: collapse;
     width: 100%;
@@ -59,27 +50,6 @@
     align-items: center;
     gap: 10px;
 }
-
-.color-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    cursor: pointer;
-    width: 80%;
-}
-
-.color-box {
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    border: 1px solid #999;
-}
-
 
 .selector-colores {
     position: relative;
@@ -187,23 +157,6 @@
     cursor: pointer;
     font-weight: bold;
 }
-
-
-.estado-inicial {
-    text-align: center;
-    padding: 20px;
-    color: #666;
-    border: 1px dashed #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-}
-
-.estado-inicial .icono {
-    font-size: 30px;
-    margin-bottom: 10px;
-    color: #ccc;
-}
-
 
 @media (max-width: 1300px) {
     .fila-inventario {

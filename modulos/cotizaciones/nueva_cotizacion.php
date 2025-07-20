@@ -36,9 +36,8 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
-    <link rel="stylesheet" href="../../css/cotizaciones.css">
+    <link rel="stylesheet" href="../../css/cotizaciones/cotizaciones.css">
     <script>
-        // Función para cargar parámetros al iniciar
         document.addEventListener('DOMContentLoaded', function() {
             cargarParametros();
         });
@@ -79,7 +78,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     ];
     include_once '../../includes/header.php';
     ?>
-    <div class="main-container">
+    <div class="main-container" style="width: 100%;">
         <div class="form-container-grid">
             <!-- Columna 1 -->
             <div class="grid-col">
@@ -98,7 +97,8 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     <option value="<?= $cliente['id'] ?>"><?= htmlspecialchars($cliente['nombre']) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <button onclick="window.location.href='../clientes/agregar.php'">+ Nuevo</button>
+                            <button onclick="window.location.href='../clientes/agregar.php'" class="btnadd" style="width: 165px;
+                            height: 50px;">+ Nuevo cliente</button>
                         </div>
                     </div>
                 </div>
@@ -108,7 +108,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div class="titulo-formulario" style="margin-top: -7px;">Terreno</div>
                     <div class="form-group">
                         <label for="tipo_terreno">Tipo de Terreno *</label>
-                        <select id="tipo_terreno" class="textfield" onchange="toggleTerreno()" required>
+                        <select id="tipo_terreno" class="textfield">
                             <option value="">-- Selecciona --</option>
                             <option value="regular">Regular</option>
                             <option value="irregular">Irregular</option>
@@ -118,7 +118,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div id="terreno_regular" class="hidden-section">
                         <div class="form-group">
                             <label for="forma_terreno">Forma *</label>
-                            <select id="forma_terreno" class="textfield" onchange="calcularArea()">
+                            <select id="forma_terreno" class="textfield">
                                 <option value="">-- Selecciona --</option>
                                 <option value="rectangulo">Rectángulo</option>
                                 <option value="triangulo">Triángulo</option>
@@ -158,42 +158,59 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div id="rollos_container">
                         <div class="product-item">
                             <div class="product-header">
-                                <select class="rollo-select textfield" onchange="cargarColoresRollos(this)">
+                                <select class="rollo-select textfield">
                                     <option value="">-- Selecciona Rollo --</option>
                                     <?php
-                                    $sql_rollos = "SELECT p.id, p.nombre, p.precio_unitario, m.nombre AS modelo, 
-                                GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS colores
-                                FROM productos p
-                                JOIN modelos m ON p.id_modelo = m.id
-                                JOIN inventario_rollos ir ON p.id = ir.id_producto
-                                JOIN colores c ON ir.id_color = c.id
-                                WHERE p.tipo_inventario = 'rollo' AND p.estado = 'activo'
-                                AND ir.estado = 'disponible'
-                                GROUP BY p.id";
+                                    $sql_rollos = "SELECT 
+                                        p.id, 
+                                        p.nombre, 
+                                        p.precio_unitario, 
+                                        m.nombre AS modelo,
+                                        (SELECT GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') 
+                                        FROM inventario_rollos ir 
+                                        JOIN colores c ON ir.id_color = c.id 
+                                        WHERE ir.id_producto = p.id AND ir.estado = 'disponible') AS colores_disponibles,
+                                        (SELECT SUM(ir.area_m2)
+                                        FROM inventario_rollos ir
+                                        WHERE ir.id_producto = p.id AND ir.estado = 'disponible') AS area_disponible_total
+                                    FROM productos p
+                                    JOIN modelos m ON p.id_modelo = m.id
+                                    WHERE p.tipo_inventario = 'rollo' 
+                                    AND p.estado = 'activo'
+                                    AND EXISTS (
+                                        SELECT 1 FROM inventario_rollos ir 
+                                        WHERE ir.id_producto = p.id 
+                                        AND ir.estado = 'disponible'
+                                    )";
                                     $result_rollos = mysqli_query($conn, $sql_rollos);
                                     while ($rollo = mysqli_fetch_assoc($result_rollos)) : ?>
                                         <option value="<?= $rollo['id'] ?>"
                                             data-precio="<?= $rollo['precio_unitario'] ?>"
                                             data-modelo="<?= $rollo['modelo'] ?>"
-                                            data-colores="<?= $rollo['colores'] ?>">
+                                            data-colores="<?= htmlspecialchars($rollo['colores_disponibles']) ?>"
+                                            data-area-disponible="<?= $rollo['area_disponible_total'] ?>">
                                             <?= htmlspecialchars($rollo['nombre']) ?> (<?= $rollo['modelo'] ?>)
+                                            <?php if ($rollo['area_disponible_total'] > 0): ?>
+                                                - Disp: <?= number_format($rollo['area_disponible_total'], 2) ?> m²
+                                            <?php endif; ?>
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
-                                <input type="number" class="textfield" placeholder="m²" min="1" step="0.01" style="width: 80px;" onchange="actualizarRollos(this)">
+                                <input type="number" class="textfield" placeholder="m²" min="0.01" step="0.01" style="width: 80px;">
                                 <div class="eliminar">
-                                    <i class="fa-solid fa-trash" type="button" onclick="removerRollo(this)"></i>
+                                    <i class="fa-solid fa-trash" type="button" id="btn-remover-rollo"></i>
                                 </div>
                             </div>
 
-                            <div class="rollo-details" style="display: none; margin-top: 10px; width: 95%;">
-                                <div><small>Modelo: <span class="modelo-text"></span></small></div>
-                                <div><small>Colores disponibles: <span class="colores-text"></span></small></div>
-                                <div><small>Área disponible: <span class="area-text"></span> m²</small></div>
+                            <div class="rollo-details" style="display: none; margin-top: 10px;">
+                                <div><strong>Modelo:</strong> <span class="modelo-text"></span></div>
+                                <div><strong>Colores:</strong> <span class="colores-text"></span></div>
+                                <div><strong>Área seleccionada:</strong> <span class="area-text"></span></div>
                             </div>
+
                         </div>
                     </div>
-                    <button type="button" onclick="agregarRollo()" style="margin-top: 10px;">+ Agregar rollo</button>
+                    <button type="button" id="btn-agregar-rollo" style="margin-top: 10px;" class="btnadd">+ Agregar rollo</button>
                 </div>
 
                 <!-- SECCIÓN PRODUCTOS GENERALES -->
@@ -202,13 +219,13 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div id="productos_container">
                         <div class="product-item">
                             <div class="product-header">
-                                <select class="product-select textfield" onchange="actualizarProductos(this)">
+                                <select class="product-select textfield">
                                     <option value="">-- Selecciona Producto --</option>
                                     <?php
                                     $sql_productos = "SELECT p.id, p.nombre, p.precio_unitario, u.simbolo AS unidad
-                                     FROM productos p
-                                     JOIN unidades u ON p.id_unidad = u.id
-                                     WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
+                                        FROM productos p
+                                        JOIN unidades u ON p.id_unidad = u.id
+                                        WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
                                     $result_productos = mysqli_query($conn, $sql_productos);
                                     while ($producto = mysqli_fetch_assoc($result_productos)) : ?>
                                         <option value="<?= $producto['id'] ?>"
@@ -218,9 +235,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
-                                <input type="number" class="textfield" placeholder="Cantidad" min="1" value="1" style="width: 80px;" onchange="actualizarProductos(this)">
+                                <input type="number" class="textfield" placeholder="Cantidad" min="1" value="1" style="width: 80px;">
                                 <div class="eliminar">
-                                    <i class="fa-solid fa-trash" type="button" onclick="removerProducto(this)"></i>
+                                    <i class="fa-solid fa-trash" type="button" id="removerProducto(this)"></i>
                                 </div>
                             </div>
                         </div>
@@ -286,7 +303,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <span>Total sin IVA:</span>
                             <span id="total_sin_iva">$0.00</span>
                         </div>
-                      
+                        
                         <div class="summary-item">
                             <span>IVA (16%):</span>
                             <span id="iva">$0.00</span>
@@ -306,7 +323,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         <button class="btncancel" type="button" onclick="window.history.back()">
             <i class="fas fa-times-circle"></i> Cancelar
         </button>
-        <button class="btnadd" style="margin: 0;" type="button" onclick="guardarCotizacion()">
+        <button id="btn-guardar-cotizacion" class="btnadd" style="margin: 0;" type="button">
             <i class="fas fa-save"></i> Guardar
         </button>
     </div>
@@ -314,6 +331,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <?php include_once '../../includes/popup.php'; ?>
 </body>
 <script src="../../scripts/cotizaciones/formas_irregulares.js"></script>
-<script src="../../scripts/cotizaciones/nueva_cotizacion.js"></script>
+<script type="module" src="../../scripts/cotizaciones/nueva_cotizacion.js"></script>
+
 
 </html>

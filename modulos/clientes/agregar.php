@@ -7,8 +7,6 @@ $ROOT = '../..';
 
 $TITULO = "Nuevo cliente";
 
-
-
 // include_once $ROOT . '/db/conexion.php';
 // include_once $ROOT . '/includes/sesion.php';
 // include_once $ROOT . '/includes/config.php';
@@ -51,8 +49,7 @@ include_once '../../includes/config.php';
                 <input type="email" class="textfield" name="email" id="email">
                 <label placeholder="Email"></label>
 
-                <textarea class="textfield" name="direccion" id="direccion"></textarea>
-                <label placeholder="Dirección"></label>
+                <textarea class="textfield" name="direccion" id="direccion" placeholder="Dirección"></textarea>
             </form>
 
             <button id="btnAdd" type="button" class="btnadd" onclick="agregar()" aria-label="Agregar">

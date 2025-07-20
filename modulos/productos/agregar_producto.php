@@ -67,46 +67,7 @@ if ($result = mysqli_query($conn, $query)) {
 
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
-    <style>
-        /* Estilos para el diseño responsivo */
-        .fila-inventario {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            align-items: flex-start;
-            flex-wrap: nowrap;
-            padding: 20px;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        /* Media queries para responsividad */
-        @media (max-width: 768px) {
-            .fila-inventario {
-                flex-direction: column;
-                align-items: center;
-            }
-        }
-
-        .columna {
-            flex: 1;
-            max-width: 500px;
-            min-width: 300px;
-            box-sizing: border-box;
-        }
-
-        /* Contenedor para campos de formulario */
-        .contenedor-campos {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .contenedor-campos .textfield-container {
-            flex: 1;
-            min-width: 200px;
-        }
-    </style>
+    <link rel="stylesheet" href="../../css/productos/agregar_producto.css">
 </head>
 
 <body>
@@ -124,7 +85,6 @@ if ($result = mysqli_query($conn, $query)) {
 
         <form id="formProducto" enctype="multipart/form-data" aria-labelledby="formTitle">
             <div class="fila-inventario">
-                <!-- Columna 1: Datos generales -->
                 <div class="columna">
                     <!-- Sección de imagen -->
                     <div class="contenedor-no-foto" id="contenedorNoFoto" style="margin-top: -10px;">
@@ -185,15 +145,22 @@ if ($result = mysqli_query($conn, $query)) {
                         <label for="tipoInventario" placeholder="Tipo de inventario *"></label>
                     </div>
 
-                    <div class="textfield-container" id="campoModelo" style="display:none;">
-                        <select name="id_modelo" class="textfield" aria-label="Modelo de pasto">
-                            <option value="">Selecciona modelo</option>
-                            <?php foreach ($modelos as $modelo): ?>
-                                <option value="<?= htmlspecialchars($modelo['id']) ?>">
-                                    <?= htmlspecialchars($modelo['nombre']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="textfield-container" id="campoModelo" style="display:none; margin-bottom: 15px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <select name="id_modelo" class="textfield" aria-label="Modelo de pasto" id="selectModelo" style="flex: 1;">
+                                <option value="">Selecciona modelo</option>
+                                <?php foreach ($modelos as $modelo): ?>
+                                    <option value="<?= htmlspecialchars($modelo['id']) ?>">
+                                        <?= htmlspecialchars($modelo['nombre']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" id="btnAgregarModelo"
+                                style="margin: 0; width: 40px; height: 40px;"
+                                aria-label="Agregar nuevo modelo">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
                         <label placeholder="Modelo (solo para pasto)"></label>
                     </div>
 
@@ -207,7 +174,7 @@ if ($result = mysqli_query($conn, $query)) {
             </div>
         </form>
 
-        <button type="button" class="btnadd" style="margin-top: -15px;" onclick="agregar()"
+        <button type="button" class="btnadd" style="margin-top: 10px;" onclick="agregar()"
             aria-label="Agregar nuevo producto">
             Agregar
         </button>
@@ -215,136 +182,30 @@ if ($result = mysqli_query($conn, $query)) {
 
     <?php include_once $ROOT . '/../includes/popup.php'; ?>
 
-    <!-- JavaScript más organizado y con manejo de errores -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Elementos del DOM
-            const inputImagen = document.getElementById('imagenInput');
-            const contenedorFoto = document.getElementById('contenedorFoto');
-            const contenedorNoFoto = document.getElementById('contenedorNoFoto');
-            const preview = document.getElementById('imagenPreview');
-            const tipoProducto = document.getElementById('tipoProducto');
-            const btnAdd = document.querySelector('.btnadd');
-            const form = document.getElementById('formProducto');
+    <div id="modalModelo" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Agregar nuevo modelo</h3>
+            </div>
+            <div class="modal-body">
+                <div class="textfield-container">
+                    <input type="text" class="textfield" id="nombreModelo"
+                        aria-label="Nombre del modelo" required>
+                    <label for="nombreModelo" placeholder="Nombre del modelo *"></label>
+                </div>
+                <div class="textfield-container">
+                    <input type="number" class="textfield" id="alturaModelo"
+                        step="0.01" min="0" aria-label="Altura en mm">
+                    <label for="alturaModelo" placeholder="Altura (mm)"></label>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between;">
+                <button type="button" class="btnadd" id="btnGuardarModelo">Guardar</button>
+            </div>
+        </div>
+    </div>
 
-            // Configurar eventos
-            document.getElementById('btnSubirImg').onclick =
-                document.getElementById('btnSubirSinImg').onclick = () => inputImagen.click();
-
-            // Manejar cambio de imagen
-            inputImagen.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                const maxSize = 2 * 1024 * 1024; // 2MB
-
-                if (!file) return;
-
-                // Validar tipo de archivo
-                if (!file.type.startsWith('image/')) {
-                    displayMensajeError("Por favor seleccione un archivo de imagen válido.");
-                    return;
-                }
-
-                // Validar tamaño de archivo
-                if (file.size > maxSize) {
-                    displayMensajeError("La imagen es demasiado grande (máximo 2MB).");
-                    return;
-                }
-
-                // Mostrar previsualización
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    preview.src = ev.target.result;
-                    preview.alt = "Previsualización de nueva imagen del producto";
-                    contenedorFoto.style.display = 'flex';
-                    contenedorNoFoto.style.display = 'none';
-                };
-                reader.readAsDataURL(file);
-            });
-
-            // Actualizar campos según tipo de producto
-            tipoProducto.addEventListener('change', actualizarCamposPasto);
-            actualizarCamposPasto();
-
-            // Función para actualizar campos según tipo de producto
-            function actualizarCamposPasto() {
-                const tipoProductoValue = parseInt(tipoProducto.value);
-                const tipoInventario = document.getElementById('tipoInventario');
-
-                if (tipoProductoValue === 1) { // Si es tipo rollo
-                    tipoInventario.value = 'rollo';
-                    tipoInventario.disabled = false;
-
-                    campoModelo.style.display = 'block';
-
-                } else {
-                    tipoInventario.value = 'unidad';
-                    tipoInventario.disabled = false;
-
-                    campoModelo.style.display = 'none';
-
-                }
-            }
-
-            // Función para agregar nuevo producto
-            window.agregar = function() {
-                const formData = new FormData(form);
-                const nombre = formData.get("nombre")?.trim();
-
-                // Validaciones básicas
-                if (!nombre) {
-                    displayMensajeError("Favor de indicar el nombre del producto.");
-                    form.nombre.focus();
-                    return;
-                }
-
-                if (!formData.get("id_unidad")) {
-                    displayMensajeError("Favor de seleccionar una unidad de medida.");
-                    return;
-                }
-
-                if (!formData.get("tipo_inventario")) {
-                    displayMensajeError("Seleccione el tipo de inventario: unidad o rollo.");
-                    return;
-                }
-
-                if (tipoProducto.value == '1' && !formData.get("id_modelo")) {
-                    displayMensajeError("Seleccione un modelo para el pasto.");
-                    return;
-                }
-
-
-                if (!confirm("¿Está seguro que desea agregar este producto?")) return;
-
-                btnAdd.disabled = true;
-                btnAdd.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-                displayPopUp("Agregando producto...");
-
-                // Enviar datos
-                fetch('../../php/productos/agregar.php?t=' + Date.now(), {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => {
-                        if (!response.ok) throw new Error('Error en la respuesta del servidor');
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.status == 0) {
-                            throw new Error(data.mensaje || "Error desconocido del servidor");
-                        }
-                        displayMensajeExitoso(data.mensaje, "window.history.back()");
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        displayMensajeError("Error: " + error.message);
-                    })
-                    .finally(() => {
-                        btnAdd.disabled = false;
-                        btnAdd.innerHTML = 'Agregar';
-                    });
-            };
-        });
-    </script>
+    <script src="../../scripts/productos/agregar_producto.js"></script>
 </body>
 
 </html>

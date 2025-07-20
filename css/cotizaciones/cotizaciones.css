@@ -51,7 +51,6 @@ select:focus {
     flex-direction: column;
 }
 
-/* Elementos de formulario */
 .textfield,
 select,
 input[type="number"],
@@ -64,20 +63,6 @@ input[type="text"] {
     box-sizing: border-box;
 }
 
-/* Items de productos */
-.product-item {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-}
-
-.product-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-}
 
 .product-select {
     flex: 2;
@@ -191,11 +176,6 @@ input[type="text"] {
     background: #f0f0f0;
 }
 
-
-.hidden-section {
-    display: none;
-}
-
 /* Scroll independiente en columnas para pantallas grandes */
 @media (min-width: 1001px) {
     .form-container-grid {
@@ -245,7 +225,6 @@ input[type="text"] {
     }
 }
 
-/* Estilos mejorados para items de productos */
 .product-item {
     background: #f8f9fa;
     padding: 15px;
@@ -304,7 +283,6 @@ input[type="text"] {
 }
 
 
-/* Estilos para labels */
 label {
     font-weight: 500;
     margin-bottom: 5px;
@@ -312,7 +290,6 @@ label {
     font-size: 14px;
 }
 
-/* Títulos de secciones */
 .titulo-formulario {
     color: var(--color-primario);
     font-weight: 600;
@@ -322,17 +299,6 @@ label {
     border-bottom: 2px solid var(--color-primario);
 }
 
-/* Estilos para checkboxes */
-.checkbox-text {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 5px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-/* Estilos para el resumen */
 .summary-item {
     background: #f8f9fa;
     padding: 10px 15px;
@@ -357,7 +323,6 @@ label {
     border-color: #dee2e6;
 }
 
-/* Icono de eliminación */
 .eliminar {
     color: var(--color-error);
     cursor: pointer;
@@ -369,4 +334,3 @@ label {
 .eliminar:hover {
     color: #dc3545;
 }
-

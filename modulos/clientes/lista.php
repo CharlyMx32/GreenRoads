@@ -106,7 +106,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 id: id
             })
             .done(function(data) {
-                let respuesta = JSON.parse(data);
+                let respuesta = data;
 
                 if (respuesta.status == 0) displayMensajeError(respuesta.mensaje);
                 else window.location.reload();

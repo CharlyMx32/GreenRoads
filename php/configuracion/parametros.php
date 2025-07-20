@@ -9,16 +9,6 @@ include_once $ROOT . '/includes/sesion.php';
 
 header('Content-Type: application/json');
 
-// Validar conexión DB
-if (!$conn) {
-    http_response_code(500);
-    die(json_encode([
-        'status' => 0,
-        'mensaje' => 'Error de conexión a la base de datos'
-    ]));
-}
-
-// Solo POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     die(json_encode([
@@ -27,7 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     ]));
 }
 
-// Validar sesión y permisos (descomentar cuando esté listo)
 // if (!tieneSesion() || !tienePermiso('admin_parametros')) {
 //     http_response_code(403);
 //     die(json_encode([
@@ -57,12 +46,10 @@ try {
 
     $parametro = $result->fetch_assoc();
 
-    // Verificar si es editable
     if (!$parametro['editable']) {
         throw new Exception("Este parámetro no es editable.");
     }
 
-    // Validar según el tipo
     switch ($parametro['tipo']) {
         case 'entero':
             if (!is_numeric($valor) || strpos($valor, '.') !== false) {
@@ -86,21 +73,19 @@ try {
             $valor = htmlspecialchars($valor);
     }
 
-    // Actualizar parámetro
     $stmt = $conn->prepare("UPDATE parametros_sistema 
-                           SET valor = ?, fecha_actualizacion = NOW() 
-                           WHERE clave = ?");
+                        SET valor = ?, fecha_actualizacion = NOW() 
+                        WHERE clave = ?");
     $stmt->bind_param('ss', $valor, $clave);
 
     if (!$stmt->execute()) {
         throw new Exception("Error al actualizar el parámetro: " . $stmt->error);
     }
 
-    // Registrar en bitácora (opcional)
     if (isset($_SESSION['usuario_id'])) {
         $accion = "Actualización de parámetro: $clave";
         $conn->query("INSERT INTO bitacora (id_admin, accion, fecha) 
-                      VALUES ('{$_SESSION['usuario_id']}', '$accion', NOW())");
+                    VALUES ('{$_SESSION['usuario_id']}', '$accion', NOW())");
     }
 
     echo json_encode([

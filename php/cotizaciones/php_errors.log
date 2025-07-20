@@ -1,1 +1,30 @@
 [18-Jul-2025 23:48:45 Europe/Berlin] PHP Warning:  Undefined array key "id_admin" in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 75
+[19-Jul-2025 17:32:50 Europe/Berlin] PHP Warning:  Undefined array key "id_admin" in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 75
+[19-Jul-2025 17:47:16 Europe/Berlin] PHP Warning:  Undefined array key "id_admin" in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 75
+[19-Jul-2025 17:47:16 Europe/Berlin] Error al guardar cotización: Unknown column 'tipo_producto' in 'field list'
+[19-Jul-2025 17:47:23 Europe/Berlin] PHP Warning:  Undefined array key "id_admin" in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 75
+[19-Jul-2025 17:47:23 Europe/Berlin] Error al guardar cotización: Unknown column 'tipo_producto' in 'field list'
+[19-Jul-2025 17:47:56 Europe/Berlin] PHP Warning:  Undefined array key "id_admin" in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 75
+[19-Jul-2025 17:47:56 Europe/Berlin] Error al guardar cotización: Unknown column 'tipo_producto' in 'field list'
+[19-Jul-2025 21:16:17 Europe/Berlin] ROLLITOS: [{"id_producto":"1","cantidad":1000,"precio_unitario":346.99,"id_color":"4","color_nombre":"Gris-azulado"}]
+[19-Jul-2025 21:17:04 Europe/Berlin] ROLLITOS: [{"id_producto":"1","cantidad":1000,"precio_unitario":346.99,"id_color":"1","color_nombre":"Verde oscuro"}]
+[19-Jul-2025 23:08:33 Europe/Berlin] ROLLITOS: [{"id_producto":"1","cantidad":100,"precio_unitario":346.99,"id_color":"3","color_nombre":"Verde claro"}]
+[19-Jul-2025 23:10:25 Europe/Berlin] ROLLITOS: [{"id_producto":"1","cantidad":20,"precio_unitario":346.99,"id_color":"3","color_nombre":"Verde claro"}]
+[19-Jul-2025 23:12:15 Europe/Berlin] ROLLITOS: [{"id_producto":"1","cantidad":10,"precio_unitario":346.99,"id_color":"3","color_nombre":"Verde claro"}]
+[19-Jul-2025 23:34:33 Europe/Berlin] Error al guardar cotización: Unknown column 'area_total' in 'field list'
+[19-Jul-2025 23:34:52 Europe/Berlin] Error al guardar cotización: Unknown column 'area_total' in 'field list'
+[19-Jul-2025 23:35:01 Europe/Berlin] Error al guardar cotización: Unknown column 'area_total' in 'field list'
+[19-Jul-2025 23:35:26 Europe/Berlin] Error al guardar cotización: Unknown column 'area_total' in 'field list'
+[20-Jul-2025 17:38:58 Europe/Berlin] Error al guardar cotización: Unknown column 'area_total' in 'field list'
+[20-Jul-2025 17:39:05 Europe/Berlin] Error al guardar cotización: Unknown column 'area_total' in 'field list'
+[20-Jul-2025 17:55:29 Europe/Berlin] Error al guardar cotización: Unknown column 'area_total' in 'field list'
+[20-Jul-2025 18:43:10 Europe/Berlin] PHP Warning:  Trying to access array offset on value of type bool in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 139
+[20-Jul-2025 18:43:10 Europe/Berlin] PHP Fatal error:  Uncaught Error: Cannot use a scalar value as an array in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php:147
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 147
+[20-Jul-2025 18:43:21 Europe/Berlin] PHP Warning:  Trying to access array offset on value of type bool in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 139
+[20-Jul-2025 18:43:21 Europe/Berlin] PHP Fatal error:  Uncaught Error: Cannot use a scalar value as an array in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php:147
+Stack trace:
+#0 {main}
+  thrown in C:\xampp\htdocs\greenroads\php\cotizaciones\guardar_cotizacion.php on line 147

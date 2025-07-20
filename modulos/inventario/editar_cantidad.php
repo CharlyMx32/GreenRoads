@@ -58,7 +58,6 @@ $sql = "SELECT
         WHERE p.id = ?
         LIMIT 1";
 
-// Manejo de errores en la consulta
 try {
     $stmt = $conn->prepare($sql);
     if (!$stmt) {

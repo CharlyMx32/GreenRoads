@@ -107,7 +107,7 @@
 
             displayPopUp();
 
-            $.post('<?php $ROOT ?>/php/usuarios/cambiar_estado', {
+            $.post('../../php/usuarios/cambiar_estado', {
                 id: id,
                 status: status
             })

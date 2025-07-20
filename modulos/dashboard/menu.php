@@ -19,6 +19,8 @@
     $result = mysqli_query($conn, $sql);
     $row = mysqli_fetch_assoc($result);
     $nombreUsuario = $row['nombre'];
+    $idRol = $_SESSION['rol'] ?? null;
+
 
     $TITULO = "Bienvenido, $nombreUsuario";
 ?>
@@ -67,25 +69,29 @@
                     <div class="texto-btn-ajustes">Cotizaciones</div>
                 </li>
 
+                <?php if (esAdmin()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../usuarios/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
                     <div class="texto-btn-ajustes">Usuarios</div>
                 </li>
+                <?php endif; ?>
 
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../clientes/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
                     <div class="texto-btn-ajustes">Clientes</div>
                 </li>
-
+                
+                <?php if (esAdmin()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../extras/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
                     <div class="texto-btn-ajustes">Extras</div>
                 </li>
-
+            
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../configuracion/parametros'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-gears"></i></div>
                     <div class="texto-btn-ajustes">Parametros</div>
                 </li>
+                <?php endif; ?>
             </ul>
         </div>
     </body>

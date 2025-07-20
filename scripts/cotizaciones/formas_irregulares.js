@@ -1,5 +1,4 @@
-// formas_irregulares.js
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const btnAgregarForma = document.getElementById('btn_agregar_forma');
     const formasContainer = document.getElementById('formas_container');
     const areaIrregularInput = document.getElementById('area_irregular');
@@ -18,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <option value="circulo">Círculo</option>
                         <option value="cuadrado">Cuadrado</option>
                     </select>
-                    <button type="button" onclick="removerForma('${formaId}')" class="btn-danger" style="margin-left: 10px;">
+                    <button type="button" onclick="removerForma('${formaId}')" class="eliminar" style="margin-left: 10px; border: 1px solid #ddd; padding: 5px 10px; border-radius: 4px;">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -28,12 +27,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         `;
-        
+
         formasContainer.insertAdjacentHTML('beforeend', formaHTML);
         areaIrregularInput.style.display = 'none';
     }
 
-    window.actualizarForma = function(formaId) {
+    window.actualizarForma = function (formaId) {
         const formaSelect = document.querySelector(`#forma_${formaId} .forma-select`);
         const inputsContainer = document.querySelector(`#inputs_${formaId}`);
         const areaSpan = document.querySelector(`#area_${formaId}`);
@@ -49,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         let inputsHTML = '';
-        switch(forma) {
+        switch (forma) {
             case 'rectangulo':
                 inputsHTML = `
                     <div style="display: flex; gap: 10px; margin-top: 5px;">
@@ -86,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
         inputsContainer.style.display = 'block';
     };
 
-    window.calcularAreaForma = function(formaId) {
+    window.calcularAreaForma = function (formaId) {
         const formaSelect = document.querySelector(`#forma_${formaId} .forma-select`);
         const areaSpan = document.querySelector(`#area_${formaId}`);
         const forma = formaSelect.value;
@@ -108,32 +107,39 @@ document.addEventListener('DOMContentLoaded', function() {
         actualizarAreaTotal();
     };
 
-    window.removerForma = function(formaId) {
+    window.removerForma = function (formaId) {
         document.getElementById(`forma_${formaId}`).remove();
         actualizarAreaTotal();
-        
+
         if (document.querySelectorAll('.forma-item').length === 0) {
             areaIrregularInput.style.display = 'block';
         }
     };
 
-    window.actualizarAreaTotal = function() {
+    window.actualizarAreaTotal = function () {
         const formas = document.querySelectorAll('.forma-item');
         let areaTotal = 0;
 
         if (formas.length > 0) {
             formas.forEach(forma => {
-                const areaText = forma.querySelector('.forma-resultado span').textContent;
+                const areaText = forma.querySelector('.forma-resultado span')?.textContent;
                 areaTotal += parseFloat(areaText) || 0;
             });
-            document.getElementById('area_total').value = areaTotal.toFixed(2);
         } else {
-            const areaSimple = parseFloat(areaIrregularInput.value) || 0;
-            document.getElementById('area_total').value = areaSimple.toFixed(2);
+            areaTotal = parseFloat(document.getElementById('area_irregular')?.value) || 0;
+        }
+
+        const areaTotalInput = document.getElementById('area_total');
+        if (areaTotalInput) {
+            areaTotalInput.value = areaTotal.toFixed(2);
         }
 
         if (typeof actualizarTotales === 'function') {
             actualizarTotales();
+        }
+
+        if (typeof calcularArea === 'function') {
+            calcularArea();
         }
     };
 
