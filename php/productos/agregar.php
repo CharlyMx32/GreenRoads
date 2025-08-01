@@ -10,15 +10,6 @@ include_once $ROOT . '/includes/sesion.php';
 
 header('Content-Type: application/json');
 
-// Verificar si hay errores de conexión
-if (!$conn) {
-    die(json_encode([
-        'status' => 0,
-        'mensaje' => 'Error de conexión a la base de datos'
-    ]));
-}
-
-// Verificar método POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     die(json_encode([
@@ -27,7 +18,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     ]));
 }
 
-// Verificar sesión
 if (!tieneSesion()) {
     http_response_code(401);
     die(json_encode([
@@ -38,7 +28,7 @@ if (!tieneSesion()) {
 
 // Obtener datos
 $nombre = trim($_POST['nombre'] ?? '');
-$precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
+// $precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
 $tipo_producto = intval($_POST['tipo_producto'] ?? 0);
 $id_unidad = intval($_POST['id_unidad'] ?? 0);
 $tipo_inventario = $_POST['tipo_inventario'] ?? 'unidad';
@@ -96,8 +86,8 @@ try {
     }
 
     $stmt = $conn->prepare("INSERT INTO productos (
-        nombre, precio_unitario, id_unidad, id_tipo_producto, tipo_inventario, imagen, id_modelo, estado
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo')");
+        nombre, id_unidad, id_tipo_producto, tipo_inventario, imagen,   id_modelo, estado
+    ) VALUES (?, ?, ?, ?, ?, ?, 'activo')");
 
     if (!$stmt) {
         throw new Exception('Error al preparar la consulta: ' . $conn->error);
@@ -106,9 +96,8 @@ try {
     $id_modelo_sql = $id_modelo > 0 ? $id_modelo : null;
 
     $stmt->bind_param(
-        'sdiisss', 
+        'siisss', 
         $nombre,
-        $precio_unitario,
         $id_unidad,
         $tipo_producto,
         $tipo_inventario,

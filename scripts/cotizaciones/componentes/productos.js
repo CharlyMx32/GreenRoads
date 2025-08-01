@@ -16,7 +16,6 @@ function actualizarProductos(element) {
     
     actualizarTotales();
 }
-
 function agregarProducto() {
     let container = document.getElementById('productos_container');
     let item = container.querySelector('.product-item').cloneNode(true);

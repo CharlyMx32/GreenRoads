@@ -1,50 +1,39 @@
-setSearcher({
-    input: ".textfield-buscador-navegador",
-    search_element: "table tbody tr",
-    display_type: "table-row"
-});
+document.addEventListener('DOMContentLoaded', function() {    
+    if (typeof confirmChangeStatus === 'undefined') {
+        window.confirmChangeStatus = function(id, estado) {
+            const mensajes = {
+                'aceptada': '¿Confirmas que deseas ACEPTAR esta cotización?',
+                'rechazada': '¿Confirmas que deseas RECHAZAR esta cotización?',
+                'cancelada': '¿Confirmas que deseas CANCELAR esta cotización?',
+                'pendiente': '¿Confirmas que deseas volver a PENDIENTE esta cotización?'
+            };
 
-function changeStatus(id, status) {
-    let alertMsg;
-    switch (status) {
-        case 'aceptada':
-            alertMsg = "¿Está seguro que desea marcar esta cotización como ACEPTADA?";
-            break;
-        case 'rechazada':
-            alertMsg = "¿Está seguro que desea marcar esta cotización como RECHAZADA?";
-            break;
-        case 'cancelada':
-            alertMsg = "¿Está seguro que desea CANCELAR esta cotización?";
-            break;
-        case 'pendiente':
-            alertMsg = "¿Está seguro que desea volver a marcar esta cotización como PENDIENTE?";
-            break;
-        default:
-            alertMsg = "¿Está seguro que desea cambiar el estado de esta cotización?";
-    }
-
-    if (!confirm(alertMsg)) return;
-
-    displayPopUp();
-
-    $.ajax({
-        url: '../../php/cotizaciones/cambiar_estado.php',
-        type: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-            id: id,
-            status: status
-        }),
-        success: function (respuesta) {
-            if (respuesta.status == 0) {
-                displayMensajeError(respuesta.mensaje);
-            } else {
-                window.location.reload();
+            if (confirm(mensajes[estado] || '¿Confirmas el cambio de estado?')) {
+                changeStatus(id, estado);
             }
-        },
-        error: function () {
-            displayMensajeError("Error de conexión, favor de intentarlo nuevamente.");
-        },
-        dataType: 'json'
-    });
-}
+        };
+    }
+    
+    if (typeof changeStatus === 'undefined') {
+        window.changeStatus = function(id, estado) {
+            displayPopUp();
+
+            fetch(`../../php/cotizaciones/cambiar_estado.php?id=${id}&estado=${estado}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Error en la red');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload();
+                    } else {
+                        displayMensajeError(data.message || 'Error al cambiar estado');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    displayMensajeError("Error de conexión. Intente nuevamente.");
+                });
+        };
+    }
+});

@@ -1,4 +1,3 @@
-// calculos.js
 import { actualizarTotales } from './totales.js';
 
 function calcularArea() {
@@ -37,5 +36,7 @@ function calcularArea() {
     
     actualizarTotales();
 }
+
+
 
 export { calcularArea };

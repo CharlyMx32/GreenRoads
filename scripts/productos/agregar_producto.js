@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // Elementos del DOM
     const inputImagen = document.getElementById('imagenInput');
     const contenedorFoto = document.getElementById('contenedorFoto');
     const contenedorNoFoto = document.getElementById('contenedorNoFoto');
@@ -15,18 +14,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const alturaModelo = document.getElementById('alturaModelo');
     const selectModelo = document.getElementById('selectModelo');
 
-    // Configurar eventos de imagen
     document.getElementById('btnSubirImg').onclick =
         document.getElementById('btnSubirSinImg').onclick = () => inputImagen.click();
 
-    // Manejar cambio de imagen
     inputImagen.addEventListener('change', function (e) {
         const file = e.target.files[0];
         const maxSize = 2 * 1024 * 1024; // 2MB
 
         if (!file) return;
 
-        // Validar tipo y tamaño de archivo
         if (!file.type.startsWith('image/')) {
             displayMensajeError("Por favor seleccione un archivo de imagen válido.");
             return;
@@ -37,7 +33,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Mostrar previsualización
         const reader = new FileReader();
         reader.onload = function (ev) {
             preview.src = ev.target.result;
@@ -48,27 +43,29 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsDataURL(file);
     });
 
-    // Actualizar campos según tipo de producto
     tipoProducto.addEventListener('change', actualizarCamposPasto);
     actualizarCamposPasto();
 
-    // Función para actualizar campos según tipo de producto
     function actualizarCamposPasto() {
         const tipoProductoValue = parseInt(tipoProducto.value);
         const tipoInventario = document.getElementById('tipoInventario');
+        const unidad = document.getElementById('unidad');
 
-        if (tipoProductoValue === 1) { // Si es tipo rollo
+        if (tipoProductoValue === 1) {
             tipoInventario.value = 'rollo';
             tipoInventario.disabled = false;
             campoModelo.style.display = 'block';
+
+            unidad.value = 1;
         } else {
             tipoInventario.value = 'unidad';
             tipoInventario.disabled = false;
             campoModelo.style.display = 'none';
+
+            unidad.value = 2; 
         }
     }
 
-    // Manejo del modal para agregar modelos
     btnAgregarModelo.addEventListener('click', () => {
         console.log("Opening modal");
         nombreModelo.value = '';
@@ -77,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.style.overflow = 'hidden';
     });
 
-    // Cerrar al hacer clic fuera del modal
     modalModelo.addEventListener('click', (e) => {
         if (e.target === modalModelo) {
             cerrarModal();
@@ -89,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.body.style.overflow = 'auto';
     }
 
-    // Guardar nuevo modelo
     btnGuardarModelo.addEventListener('click', async () => {
         const nombre = nombreModelo.value.trim();
         const altura = parseFloat(alturaModelo.value) || 0;

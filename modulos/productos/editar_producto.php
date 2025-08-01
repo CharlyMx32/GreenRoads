@@ -114,10 +114,6 @@ while ($row = mysqli_fetch_assoc($res)) {
                 <input required type="text" class="textfield" name="nombre" id="nombre" value="<?= htmlspecialchars($producto['nombre']) ?>">
                 <label for="nombre" placeholder="Nombre *"></label>
 
-                <input type="number" class="textfield" name="precio_unitario" step="0.01" value="<?= $producto['precio_unitario'] ?>">
-                <label placeholder="Precio unitario"></label>
-
-
                 <select name="tipo_producto" class="textfield" required>
                     <option value=""></option>
                     <?php foreach ($tiposProducto as $tipo): ?>

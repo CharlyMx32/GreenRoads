@@ -24,8 +24,12 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 
 $productos = [];
-$sql = "SELECT id, nombre, precio_unitario FROM productos WHERE estado = 'activo'";
-$result = mysqli_query($conn, $sql);
+$sql_productos = "SELECT p.id, p.nombre, u.simbolo AS unidad
+    FROM productos p
+    JOIN unidades u ON p.id_unidad = u.id
+    WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
+
+$result = mysqli_query($conn, $sql_productos);
 while ($row = mysqli_fetch_assoc($result)) {
     $productos[] = $row;
 }
@@ -37,37 +41,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
     <link rel="stylesheet" href="../../css/cotizaciones/cotizaciones.css">
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            cargarParametros();
-        });
-
-        function cargarParametros() {
-            fetch('../../php/configuracion/obtener_parametros.php')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 1) {
-                        const params = data.parametros;
-
-                        // Establecer precio de instalación
-                        if (params.precio_instalacion_m2) {
-                            document.getElementById('precio_instalacion').value = params.precio_instalacion_m2;
-                        }
-
-                        // Establecer garantía por defecto
-                        if (params.garantia_default_anios) {
-                            document.getElementById('garantia').value = params.garantia_default_anios;
-                        }
-
-                        // Guardar IVA para cálculos
-                        if (params.iva_porcentaje) {
-                            window.ivaPorcentaje = parseFloat(params.iva_porcentaje) / 100;
-                        }
-                    }
-                })
-                .catch(error => console.error('Error al cargar parámetros:', error));
-        }
-    </script>
 </head>
 
 <body>
@@ -164,38 +137,42 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     $sql_rollos = "SELECT 
                                         p.id, 
                                         p.nombre, 
-                                        p.precio_unitario, 
                                         m.nombre AS modelo,
                                         (SELECT GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') 
                                         FROM inventario_rollos ir 
                                         JOIN colores c ON ir.id_color = c.id 
-                                        WHERE ir.id_producto = p.id AND ir.estado = 'disponible') AS colores_disponibles,
+                                        WHERE ir.id_producto = p.id) AS colores_disponibles,
+                                        
                                         (SELECT SUM(ir.area_m2)
                                         FROM inventario_rollos ir
-                                        WHERE ir.id_producto = p.id AND ir.estado = 'disponible') AS area_disponible_total
+                                        WHERE ir.id_producto = p.id AND ir.estado = 'disponible') AS area_disponible_total,
+                                        
+                                        (SELECT MIN(ir.costo_unitario)
+                                        FROM inventario_rollos ir
+                                        WHERE ir.id_producto = p.id) AS precio_unitario_rollo_completo
+                                        
                                     FROM productos p
                                     JOIN modelos m ON p.id_modelo = m.id
                                     WHERE p.tipo_inventario = 'rollo' 
-                                    AND p.estado = 'activo'
-                                    AND EXISTS (
-                                        SELECT 1 FROM inventario_rollos ir 
-                                        WHERE ir.id_producto = p.id 
-                                        AND ir.estado = 'disponible'
-                                    )";
+                                    AND p.estado = 'activo'";
                                     $result_rollos = mysqli_query($conn, $sql_rollos);
-                                    while ($rollo = mysqli_fetch_assoc($result_rollos)) : ?>
+                                    while ($rollo = mysqli_fetch_assoc($result_rollos)) :
+                                        $precio = $rollo['precio_unitario_rollo_completo'] ?? 0;
+                                        $modelo = htmlspecialchars($rollo['modelo'] ?? '');
+                                        $colores = htmlspecialchars($rollo['colores_disponibles'] ?? '');
+                                        $area = $rollo['area_disponible_total'] ?? 0;
+                                        $nombre = htmlspecialchars($rollo['nombre'] ?? '');
+                                    ?>
                                         <option value="<?= $rollo['id'] ?>"
-                                            data-precio="<?= $rollo['precio_unitario'] ?>"
-                                            data-modelo="<?= $rollo['modelo'] ?>"
-                                            data-colores="<?= htmlspecialchars($rollo['colores_disponibles']) ?>"
-                                            data-area-disponible="<?= $rollo['area_disponible_total'] ?>">
-                                            <?= htmlspecialchars($rollo['nombre']) ?> (<?= $rollo['modelo'] ?>)
-                                            <?php if ($rollo['area_disponible_total'] > 0): ?>
-                                                - Disp: <?= number_format($rollo['area_disponible_total'], 2) ?> m²
-                                            <?php endif; ?>
+                                            data-precio="<?= $precio ?>"
+                                            data-modelo="<?= $modelo ?>"
+                                            data-colores="<?= $colores ?>"
+                                            data-area-disponible="<?= $area ?>">
+                                            <?= $nombre ?> (<?= $modelo ?>)
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
+
                                 <input type="number" class="textfield" placeholder="m²" min="0.01" step="0.01" style="width: 80px;">
                                 <div class="eliminar">
                                     <i class="fa-solid fa-trash" type="button" id="btn-remover-rollo"></i>
@@ -222,14 +199,18 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 <select class="product-select textfield">
                                     <option value="">-- Selecciona Producto --</option>
                                     <?php
-                                    $sql_productos = "SELECT p.id, p.nombre, p.precio_unitario, u.simbolo AS unidad
+                                    $sql_productos = "SELECT p.id, p.nombre, u.simbolo AS unidad, mi.costo_unitario
                                         FROM productos p
                                         JOIN unidades u ON p.id_unidad = u.id
-                                        WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'";
+                                        LEFT JOIN movimientos_inventario mi ON mi.id_producto = p.id
+                                        WHERE p.tipo_inventario = 'unidad' AND p.estado = 'activo'
+                                        AND mi.fecha = (
+                                        SELECT MAX(fecha) FROM movimientos_inventario WHERE id_producto = p.id
+                                        )";
                                     $result_productos = mysqli_query($conn, $sql_productos);
                                     while ($producto = mysqli_fetch_assoc($result_productos)) : ?>
                                         <option value="<?= $producto['id'] ?>"
-                                            data-precio="<?= $producto['precio_unitario'] ?>"
+                                            data-precio="<?= number_format($producto['costo_unitario'], 2, '.', '') ?>"
                                             data-unidad="<?= $producto['unidad'] ?>">
                                             <?= htmlspecialchars($producto['nombre']) ?> (<?= $producto['unidad'] ?>)
                                         </option>
@@ -277,41 +258,26 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <option value="mixto">Mixto</option>
                         </select>
                     </div>
-
-                    <div class="form-group">
-                        <label for="garantia">Garantía (años)</label>
-                        <select id="garantia" class="textfield">
-                            <option value="3">3</option>
-                            <option value="5" selected>5</option>
-                            <option value="8">8</option>
-                            <option value="10">10</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Precio instalación por m2</label>
-                        <input type="number" id="precio_instalacion" class="textfield" placeholder="$ por m2" step="0.01" min="0">
-                    </div>
                 </div>
 
                 <!-- SECCIÓN RESUMEN -->
                 <div class="form-section" role="region" aria-labelledby="seccion-resumen">
                     <div class="titulo-formulario" style="margin-top: -7px;">Resumen</div>
                     <div class="form-group">
-                        <!--    
-                    <div class="summary-item">
-                            <span>Total sin IVA:</span>
-                            <span id="total_sin_iva">$0.00</span>
-                        </div>
-                        
+                        <label class="checkbox-text">
+                            <input type="checkbox" id="aplicar_iva" checked> Aplicar IVA
+                        </label>
                         <div class="summary-item">
-                            <span>IVA (16%):</span>
+                            <span>Subtotal:</span>
+                            <span id="subtotal">$0.00</span>
+                        </div>
+                        <div class="summary-item" id="iva-container">
+                            <span>IVA (<span id="iva-percent">0</span>%):</span>
                             <span id="iva">$0.00</span>
                         </div>
-                        -->
                         <div class="summary-item" style="font-weight: bold;">
                             <span>Total:</span>
-                            <span id="total_sin_iva">$0.00</span>
+                            <span id="total">$0.00</span>
                         </div>
                     </div>
                 </div>

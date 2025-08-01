@@ -334,3 +334,165 @@ label {
 .eliminar:hover {
     color: #dc3545;
 }
+
+/* Estilos para el modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: var(--radio-borde);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 900px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--color-borde);
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    color: var(--color-primario);
+    margin: 0;
+}
+
+.close-modal {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-modal:hover {
+    color: #333;
+}
+
+/* Estilos para las tarjetas de rollos */
+.rollo-card {
+    display: flex;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-borde);
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: var(--transicion);
+    background: #fff;
+}
+
+.rollo-card:hover {
+    border-color: var(--color-primario);
+    box-shadow: var(--sombra);
+}
+
+.rollo-imagen {
+    width: 100px;
+    height: 100px;
+    border-radius: 5px;
+    margin-right: 15px;
+    flex-shrink: 0;
+}
+
+.rollo-info {
+    flex-grow: 1;
+}
+
+.rollo-info h4 {
+    margin: 0 0 5px 0;
+    color: #333;
+}
+
+.rollo-info p {
+    margin: 3px 0;
+    font-size: 14px;
+}
+
+.rollo-cantidad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+}
+
+.rollo-cantidad input {
+    width: 100%;
+    text-align: center;
+}
+
+/* Filtros del modal */
+.filtros-rollos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.filtros-rollos input,
+.filtros-rollos select {
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--color-borde);
+}
+
+.lista-rollos {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+/* Botones del modal */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-borde);
+    margin-top: 20px;
+}
+
+/* Estilos para chips de color */
+.color-chip {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 5px;
+    border: 1px solid #ddd;
+    vertical-align: middle;
+}
+
+/* Resumen de selección */
+.resumen-seleccion {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: var(--radio-borde);
+    margin-top: 20px;
+}
+
+.resumen-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px dashed #ddd;
+}
+
+.resumen-item:last-child {
+    border-bottom: none;
+}

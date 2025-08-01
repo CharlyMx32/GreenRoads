@@ -1,10 +1,10 @@
 <?php
 $ROOT = '../..';
-$TITULO = "Inventariar rollos";
+$TITULO = "Primer ingreso de rollos";
 
-include_once $ROOT . '/db/conexion.php';
-include_once $ROOT . '/includes/sesion.php';
-include_once $ROOT . '/includes/config.php';
+include_once "$ROOT/db/conexion.php";
+include_once "$ROOT/includes/sesion.php";
+include_once "$ROOT/includes/config.php";
 
 if (!tieneSesion()) {
     header("Location: $URL_ROOT/login");
@@ -17,25 +17,16 @@ if ($id <= 0) {
     exit();
 }
 
-if (isset($_GET['limpiar_temporal'])) {
-    unset($_SESSION['rollos_temporales']);
-    header("Location: inventariar_rollos.php?id=$id");
-    exit();
-}
-
-if (!isset($_SESSION['rollos_temporales'])) {
-    $_SESSION['rollos_temporales'] = [];
-}
-
-$sql = "SELECT p.id AS id_producto, p.nombre, p.descripcion, p.id_tipo_producto, u.simbolo, u.nombre AS unidad_nombre
-        FROM productos p
-        JOIN unidades u ON u.id = p.id_unidad
-        WHERE p.id = ? LIMIT 1";
-$stmt = $conn->prepare($sql);
+// Consultar información del producto
+$sql_producto = "SELECT p.id, p.nombre, p.descripcion, p.id_tipo_producto, u.simbolo, m.nombre AS modelo_nombre, p.imagen, m.altura_mm
+                FROM productos p
+                JOIN unidades u ON p.id_unidad = u.id
+                JOIN modelos m ON p.id_modelo = m.id
+                WHERE p.id = ? LIMIT 1";
+$stmt = $conn->prepare($sql_producto);
 $stmt->bind_param("i", $id);
 $stmt->execute();
-$result = $stmt->get_result();
-$producto = $result->fetch_assoc();
+$producto = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$producto) {
@@ -43,46 +34,90 @@ if (!$producto) {
     exit();
 }
 
-$id_producto = $producto['id_producto'];
+// Verificar si ya tiene inventario
+$sql_inventario = "SELECT COUNT(*) AS total FROM movimientos_inventario WHERE id_producto = ?";
+$stmt = $conn->prepare($sql_inventario);
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$tieneInventario = $stmt->get_result()->fetch_assoc()['total'] > 0;
+$stmt->close();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) {
+// Redirigir si ya tiene inventario
+if ($tieneInventario) {
+    header("Location: editar_rollos.php?id=$id");
+    exit();
+}
+
+// Consultar colores disponibles
+$colores_disponibles = $conn->query("SELECT id, nombre, codigo_hex FROM colores ORDER BY nombre ASC")->fetch_all(MYSQLI_ASSOC);
+
+// Manejar envío del formulario
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $largo = floatval($_POST['largo'] ?? 0);
     $ancho = floatval($_POST['ancho'] ?? 0);
     $cantidad = intval($_POST['cantidad'] ?? 0);
     $id_color = intval($_POST['id_color'] ?? 0);
+    $costo_unitario = floatval($_POST['costo_unitario'] ?? 0);
+    $motivo = trim($_POST['motivo'] ?? 'Primer ingreso');
+    $lote_descripcion = trim($_POST['lote_descripcion'] ?? 'Lote inicial');
+    $id_admin = $_SESSION['usuario_id'] ?? null;
 
-    if ($largo <= 0 || $ancho <= 0 || $cantidad <= 0 || $id_color <= 0) {
+    // Validaciones básicas
+    if ($largo <= 0 || $ancho <= 0 || $cantidad <= 0 || $id_color <= 0 || $costo_unitario <= 0) {
         header("Location: inventariar_rollos.php?id=$id&error=datos_invalidos");
         exit();
     }
 
-    $stmt_color = $conn->prepare("SELECT nombre FROM colores WHERE id = ?");
-    $stmt_color->bind_param("i", $id_color);
-    $stmt_color->execute();
-    $color = $stmt_color->get_result()->fetch_assoc();
-    $stmt_color->close();
+    try {
+        // Iniciar transacción
+        $conn->begin_transaction();
 
-    $nombre_color = $color['nombre'] ?? 'Desconocido';
+        // Crear nuevo lote
+        $stmt = $conn->prepare("INSERT INTO lotes (descripcion, id_admin, id_producto) VALUES (?, ?, ?)");
+        $stmt->bind_param("sii", $lote_descripcion, $id_admin, $id);
+        if (!$stmt->execute()) {
+            throw new Exception('Error al crear el lote: ' . $stmt->error);
+        }
+        $id_lote = $stmt->insert_id;
+        $stmt->close();
 
-    // Inicializar el array para este color si no existe
-    if (!isset($_SESSION['rollos_temporales'][$id_color])) {
-        $_SESSION['rollos_temporales'][$id_color] = [
-            'nombre_color' => $nombre_color,
-            'rollos' => []
-        ];
+        // Registrar el movimiento de entrada
+        $stmt = $conn->prepare("
+            INSERT INTO movimientos_inventario 
+                (id_producto, id_lote, cantidad, costo_unitario, tipo_movimiento, motivo, id_admin) 
+            VALUES (?, ?, ?, ?, 'entrada', ?, ?)
+        ");
+        $stmt->bind_param("iiddsi", $id, $id_lote, $cantidad, $costo_unitario, $motivo, $id_admin);
+        if (!$stmt->execute()) {
+            throw new Exception('Error al registrar el movimiento: ' . $stmt->error);
+        }
+        $stmt->close();
+
+        // Registrar los rollos en inventario_rollos
+        $stmt = $conn->prepare("
+            INSERT INTO inventario_rollos 
+                (id_producto, id_lote, id_color, largo_metros, ancho_metros, costo_unitario, estado) 
+            VALUES (?, ?, ?, ?, ?, ?, 'disponible')
+        ");
+
+        for ($i = 0; $i < $cantidad; $i++) {
+            $stmt->bind_param("iiiddd", $id, $id_lote, $id_color, $largo, $ancho, $costo_unitario);
+            if (!$stmt->execute()) {
+                throw new Exception('Error al registrar el rollo: ' . $stmt->error);
+            }
+        }
+        $stmt->close();
+
+        $conn->commit();
+
+        header("Location: editar_rollos.php?id=$id&id_color=$id_color");
+        exit();
+    } catch (Exception $e) {
+        $conn->rollback();
+        error_log("Error en inventariar_rollos.php: " . $e->getMessage());
+        header("Location: inventariar_rollos.php?id=$id&error=procesamiento");
+        exit();
     }
-
-    // Agregar los nuevos rollos
-    for ($i = 0; $i < $cantidad; $i++) {
-        $_SESSION['rollos_temporales'][$id_color]['rollos'][] = [
-            'largo' => $largo,
-            'ancho' => $ancho,
-            'area' => $largo * $ancho
-        ];
-    }
-
-    header("Location: inventariar_rollos.php?id=$id");
-    exit();
 }
 ?>
 
@@ -90,169 +125,222 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_temporal'])) 
 <html lang="es">
 
 <head>
-    <?php include_once $ROOT . '/includes/head.php'; ?>
-    <link rel="stylesheet" href="../../css/inventario/inventariar_rollos.css">
+    <?php include_once "$ROOT/includes/head.php"; ?>
+    <link rel="stylesheet" href="../../css/inventario/editar_inventario.css">
+    <title><?= $TITULO ?> - <?= htmlspecialchars($producto['nombre']) ?></title>
 </head>
 
 <body>
     <?php
-    $headerParams = ["titulo" => $TITULO, "btn_atras" => "window.history.back()"];
-    include_once '../../includes/header.php';
+    $headerParams = [
+        "titulo" => $TITULO,
+        "btn_atras" => "window.history.back()"
+    ];
+    include_once "../../includes/header.php";
     ?>
+
     <main class="content">
-        <div class="formulario active" style="margin-top: -100px;">
-            <div class="seccion-formulario">
-                <h1 class="subtitulo-formulario">Inventariar: <strong><?= htmlspecialchars($producto['nombre']) ?></strong></h1>
-
-                <div class="fila-inventario">
-                    <!-- Formulario -->
-                    <div class="columna">
-                        <div class="titulo-formulario">Agregar rollos</div>
-                        <form method="POST" class="formulario-rollos">
-                            <input type="hidden" name="id_producto" value="<?= $id_producto ?>">
-                            <input type="hidden" name="agregar_temporal" value="1">
-
-                            <div class="textfield-container">
-                                <input type="number" name="largo" step="0.01" min="0.01" required class="textfield">
-                                <label placeholder="Largo (m)"></label>
-                            </div>
-                            <div class="textfield-container">
-                                <input type="number" name="ancho" step="0.01" min="0.01" required class="textfield">
-                                <label placeholder="Ancho (m)"></label>
-                            </div>
-                            <div class="textfield-container">
-                                <input type="number" name="cantidad" min="1" required class="textfield">
-                                <label placeholder="Cantidad de rollos"></label>
-                            </div>
-                            <div class="textfield-container">
-                                <select name="id_color" required class="textfield">
-                                    <option value="">Selecciona un color</option>
-                                    <?php
-                                    $colores = $conn->query("SELECT id, nombre FROM colores ORDER BY nombre ASC")->fetch_all(MYSQLI_ASSOC);
-                                    foreach ($colores as $color): ?>
-                                        <option value="<?= $color['id'] ?>"><?= htmlspecialchars($color['nombre']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div>
-                                <button type="submit" class="btnadd">Agregar</button>
-                            </div>
-                        </form>
+        <div class="card-inventario-detalle">
+            <div class="info-inventario">
+                <?php if (!empty($producto['imagen'])): ?>
+                    <img src="../../img/productos/<?= $producto['imagen'] ?>?nocache=<?= uniqid() ?>" class="imagen-producto" alt="<?= htmlspecialchars($producto['nombre']) ?>">
+                <?php else: ?>
+                    <div class="no-imagen">
+                        <i class="fas fa-box-open fa-3x"></i>
                     </div>
+                <?php endif; ?>
 
-                    <!-- Tabla temporal -->
-                    <?php if (!empty($_SESSION['rollos_temporales'])): ?>
-                        <?php
-                        $agrupados = [];
-                        $total_general = 0;
-                        
-                        foreach ($_SESSION['rollos_temporales'] as $id_color => $color_data) {
-                            if (isset($color_data['rollos']) && is_array($color_data['rollos'])) {
-                                foreach ($color_data['rollos'] as $rollo) {
-                                    $key = $rollo['largo'] . '-' . $rollo['ancho'] . '-' . $id_color;
-                                    if (!isset($agrupados[$key])) {
-                                        $agrupados[$key] = [
-                                            'cantidad' => 0,
-                                            'largo' => $rollo['largo'],
-                                            'ancho' => $rollo['ancho'],
-                                            'area_unitaria' => $rollo['largo'] * $rollo['ancho'],
-                                            'area_total' => 0,
-                                            'id_color' => $id_color,
-                                            'nombre_color' => $color_data['nombre_color']
-                                        ];
-                                    }
-                                    $agrupados[$key]['cantidad']++;
-                                    $agrupados[$key]['area_total'] += $rollo['largo'] * $rollo['ancho'];
-                                    $total_general += $rollo['largo'] * $rollo['ancho'];
-                                }
-                            }
-                        }
-                        ?>
-                        <div class="columna" style="width: 450px;">
-                            <div class="titulo-formulario">Rollos por agregar</div>
-                            <div class="contenedor-tabla">
-                                <table class="tabla-rollos">
-                                    <thead>
-                                        <tr>
-                                            <th>Cantidad</th>
-                                            <th>Ancho</th>
-                                            <th>Largo</th>
-                                            <th>Área Total (m²)</th>
-                                            <th>Color</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($agrupados as $grupo): ?>
-                                            <tr>
-                                                <td><?= $grupo['cantidad'] ?></td>
-                                                <td><?= number_format($grupo['ancho'], 2) ?> m</td>
-                                                <td><?= number_format($grupo['largo'], 2) ?> m</td>
-                                                <td><?= number_format($grupo['area_total'], 2) ?> m²</td>
-                                                <td><?= htmlspecialchars($grupo['nombre_color']) ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="3" style="text-align: right;"><strong>Total general:</strong></td>
-                                            <td><strong><?= number_format($total_general, 2) ?> m²</strong></td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                            <div class="btn-row">
-                                <form method="POST" action="../../php/inventario/guardar_rollos.php">
-                                    <input type="hidden" name="id_producto" value="<?= $id_producto ?>">
-                                    <input type="hidden" name="guardar_definitivo" value="1">
-                                    <input type="hidden" name="origen" value="inventariar_rollos">
-                                    <button type="submit" class="btnadd">Inventariar</button>
-                                </form>
-                                <form method="GET" action="inventariar_rollos.php">
-                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                    <input type="hidden" name="limpiar_temporal" value="1">
-                                    <button type="submit" class="btnlimpiar">Limpiar</button>
-                                </form>
-                            </div>
+                <div class="detalles-producto">
+                    <h2>
+                        <?= htmlspecialchars($producto['nombre']) ?>
+                        <span style="font-style: italic; font-size: 0.9em; font-weight: normal;">
+                            <?= htmlspecialchars($producto['modelo_nombre']) ?>
+                            <?php if (!empty($producto['altura_mm'])): ?>
+                                &mdash; <?= htmlspecialchars($producto['altura_mm']) ?> mm
+                            <?php endif; ?>
+                        </span>
+                    </h2>
+                    <p><?= htmlspecialchars($producto['descripcion']) ?></p>
+
+                    <div class="mt-3">
+                        <h3>Inventario actual</h3>
+                        <div class="cantidad-disponible">
+                            0 rollos (0.00 m²)
                         </div>
-                    <?php endif; ?>
+                    </div>
                 </div>
             </div>
+
+            <h3 class="mt-4">Registrar primer ingreso de rollos</h3>
+            <form id="formPrimerIngresoRollos" method="POST" action="../../php/inventario/guardar_primer_ingreso_rollos.php?id=<?= $id ?>" class="formulario-inputs">
+                <input type="hidden" name="id_producto" value="<?= $id ?>">
+
+                <div class="grid-formulario">
+                    <div class="grid-item">
+                        <label>Largo (metros)</label>
+                        <input type="number" name="largo" step="0.01" min="0.01" required class="textfield">
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Ancho (metros)</label>
+                        <input type="number" name="ancho" step="0.01" min="0.01" required class="textfield">
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Cantidad de rollos</label>
+                        <input type="number" name="cantidad" min="1" required class="textfield">
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Color</label>
+                        <select name="id_color" required class="textfield">
+                            <option value="">Seleccionar color</option>
+                            <?php foreach ($colores_disponibles as $color): ?>
+                                <option value="<?= $color['id'] ?>"><?= htmlspecialchars($color['nombre']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Costo por rollo</label>
+                        <input type="number" name="costo_unitario" step="0.01" min="0.01" required class="textfield">
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Descripción del lote</label>
+                        <input type="text" name="lote_descripcion" class="textfield" placeholder="Ej: Compra inicial" required>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Motivo/Comentario</label>
+                        <input type="text" name="motivo" class="textfield" placeholder="Opcional">
+                    </div>
+
+                    <div class="grid-item grid-item-full">
+                        <div id="costo-total-display" class="costo-total">Costo total: $0.00</div>
+                    </div>
+
+                    <div class="grid-item grid-item-full acciones-formulario">
+                        <button type="submit" class="btnadd">
+                            <i class="fas fa-save"></i> Registrar ingreso inicial
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
+
         <?php include_once '../../includes/popup.php'; ?>
     </main>
 
     <script>
-        document.querySelector('form[action*="guardar_rollos.php"]')?.addEventListener('submit', function(e) {
-            e.preventDefault();
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar cálculo de costo total
+            const form = document.getElementById('formPrimerIngresoRollos');
+            if (form) {
+                const largoInput = form.querySelector('[name="largo"]');
+                const anchoInput = form.querySelector('[name="ancho"]');
+                const cantidadInput = form.querySelector('[name="cantidad"]');
+                const costoInput = form.querySelector('[name="costo_unitario"]');
+                const costoTotalDisplay = document.getElementById('costo-total-display');
 
-            const form = e.target;
-            const formData = new FormData(form);
-            const btn = form.querySelector('button[type="submit"]');
+                function calcularCostoTotal() {
+                    const largo = parseFloat(largoInput.value) || 0;
+                    const ancho = parseFloat(anchoInput.value) || 0;
+                    const cantidad = parseInt(cantidadInput.value) || 0;
+                    const costo = parseFloat(costoInput.value) || 0;
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-            displayPopUp();
+                    const area = largo * ancho;
+                    const costoTotal = cantidad * costo;
 
-            fetch(form.action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status == 0) {
-                        throw new Error(data.mensaje || "Error desconocido del servidor");
+                    if (costoTotalDisplay) {
+                        costoTotalDisplay.textContent = `Costo total: $${costoTotal.toFixed(2)}`;
                     }
-                    displayMensajeExitoso(data.mensaje, "location.href='../../modulos/inventario/lista.php'");
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    displayMensajeError(error.message);
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = 'Inventariar';
+                }
+
+                [largoInput, anchoInput, cantidadInput, costoInput].forEach(input => {
+                    if (input) input.addEventListener('input', calcularCostoTotal);
                 });
+
+                // Manejar envío del formulario con AJAX
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const formData = new FormData(form);
+                    const largo = parseFloat(formData.get('largo'));
+                    const ancho = parseFloat(formData.get('ancho'));
+                    const cantidad = parseInt(formData.get('cantidad'));
+                    const costo = parseFloat(formData.get('costo_unitario'));
+                    const id_color = parseInt(formData.get('id_color'));
+
+                    // Validaciones
+                    if (isNaN(largo) || largo <= 0) {
+                        displayMensajeError("El largo debe ser mayor a cero");
+                        return;
+                    }
+
+                    if (isNaN(ancho) || ancho <= 0) {
+                        displayMensajeError("El ancho debe ser mayor a cero");
+                        return;
+                    }
+
+                    if (isNaN(cantidad) || cantidad <= 0) {
+                        displayMensajeError("La cantidad debe ser mayor a cero");
+                        return;
+                    }
+
+                    if (isNaN(costo) || costo <= 0) {
+                        displayMensajeError("El costo por m² debe ser mayor a cero");
+                        return;
+                    }
+
+                    if (isNaN(id_color) || id_color <= 0) {
+                        displayMensajeError("Debe seleccionar un color");
+                        return;
+                    }
+
+                    const area = largo * ancho;
+                    const costoTotal = cantidad * costo;
+
+                    if (!confirm(`¿Confirmar ${cantidad} rollos de ${largo}m × ${ancho}m (${area.toFixed(2)}m² cada uno) con costo individual de $${costo.toFixed(2)} y un total de $${costoTotal.toFixed(2)}?`)) {
+                        return;
+                    }
+
+                    displayPopUp('Procesando primer ingreso...');
+
+                    const btn = form.querySelector('button[type="submit"]');
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+
+                    fetch(form.action, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => {
+                            if (response.redirected) {
+                                window.location.href = response.url;
+                            } else {
+                                return response.json();
+                            }
+                        })
+                        .then(data => {
+                            if (data && data.status === 1) {
+                                displayMensajeExitoso(data.mensaje, () => {
+                                    window.location.href = `editar_rollos.php?id=${<?= $id ?>}&id_color=${id_color}`;
+                                });
+                            } else if (data) {
+                                throw new Error(data.mensaje || "Error al guardar");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error:", error);
+                            displayMensajeError(error.message);
+                        })
+                        .finally(() => {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-save"></i> Registrar ingreso inicial';
+                        });
+                });
+            }
         });
     </script>
 </body>

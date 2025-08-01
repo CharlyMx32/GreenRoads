@@ -71,19 +71,19 @@
 
                 <?php if (esAdmin()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../usuarios/lista'">
-                    <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
+                    <div class="icono-btn-ajustes"><i class="fa-light fa-user-shield"></i></div>
                     <div class="texto-btn-ajustes">Usuarios</div>
                 </li>
                 <?php endif; ?>
 
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../clientes/lista'">
-                    <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
+                    <div class="icono-btn-ajustes"><i class="fa-light fa-user"></i></div>
                     <div class="texto-btn-ajustes">Clientes</div>
                 </li>
                 
                 <?php if (esAdmin()): ?>
-                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../extras/lista'">
-                    <div class="icono-btn-ajustes"><i class="fa-light fa-users-gear"></i></div>
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../extras/extras'">
+                    <div class="icono-btn-ajustes"><i class="fa-light fa-tools"></i></div>
                     <div class="texto-btn-ajustes">Extras</div>
                 </li>
             

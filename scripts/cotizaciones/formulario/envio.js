@@ -1,7 +1,6 @@
-import { parametrosSistema } from '../core/parametros.js';
+import { parametrosSistema, obtenerPrecioPorM2 } from '../core/parametros.js';
 import { actualizarTotales } from '../core/totales.js';
 
-// Función para validar el formulario antes de enviar
 function validarFormulario() {
     const cliente = document.getElementById('cliente');
     if (!cliente || !cliente.value) {
@@ -9,7 +8,6 @@ function validarFormulario() {
         return false;
     }
 
-    // Validar terreno
     const tipoTerreno = document.getElementById('tipo_terreno').value;
     if (!tipoTerreno) {
         alert('Seleccione el tipo de terreno');
@@ -35,7 +33,7 @@ function validarFormulario() {
     } else {
         const formas = document.querySelectorAll('.forma-item');
         const areaIrregular = parseFloat(document.getElementById('area_irregular')?.value) || 0;
-        
+
         if (formas.length === 0 && areaIrregular <= 0) {
             alert('Agregue formas para calcular el área o ingrese un área estimada');
             return false;
@@ -47,7 +45,6 @@ function validarFormulario() {
         return false;
     }
 
-    // Validar al menos un rollo con color seleccionado
     let rollosValidos = false;
     let areaRollosTotal = 0;
 
@@ -67,7 +64,25 @@ function validarFormulario() {
         return false;
     }
 
-    // Validar que el área de rollos no exceda el área del terreno
+    if (areaRollosTotal > areaTerreno * 1.1) {
+        if (!confirm(`El área de pasto (${areaRollosTotal.toFixed(2)} m²) es mayor que el área del terreno (${areaTerreno.toFixed(2)} m²). ¿Desea continuar?`)) {
+            return false;
+        }
+    }
+
+    const rollos = document.querySelectorAll('#rollos_container .product-item');
+    if (rollos.length === 0) {
+        alert('Agregue al menos un rollo de pasto');
+        return false;
+    }
+
+    rollos.forEach(item => {
+        const cantidadInput = item.querySelector('input[name*="[cantidad]"]');
+        if (cantidadInput && cantidadInput.value) {
+            areaRollosTotal += parseFloat(cantidadInput.value);
+        }
+    });
+
     if (areaRollosTotal > areaTerreno * 1.1) {
         if (!confirm(`El área de pasto (${areaRollosTotal.toFixed(2)} m²) es mayor que el área del terreno (${areaTerreno.toFixed(2)} m²). ¿Desea continuar?`)) {
             return false;
@@ -83,23 +98,18 @@ async function guardarCotizacion() {
         return;
     }
 
-    // Validar precio de instalación mínimo
-    const precioInstalacion = parseFloat(document.getElementById('precio_instalacion').value);
-    if (precioInstalacion < (parametrosSistema.precioInstalacion * 0.8)) {
-        if (!confirm(`El precio de instalación es menor que el 80% del valor recomendado ($${parametrosSistema.precioInstalacion}). ¿Desea continuar?`)) {
-            return;
-        }
-    }
+    // Obtener parámetros del sistema
+    const garantia = parametrosSistema.garantiaDefault;
+    const areaTerreno = parseFloat(document.getElementById('area_total').value) || 0;
+    const precioInstalacion = obtenerPrecioPorM2(areaTerreno);
 
     displayPopUp();
     $('#iconAccion').html('<i class="fas fa-spinner fa-spin"></i>');
     $('#mensajeAccion').html('Guardando cotización...');
     $('#btnAccion').css('display', 'none');
 
-    const areaTerreno = parseFloat(document.getElementById('area_total').value) || 0;
-    const precioInst = parseFloat(document.getElementById('precio_instalacion').value) || 0;
     let totalSinIVA = 0;
-    
+
     const rollos = [];
     document.querySelectorAll('#rollos_container .product-item').forEach(item => {
         const select = item.querySelector('.rollo-select');
@@ -144,8 +154,6 @@ async function guardarCotizacion() {
     });
 
     // Calcular total
-    let area = parseFloat(document.getElementById('area_total').value) || 0;
-
     // Sumar rollos
     rollos.forEach(rollo => {
         totalSinIVA += rollo.precio_unitario * rollo.cantidad;
@@ -161,8 +169,8 @@ async function guardarCotizacion() {
         totalSinIVA += extra.precio;
     });
 
-    // Sumar instalación
-    totalSinIVA += areaTerreno * precioInst;
+    // Sumar instalación (usando parámetro del sistema)
+    totalSinIVA += areaTerreno * precioInstalacion;
 
     // Preparar datos para enviar
     const datos = {
@@ -171,10 +179,10 @@ async function guardarCotizacion() {
         forma_terreno: document.getElementById('forma_terreno').value,
         dimension1: document.getElementById('dimension1').value,
         dimension2: document.getElementById('dimension2').value,
-        area_total: areaTerreno, 
+        area_total: areaTerreno,
         tipo_instalacion: document.getElementById('tipo_instalacion').value,
-        garantia: document.getElementById('garantia').value,
-        precio_instalacion: precioInst,
+        garantia: garantia,
+        precio_instalacion: precioInstalacion,
         total: totalSinIVA,
         rollos: rollos,
         productos: productos,

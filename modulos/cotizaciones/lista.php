@@ -53,7 +53,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <?php
     $headerParams = [
         "buscador" => true,
-        "btn_atras" => 'window.history.back()'
+        "btn_atras" => "window.location.href='../dashboard/menu.php'"
     ];
     include_once '../../includes/header.php';
     ?>
@@ -65,9 +65,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <tr>
                         <th>ID</th>
                         <th>Cliente</th>
-                        <th>Terreno</th>
+                        <!--<th>Terreno</th>
                         <th>Instalación</th>
-                        <th>Garantía</th>
+                        <th>Garantía</th>-->
                         <th>Fecha</th>
                         <th>Estado</th>
                         <th>Total</th>
@@ -87,9 +87,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <tr>
                                 <td>#<?= $cotizacion['id'] ?></td>
                                 <td><?= htmlspecialchars($cotizacion['nombre_cliente'] ?? '') ?></td>
-                                <td><?= ucfirst($cotizacion['tipo_terreno'] ?? '') ?></td>
+                                <!-- <td><?= ucfirst($cotizacion['tipo_terreno'] ?? '') ?></td>
                                 <td><?= ucfirst($cotizacion['tipo_instalacion'] ?? '') ?></td>
-                                <td><?= ($cotizacion['garantia_anios'] ? $cotizacion['garantia_anios'] . ' años' : '-') ?></td>
+                                <td><?= ($cotizacion['garantia_anios'] ? $cotizacion['garantia_anios'] . ' años' : '-') ?></td> -->
                                 <td><?= date('Y-m-d', strtotime($cotizacion['fecha'])) ?></td>
                                 <td><?= ucfirst($cotizacion['estado']) ?></td>
                                 <td>$<?= isset($cotizacion['total']) ? number_format((float)$cotizacion['total'], 2) : '0.00' ?></td>
@@ -107,31 +107,31 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 </td>
                                 <td>
                                     <div class="opciones-tabla-lista">
-                                        <!-- Botón editar-->
-                                        <div class="editar <?= $estado_final ? 'disabled' : '' ?>"
-                                            onclick="<?= !$estado_final ? "location.href='{$ROOT}/cotizaciones/editar_cotizacion?id={$cotizacion['id']}'" : '' ?>"
-                                            <?= $estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '' ?>>
+                                        <!-- Botón editar -->
+                                        <div class="editar <?= $cotizacion['estado'] != 'pendiente' ? 'disabled' : '' ?>"
+                                            onclick="<?= $cotizacion['estado'] == 'pendiente' ? "location.href='{$ROOT}/cotizaciones/editar_cotizacion?id={$cotizacion['id']}'" : '' ?>"
+                                            <?= $cotizacion['estado'] != 'pendiente' ? 'style="opacity: 0.5; cursor: not-allowed;"' : '' ?>>
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </div>
 
-                                        <!-- Botón aceptar-->
-                                        <div class="aceptar <?= $estado_final ? 'disabled' : '' ?>"
-                                            onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'aceptada')" : '' ?>"
-                                            <?= ($cotizacion['estado'] == 'aceptada') ? 'style="color: #00dd0b;"' : ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
+                                        <!-- Botón aceptar -->
+                                        <div class="aceptar <?= $cotizacion['estado'] != 'pendiente' ? 'disabled' : '' ?>"
+                                            onclick="<?= $cotizacion['estado'] == 'pendiente' ? "confirmChangeStatus({$cotizacion['id']}, 'aceptada')" : '' ?>"
+                                            style="<?= $cotizacion['estado'] == 'aceptada' ? 'color: #00dd0b;' : ($cotizacion['estado'] != 'pendiente' ? 'opacity: 0.5; cursor: not-allowed;' : '') ?>">
                                             <i class="fa-solid fa-check"></i>
                                         </div>
 
-                                        <!-- Botón rechazar-->
-                                        <div class="rechazar <?= $estado_final ? 'disabled' : '' ?>"
-                                            onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'rechazada')" : '' ?>"
-                                            <?= ($cotizacion['estado'] == 'rechazada') ? 'style="color: #ff0000;"' : ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
+                                        <!-- Botón rechazar -->
+                                        <div class="rechazar <?= $cotizacion['estado'] != 'pendiente' ? 'disabled' : '' ?>"
+                                            onclick="<?= $cotizacion['estado'] == 'pendiente' ? "confirmChangeStatus({$cotizacion['id']}, 'rechazada')" : '' ?>"
+                                            style="<?= $cotizacion['estado'] == 'rechazada' ? 'color: #ff0000;' : ($cotizacion['estado'] != 'pendiente' ? 'opacity: 0.5; cursor: not-allowed;' : '') ?>">
                                             <i class="fa-solid fa-times"></i>
                                         </div>
 
-                                        <!-- Botón cancelar-->
-                                        <div class="cancelar <?= $estado_final ? 'disabled' : '' ?>"
-                                            onclick="<?= !$estado_final ? "confirmChangeStatus({$cotizacion['id']}, 'cancelada')" : '' ?>"
-                                            <?= ($cotizacion['estado'] == 'cancelada') ? 'style="color: #ff9900;"' : ($estado_final ? 'style="opacity: 0.5; cursor: not-allowed;"' : '') ?>>
+                                        <!-- Botón cancelar -->
+                                        <div class="cancelar <?= $cotizacion['estado'] != 'pendiente' ? 'disabled' : '' ?>"
+                                            onclick="<?= $cotizacion['estado'] == 'pendiente' ? "confirmChangeStatus({$cotizacion['id']}, 'cancelada')" : '' ?>"
+                                            style="<?= $cotizacion['estado'] == 'cancelada' ? 'color: #ff9900;' : ($cotizacion['estado'] != 'pendiente' ? 'opacity: 0.5; cursor: not-allowed;' : '') ?>">
                                             <i class="fa-solid fa-ban"></i>
                                         </div>
                                     </div>
@@ -150,32 +150,46 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     <?php include_once '../../includes/popup.php'; ?>
 
+    <script src="../../scripts/cotizaciones/lista.js"></script>
     <script>
-        function confirmChangeStatus(idCotizacion, nuevoEstado) {
+        function confirmChangeStatus(id, estado) {
             const mensajes = {
-                'aceptada': '¿Estás seguro de que deseas ACEPTAR esta cotización?',
-                'rechazada': '¿Estás seguro de que deseas RECHAZAR esta cotización?',
-                'cancelada': '¿Estás seguro de que deseas CANCELAR esta cotización?'
+                'aceptada': '¿Confirmas que deseas ACEPTAR esta cotización?',
+                'rechazada': '¿Confirmas que deseas RECHAZAR esta cotización?',
+                'cancelada': '¿Confirmas que deseas CANCELAR esta cotización?',
+                'pendiente': '¿Confirmas que deseas volver a PENDIENTE esta cotización?'
             };
 
-            if (confirm(mensajes[nuevoEstado])) {
-                changeStatus(idCotizacion, nuevoEstado);
+            if (confirm(mensajes[estado] || '¿Confirmas el cambio de estado?')) {
+                changeStatus(id, estado);
             }
         }
 
-        function changeStatus(idCotizacion, nuevoEstado) {
-            fetch(`../../php/cotizaciones/cambiar_estado.php?id=${idCotizacion}&estado=${nuevoEstado}`)
-                .then(response => response.json())
+        function changeStatus(id, estado) {
+            displayPopUp();
+
+            fetch(`../../php/cotizaciones/cambiar_estado.php?id=${id}&estado=${estado}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Error en la red');
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
-                        location.reload();
+                        window.location.reload();
                     } else {
-                        alert('Error: ' + (data.message || 'No se pudo cambiar el estado'));
+                        displayMensajeError(data.message || 'No se puede cambiar el estado nuevamente');
+                        // Deshabilitar botones después de un error
+                        document.querySelectorAll(`[onclick*="confirmChangeStatus(${id},"]`).forEach(btn => {
+                            btn.classList.add('disabled');
+                            btn.style.opacity = '0.5';
+                            btn.style.cursor = 'not-allowed';
+                            btn.setAttribute('onclick', '');
+                        });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error al cambiar el estado');
+                    displayMensajeError("Error de conexión. Intente nuevamente.");
                 });
         }
     </script>

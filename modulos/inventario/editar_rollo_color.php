@@ -28,7 +28,6 @@ if (!$id_producto || !$id_color) {
     die("Parámetros inválidos: Se requiere id_producto e id_color válidos");
 }
 
-// Función para obtener datos con manejo de errores
 function obtenerDatos($conn, $query, $params, $types)
 {
     $stmt = $conn->prepare($query);
@@ -48,7 +47,6 @@ function obtenerDatos($conn, $query, $params, $types)
     return $data;
 }
 
-// Obtener información del producto y color con manejo de errores
 try {
     $producto = obtenerDatos(
         $conn,
@@ -70,7 +68,7 @@ try {
     }
 
     // Obtener rollos disponibles
-    $rollos_stmt = $conn->prepare("SELECT id, largo_metros AS largo, ancho_metros AS ancho, 
+    $rollos_stmt = $conn->prepare("SELECT id, costo_unitario, largo_metros AS largo, ancho_metros AS ancho, 
                                 area_m2 AS area, fecha_ingreso 
                                 FROM inventario_rollos 
                                 WHERE id_producto = ? AND id_color = ? AND estado = 'disponible'
@@ -117,7 +115,7 @@ try {
                 </div>
             </div>
 
-            <form method="POST" action="<?= $URL_ROOT ?>/php/inventario/guardar_edicion_rollos.php" id="formEditarRollos" style="width: 90%;">
+            <form method="POST" action="<?= $URL_ROOT ?>/php/inventario/guardar_edicion_rollos_color.php" id="formEditarRollos" style="width: 90%;">
                 <input type="hidden" name="id_producto" value="<?= $id_producto ?>">
                 <input type="hidden" name="id_color" value="<?= $id_color ?>">
 
@@ -134,6 +132,7 @@ try {
                             <thead>
                                 <tr>
                                     <th>#</th>
+                                    <th>Costo</th>
                                     <th>Largo (m)</th>
                                     <th>Ancho (m)</th>
                                     <th>Área (m²)</th>
@@ -146,6 +145,15 @@ try {
                                     <tr data-rollo-id="<?= $r['id'] ?>">
                                         <td><?= $i + 1 ?></td>
                                         <td>
+                                            $ <input type="number"
+                                                name="rollos[<?= $r['id'] ?>][costo_unitario]"
+                                                value="<?= htmlspecialchars($r['costo_unitario']) ?>"
+                                                step="0.01"
+                                                min="0.01"
+                                                class="input-costo"
+                                                data-original="<?= htmlspecialchars($r['costo_unitario']) ?>">
+                                        </td>
+                                        <td>
                                             <input type="number"
                                                 name="rollos[<?= $r['id'] ?>][largo]"
                                                 value="<?= htmlspecialchars($r['largo']) ?>"
@@ -154,6 +162,7 @@ try {
                                                 class="input-largo"
                                                 data-original="<?= htmlspecialchars($r['largo']) ?>">
                                         </td>
+
                                         <td>
                                             <input type="number"
                                                 name="rollos[<?= $r['id'] ?>][ancho]"
@@ -225,7 +234,7 @@ try {
             });
 
             // Detectar cambios en inputs
-            document.querySelectorAll('.input-largo, .input-ancho').forEach(input => {
+            document.querySelectorAll('.input-largo, .input-ancho, .input-costo').forEach(input => {
                 input.addEventListener('change', function() {
                     const row = this.closest('tr');
                     const original = parseFloat(this.dataset.original);
@@ -237,7 +246,6 @@ try {
                         row.classList.remove('rollo-modificado');
                     }
 
-                    // Calcular y actualizar área si es necesario
                     if (this.classList.contains('input-largo') || this.classList.contains('input-ancho')) {
                         const largoInput = row.querySelector('.input-largo');
                         const anchoInput = row.querySelector('.input-ancho');
@@ -291,9 +299,26 @@ try {
                         body: formData
                     });
 
-                    if (!response.ok) throw new Error('Error en la respuesta del servidor');
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        throw new Error(`Respuesta inesperada del servidor: ${text.substring(0, 100)}`);
+                    }
 
-                    const data = await response.json();
+                    const text = await response.text();
+                    console.log("Respuesta cruda del servidor:", text);
+
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error("Respuesta no es JSON válido:\n" + text);
+                    }
+
+
+                    if (!response.ok) {
+                        throw new Error(data.mensaje || `Error ${response.status}`);
+                    }
 
                     if (data.status === 1) {
                         displayPopUp();
@@ -305,7 +330,7 @@ try {
                     console.error("Error:", error);
                     displayPopUp();
                     displayMensajeError(error.message);
-                    btnGuardar.innerHTML = btnText;
+                    btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
                     btnGuardar.disabled = false;
                 }
             });

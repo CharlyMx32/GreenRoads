@@ -1,0 +1,288 @@
+/* Estilos base */
+.card-inventario-detalle {
+    width: 90%;
+    max-width: 1000px;
+    margin: 20px auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+}
+
+.info-inventario {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    position: relative;
+}
+
+.imagen-producto {
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-right: 25px;
+}
+
+.no-imagen {
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 25px;
+    color: #aaa;
+}
+
+.no-imagen i {
+    font-size: 3rem;
+}
+
+.detalles-producto {
+    flex: 1;
+    min-width: 300px;
+}
+
+.cantidad-disponible {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2e7d32;
+}
+
+/* Selector de colores - nueva posición */
+.selector-colores {
+    position: relative;
+    margin-left: auto;
+    align-self: flex-start;
+}
+
+.color-seleccionado {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    min-width: 200px;
+}
+
+.color-muestra {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    margin-right: 12px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #999;
+}
+
+.btn-cambiar-color {
+    margin-left: auto;
+    padding: 6px 12px;
+    background-color: #7dc042;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.btn-cambiar-color:hover {
+    background-color: #6aa836;
+}
+
+.dropdown-colores {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 100%;
+    min-width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+}
+
+.dropdown-colores.show {
+    display: block;
+}
+
+.color-option {
+    margin: 0;
+    padding: 0;
+}
+
+.color-btn {
+    width: 100%;
+    padding: 10px 15px;
+    background: none;
+    border: none;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.color-btn:hover {
+    background-color: #f5f5f5;
+}
+
+.color-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 12px;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #ddd;
+    flex-shrink: 0;
+}
+
+.color-info {
+    flex-grow: 1;
+}
+
+.color-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.color-stats {
+    font-size: 0.85em;
+    color: #666;
+}
+
+/* Resto de estilos (de editar_cantidad.css) */
+.badge-entrada {
+    background-color: #c8e6c9;
+    color: #256029;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.badge-salida {
+    background-color: #ffcdd2;
+    color: #c63737;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.badge-lote {
+    background-color: #bbdefb;
+    color: #0d47a1;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+
+.formulario-inputs {
+    width: 100%;
+}
+
+.grid-formulario {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.grid-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.grid-item-full {
+    grid-column: 1 / -1;
+}
+
+/* Ajustes para los inputs */
+.grid-item .textfield {
+    width: 100%;
+    margin-top: 5px;
+}
+
+.acciones-formulario {
+    display: flex;
+    justify-content: center;
+    margin-top: -20px;
+}
+
+/* Tabs para lotes/historial */
+.tabs-inventario {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin: 20px 0;
+}
+
+.tab-inventario {
+    padding: 10px 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-weight: 500;
+    color: #7f8c8d;
+    transition: all 0.3s;
+}
+
+.tab-inventario:hover {
+    color: #2c3e50;
+}
+
+.tab-inventario.active {
+    color: #7dc042;
+    border-bottom-color: #7dc042;
+    font-weight: 600;
+}
+
+.tab-inventario-content {
+    display: none;
+}
+
+.tab-inventario-content.active {
+    display: block;
+}
+
+/* Tablas */
+
+
+/* Ajustes para móviles */
+@media (max-width: 768px) {
+    .info-inventario {
+        flex-direction: column;
+    }
+
+    .imagen-producto,
+    .no-imagen {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+
+    .selector-colores {
+        margin-left: 0;
+        margin-top: 15px;
+        width: 100%;
+    }
+
+    .grid-formulario {
+        grid-template-columns: 1fr;
+    }
+}
+
+.costo-total {
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 10px;
+    border-radius: 4px;
+    text-align: center;
+    margin-top: 10px;
+}

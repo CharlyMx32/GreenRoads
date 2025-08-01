@@ -1,6 +1,6 @@
 <?php
 $ROOT = '../..';
-$TITULO = "Inventariar producto";
+$TITULO = "Primer ingreso de producto";
 
 include_once "$ROOT/db/conexion.php";
 include_once "$ROOT/includes/sesion.php";
@@ -17,15 +17,15 @@ if ($id <= 0) {
     exit();
 }
 
+// Obtener información básica del producto
 $sql = "SELECT 
-            p.imagen,
-            p.id AS id_producto,
-            p.nombre, 
-            p.descripcion,
+            p.*, 
             u.nombre AS unidad_nombre, 
-            u.simbolo
+            u.simbolo,
+            tp.nombre AS tipo_producto
         FROM productos p
         JOIN unidades u ON u.id = p.id_unidad
+        JOIN tipo_productos tp ON tp.id = p.id_tipo_producto
         WHERE p.id = ? LIMIT 1";
 
 $stmt = $conn->prepare($sql);
@@ -38,12 +38,27 @@ if (!$producto) {
     header("Location: lista.php?error=producto_no_encontrado");
     exit();
 }
+
+// Verificar si ya tiene inventario
+$sqlInventario = "SELECT COUNT(*) AS total FROM movimientos_inventario WHERE id_producto = ?";
+$stmt = $conn->prepare($sqlInventario);
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$tieneInventario = $stmt->get_result()->fetch_assoc()['total'] > 0;
+$stmt->close();
+
+// Redirigir si ya tiene inventario
+if ($tieneInventario) {
+    header("Location: editar_cantidad.php?id=$id");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
     <?php include_once "$ROOT/includes/head.php"; ?>
+    <link rel="stylesheet" href="../../css/inventario/editar_inventario.css">
 </head>
 
 <body>
@@ -56,156 +71,135 @@ if (!$producto) {
     ?>
 
     <main class="content">
-        <div class="formulario active">
-            <div class="seccion-formulario">
-                <h1 class="subtitulo-formulario" style="margin-top: -100px;">Inventariar: <strong><?= htmlspecialchars($producto['nombre']) ?></strong></h1>
-
-                <!-- Sección de imagen del producto -->
-                <?php
-                $tieneImagen = !empty($producto['imagen']);
-                ?>
-                <div class="<?= $tieneImagen ? 'contenedor-foto' : 'contenedor-no-foto' ?>" id="contenedorFoto" style="<?= $tieneImagen ? 'display:flex;' : 'display:none;' ?>">
-                    <?php if ($tieneImagen): ?>
-                        <img id="imagenPreview" src="../../img/productos/<?= $producto['imagen'] ?>?nocache=<?= uniqid() ?>" alt="Previsualización">
-                    <?php else: ?>
-                        <img id="imagenPreview" src="" alt="Previsualización">
-                    <?php endif; ?>
-
-                    <div class="contenedor-spinner" id="spinnerImg" style="display:none;">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </div>
-                </div>
-
-                <?php if (!$tieneImagen): ?>
-                    <div class="contenedor-no-foto" id="contenedorNoFoto" style="margin-top: -10px;">
-                        <span><i class="fas fa-image" style="font-size: 80px; color: #aaa;"></i></span>
+        <div class="card-inventario-detalle">
+            <div class="info-inventario">
+                <?php if (!empty($producto['imagen'])): ?>
+                    <img src="../../img/productos/<?= $producto['imagen'] ?>?nocache=<?= uniqid() ?>" class="imagen-producto" alt="<?= htmlspecialchars($producto['nombre']) ?>">
+                <?php else: ?>
+                    <div class="no-imagen">
+                        <i class="fas fa-box-open fa-3x"></i>
                     </div>
                 <?php endif; ?>
 
-                <form id="formInventarioUnidad" method="POST" action="<?php echo $URL_ROOT; ?>/php/inventario/guardar_unidad.php">
-                    <input type="hidden" name="id_producto" value="<?= $producto['id_producto'] ?>">
+                <div class="detalles-producto">
+                    <h2><?= htmlspecialchars($producto['nombre']) ?></h2>
+                    <p><?= htmlspecialchars($producto['descripcion']) ?></p>
+                    <p><strong>Tipo:</strong> <?= htmlspecialchars($producto['tipo_producto']) ?> (<?= $producto['tipo_inventario'] === 'unidad' ? 'Por unidad' : 'Por rollo' ?>)</p>
 
-                    <div class="textfield-container">
-                        <input type="number" name="nueva_cantidad" min="0.01" step="0.01" required class="textfield">
-                        <label placeholder="Cantidad (<?= htmlspecialchars($producto['unidad_nombre']) ?>) *"></label>
+                    <div class="mt-3">
+                        <h3>Inventario actual</h3>
+                        <div class="cantidad-disponible">
+                            0 <?= htmlspecialchars($producto['simbolo']) ?>
+                        </div>
+                        <div>
+                            Valor total: $0.00
+                        </div>
                     </div>
-
-                    <div class="textfield-container">
-                        <textarea name="motivo" class="textfield" placeholder="Motivo o comentario (opcional)"></textarea>
-                    </div>
-
-                    <div class="btn-row">
-                        <button type="submit" class="btnadd">Guardar</button>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
-        <?php include_once '../../includes/popup.php'; ?>
 
+            <h3 class="mt-4">Registrar primer ingreso</h3>
+            <form id="formPrimerIngreso" method="POST" action="<?php echo $URL_ROOT; ?>/php/inventario/guardar_primer_ingreso.php" class="formulario-inputs">
+                <input type="hidden" name="id_producto" value="<?= $producto['id'] ?>">
+
+                <div class="grid-formulario">
+                    <div class="grid-item">
+                        <label>Cantidad (<?= htmlspecialchars($producto['unidad_nombre']) ?>)</label>
+                        <input type="number" name="cantidad" min="0.01" step="0.01" class="textfield" required>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Costo unitario</label>
+                        <input type="number" name="costo_unitario" min="0.01" step="0.01" class="textfield" required>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Lote (obligatorio)</label>
+                        <input type="text" name="lote_descripcion" class="textfield" placeholder="Ej: Compra inicial" required>
+                        <small class="text-muted">Identificador único para este lote</small>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Motivo/Comentario</label>
+                        <input type="text" name="motivo" class="textfield" placeholder="Opcional">
+                    </div>
+
+                    <div class="grid-item grid-item-full acciones-formulario">
+                        <button type="submit" class="btnadd">
+                            <i class="fas fa-save"></i> Registrar ingreso inicial
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <?php include_once '../../includes/popup.php'; ?>
     </main>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('formPrimerIngreso');
+            if (!form) return;
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                displayPopUp('Procesando primer ingreso...');
+
+                const formData = new FormData(form);
+                const cantidad = parseFloat(formData.get('cantidad'));
+                const costo = parseFloat(formData.get('costo_unitario'));
+
+                // Validaciones
+                if (isNaN(cantidad) || cantidad <= 0) {
+                    displayMensajeError("La cantidad debe ser mayor a cero");
+                    return;
+                }
+
+                if (isNaN(costo) || costo <= 0) {
+                    displayMensajeError("El costo unitario debe ser mayor a cero");
+                    return;
+                }
+
+                if (!formData.get('lote_descripcion')) {
+                    displayMensajeError("Debe especificar una descripción para el lote");
+                    return;
+                }
+
+                if (!confirm(`¿Confirmar ingreso inicial de ${cantidad} unidades con costo unitario de $${costo.toFixed(2)}?`)) {
+                    hidePopup();
+                    return;
+                }
+
+                const btn = form.querySelector('button[type="submit"]');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+
+                fetch(form.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 1) {
+                            displayMensajeExitoso(data.mensaje, () => {
+                                window.location.href = `editar_cantidad.php?id=${<?= $id ?>}`;
+                            });
+                        } else {
+                            throw new Error(data.mensaje || "Error al guardar");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error:", error);
+                        displayMensajeError(error.message);
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-save"></i> Registrar ingreso inicial';
+                    });
+            });
+        });
+    </script>
 </body>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-
-
-        const form = document.getElementById('formInventarioUnidad');
-        if (!form) {
-            console.error("❌ Formulario 'formInventarioUnidad' NO encontrado");
-            return;
-        }
-
-        const btn = form.querySelector('.btnadd');
-        const cantidadInput = form.querySelector('input[name="nueva_cantidad"]');
-
-        // Validación en tiempo real
-        cantidadInput.addEventListener('input', function() {
-            if (this.value && parseFloat(this.value) > 0) {
-                this.classList.remove('error');
-            }
-        });
-
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const formData = new FormData(form);
-            const cantidad = parseFloat(formData.get('nueva_cantidad'));
-
-            // Validación cliente
-            if (isNaN(cantidad) || cantidad <= 0) {
-                displayMensajeError("Ingrese una cantidad válida mayor a cero");
-                cantidadInput.classList.add('error');
-                cantidadInput.focus();
-                return;
-            }
-
-            if (!confirm("¿Está seguro que desea actualizar el inventario?")) return;
-
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-
-            displayPopUp();
-
-            fetch(form.action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
-                        return response.text().then(text => {
-                            console.error("❌ Respuesta no JSON:", text);
-                            throw new Error('Respuesta inesperada del servidor');
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-
-                    if (data.status === 1) {
-                        displayMensajeExitoso(
-                            data.mensaje,
-                            data.redirect ?
-                            "window.location.href='" + data.redirect + "'" :
-                            "window.location.reload()"
-                        );
-                    } else {
-                        throw new Error(data.mensaje || "Error al guardar");
-                    }
-                })
-                .catch(error => {
-                    console.error("❌ Error en fetch:", error);
-                    displayMensajeError(error.message);
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = 'Guardar';
-                });
-        });
-    });
-
-    const inputImagen = document.getElementById('imagenInput');
-    if (inputImagen) {
-        const contenedorFoto = document.getElementById('contenedorFoto');
-        const contenedorNoFoto = document.getElementById('contenedorNoFoto');
-        const preview = document.getElementById('imagenPreview');
-
-        inputImagen.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    preview.src = ev.target.result;
-                    if (contenedorFoto) contenedorFoto.style.display = 'flex';
-                    if (contenedorNoFoto) contenedorNoFoto.style.display = 'none';
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    }
-</script>
-
 
 </html>

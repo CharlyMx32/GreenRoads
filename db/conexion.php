@@ -2,8 +2,8 @@
     $servername = "localhost";
     $username = "root";
     $password = "3223";
-    // $dbname = "pruebas_greenroadsv2";
-    $dbname = "pruebas_greenroadsv2_2_0";
+    //$dbname = "pruebas_greenroadsv2_2_0";
+    $dbname = "greenroads";
     $port = 3307;
 
     $conn = mysqli_connect($servername, $username, $password, $dbname, $port);

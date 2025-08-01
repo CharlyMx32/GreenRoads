@@ -1,113 +1,94 @@
 <?php
-
-/**
- * Controlador para edición de cantidades de inventario
- * 
- * Permite modificar manualmente la cantidad disponible de un producto
- */
-
 $ROOT = '../..';
-$TITULO = "Editar inventario";
+$TITULO = "Inventario de producto";
 
-require_once $ROOT . '/db/conexion.php';
-require_once $ROOT . '/includes/sesion.php';
-require_once $ROOT . '/includes/config.php';
+include_once "$ROOT/db/conexion.php";
+include_once "$ROOT/includes/sesion.php";
+include_once "$ROOT/includes/config.php";
 
 if (!tieneSesion()) {
     header("Location: $URL_ROOT/login");
     exit();
 }
 
-
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 if ($id <= 0) {
-    mostrarErrorYRedirigir('ID inválido', 'lista.php');
+    header("Location: lista.php?error=id_invalido");
     exit();
 }
 
-/**
- * Función reutilizable para mostrar errores
- */
-function mostrarErrorYRedirigir($mensaje, $pagina)
-{
-    echo "<script>
-        alert('" . addslashes($mensaje) . "');
-        window.location.href = '" . htmlspecialchars($pagina) . "';
-    </script>";
-    exit();
-}
-
-
+// Obtener información del producto y su inventario
 $sql = "SELECT 
-            p.id AS id_producto,
-            p.nombre,
-            p.descripcion,
-            p.id_unidad,
-            u.nombre AS unidad_nombre,
+            p.*, 
+            u.nombre AS unidad_nombre, 
             u.simbolo,
-            p.estado,
-            p.id_tipo_producto,
-            COALESCE((
-                SELECT SUM(CASE WHEN tipo_movimiento = 'entrada' THEN cantidad ELSE 0 END) -
-                    SUM(CASE WHEN tipo_movimiento IN ('salida', 'reserva') THEN cantidad ELSE 0 END) +
-                    SUM(CASE WHEN tipo_movimiento = 'liberacion' THEN cantidad ELSE 0 END)
-                FROM movimientos_inventario mi WHERE mi.id_producto = p.id
-                ), 0) AS cantidad_actual
+            COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad ELSE -m.cantidad END), 0) AS cantidad_disponible,
+            COALESCE(SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN (m.cantidad * m.costo_unitario) ELSE -(m.cantidad * m.costo_unitario) END), 0) AS costo_total_inventario
         FROM productos p
         JOIN unidades u ON u.id = p.id_unidad
+        LEFT JOIN movimientos_inventario m ON m.id_producto = p.id
         WHERE p.id = ?
-        LIMIT 1";
+        GROUP BY p.id, u.nombre, u.simbolo";
 
-try {
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        throw new Exception("Error al preparar la consulta");
-    }
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$producto = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
-    $stmt->bind_param("i", $id);
-    if (!$stmt->execute()) {
-        throw new Exception("Error al ejecutar la consulta");
-    }
-
-    $result = $stmt->get_result();
-    $producto = $result->fetch_assoc();
-    $stmt->close();
-
-    if (!$producto) {
-        mostrarErrorYRedirigir('Producto no encontrado', 'lista.php');
-    }
-} catch (Exception $e) {
-    error_log("Error en editar_cantidad.php: " . $e->getMessage());
-    mostrarErrorYRedirigir('Error al obtener datos del producto', 'lista.php');
+if (!$producto) {
+    header("Location: lista.php?error=producto_no_encontrado");
+    exit();
 }
 
-$cantidad_actual = $producto['cantidad_actual'];
+// Obtener historial de movimientos con información de lotes
+$sqlMovimientos = "SELECT 
+                    m.*, 
+                    a.nombre AS admin_nombre,
+                    a.apellido AS admin_apellido,
+                    l.descripcion AS lote_descripcion,
+                    l.fecha_creacion AS lote_fecha
+                FROM movimientos_inventario m
+                LEFT JOIN admins a ON a.id = m.id_admin
+                LEFT JOIN lotes l ON l.id = m.id_lote
+                WHERE m.id_producto = ?
+                ORDER BY m.fecha DESC";
+$stmt = $conn->prepare($sqlMovimientos);
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$movimientos = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
-if (!is_numeric($cantidad_actual)) {
-    mostrarErrorYRedirigir('Cantidad inválida', 'lista.php');
-}
-
-$cantidad_actual = floatval($cantidad_actual);
-
-
-$id_producto = intval($producto['id_producto']);
-$unidad = htmlspecialchars($producto['simbolo']);
+// Obtener lotes disponibles para este producto
+$sqlLotes = "SELECT 
+                l.id, 
+                l.descripcion, 
+                l.fecha_creacion,
+                COALESCE((
+                    SELECT m.costo_unitario 
+                    FROM movimientos_inventario m 
+                    WHERE m.id_lote = l.id AND m.tipo_movimiento = 'entrada' 
+                    LIMIT 1
+                ), 0) AS costo_unitario,
+                SUM(CASE WHEN m.tipo_movimiento = 'entrada' THEN m.cantidad ELSE -m.cantidad END) AS cantidad_disponible
+            FROM lotes l
+            JOIN movimientos_inventario m ON m.id_lote = l.id
+            WHERE l.id_producto = ? AND m.id_producto = ?
+            GROUP BY l.id, l.descripcion, l.fecha_creacion
+            HAVING cantidad_disponible > 0
+            ORDER BY l.fecha_creacion DESC";
+$stmt = $conn->prepare($sqlLotes);
+$stmt->bind_param("ii", $id, $id);
+$stmt->execute();
+$lotes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="es">
 
 <head>
-    <?php include_once $ROOT . '/includes/head.php'; ?>
-    <style>
-        .mensaje-error {
-            display: none;
-            padding: 10px;
-            margin: 10px 0;
-            background-color: #ffebee;
-            color: #c62828;
-            border-radius: 4px;
-        }
-    </style>
+    <?php include_once "$ROOT/includes/head.php"; ?>
+    <link rel="stylesheet" href="../../css/inventario/editar_inventario.css">
 </head>
 
 <body>
@@ -116,123 +97,189 @@ $unidad = htmlspecialchars($producto['simbolo']);
         "titulo" => $TITULO,
         "btn_atras" => "window.history.back()"
     ];
-    include_once '../../includes/header.php';
+    include_once "../../includes/header.php";
     ?>
 
     <main class="content">
-        <div class="formulario active">
-            <div class="seccion-formulario">
-                <h1 class="subtitulo-formulario" style="margin-top: -100px;">
-                    Editar cantidad de: <strong><?= htmlspecialchars($producto['nombre']) ?></strong>
-                </h1>
-
-                <div class="mensaje-error" id="mensajeError" role="alert" aria-live="assertive"></div>
-
-                <form id="formEditarCantidad" aria-labelledby="tituloFormulario">
-                    <input type="hidden" name="id_producto" value="<?= $id_producto ?>">
-                    <input type="hidden" name="cantidad_actual" value="<?= $cantidad_actual ?>">
-
-                    <div class="campo-formulario">
-                        <label for="cantidad-actual">Cantidad actual (<?= $unidad ?>):</label>
-                        <input type="number" step="0.01" class="textfield" id="cantidad-actual"
-                            disabled value="<?= number_format($cantidad_actual, 2) ?>">
+        <div class="card-inventario-detalle">
+            <div class="info-inventario">
+                <?php if (!empty($producto['imagen'])): ?>
+                    <img src="../../img/productos/<?= $producto['imagen'] ?>?nocache=<?= uniqid() ?>" class="imagen-producto" alt="<?= htmlspecialchars($producto['nombre']) ?>">
+                <?php else: ?>
+                    <div class="no-imagen">
+                        <i class="fas fa-box-open fa-3x"></i>
                     </div>
+                <?php endif; ?>
 
-                    <div class="campo-formulario">
-                        <label for="nueva_cantidad">Nueva cantidad (<?= $unidad ?>):</label>
-                        <input type="number" step="0.01" min="0" class="textfield"
-                            name="nueva_cantidad" id="nueva_cantidad" required
-                            aria-describedby="ayuda-cantidad">
-                        <small id="ayuda-cantidad" class="texto-ayuda">Ingrese la nueva cantidad en <?= $unidad ?></small>
-                    </div>
+                <div class="detalles-producto">
+                    <h2><?= htmlspecialchars($producto['nombre']) ?></h2>
+                    <p><?= htmlspecialchars($producto['descripcion']) ?></p>
+                    <p><strong>Tipo:</strong> <?= $producto['tipo_inventario'] === 'unidad' ? 'Por unidad' : 'Por rollo' ?></p>
 
-                    <div class="acciones-formulario">
-                        <button type="submit" class="btnadd" id="btnGuardar">
-                            <i class="fas fa-save"></i> Guardar
-                        </button>
-                        <button type="button" class="btnadd-filtro" onclick="window.history.back()">
-                            <i class="fas fa-times"></i> Cancelar
-                        </button>
+                    <div class="mt-3">
+                        <h3>Inventario actual</h3>
+                        <div class="cantidad-disponible">
+                            <?= number_format($producto['cantidad_disponible'], 2) ?> <?= htmlspecialchars($producto['simbolo']) ?>
+                        </div>
+                        <div>
+                            Valor total: $<?= number_format($producto['costo_total_inventario'], 2) ?>
+                        </div>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
-    </main>
-    <?php include_once $ROOT . '/../includes/popup.php'; ?>
 
+            <!-- Tabs para Lotes/Historial -->
+            <div class="tabs-inventario">
+                <div class="tab-inventario active" data-tab="lotes">Lotes</div>
+                <div class="tab-inventario" data-tab="historial">Historial</div>
+            </div>
+
+            <!-- Contenido de Lotes -->
+            <div class="tab-inventario-content active" id="lotes">
+                <?php if (!empty($lotes)): ?>
+                    <div class="table-responsive">
+                        <table class="tabla-lista">
+                            <thead>
+                                <tr>
+                                    <th>Lote</th>
+                                    <th>Descripción</th>
+                                    <th>Fecha</th>
+                                    <th>Cantidad</th>
+                                    <th>Costo Unitario</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($lotes as $lote): ?>
+                                    <tr>
+                                        <td><span class="badge-lote"># <?= $lote['id'] ?></span></td>
+                                        <td><?= htmlspecialchars($lote['descripcion'] ?? 'Sin descripción') ?></td>
+                                        <td><?= date('d/m/Y', strtotime($lote['fecha_creacion'])) ?></td>
+                                        <td><?= number_format($lote['cantidad_disponible'], 2) ?></td>
+                                        <td>$<?= number_format($lote['costo_unitario'], 2) ?></td>
+                                        <td>$<?= number_format($lote['cantidad_disponible'] * $lote['costo_unitario'], 2) ?></td>
+                                        
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="text-center py-4">
+                        <p>No hay lotes disponibles para este producto</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Contenido de Historial -->
+            <div class="tab-inventario-content" id="historial">
+                <div class="table-responsive">
+                    <table class="tabla-lista">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Lote</th>
+                                <th>Cantidad</th>
+                                <th>Costo Unitario</th>
+                                <th>Total</th>
+                                <th>Responsable</th>
+                                <th>Motivo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($movimientos as $mov): ?>
+                                <tr>
+                                    <td><?= date('d/m/Y H:i', strtotime($mov['fecha'])) ?></td>
+                                    <td>
+                                        <span class="badge-<?= $mov['tipo_movimiento'] == 'entrada' ? 'entrada' : 'salida' ?>">
+                                            <?= ucfirst($mov['tipo_movimiento']) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if ($mov['id_lote']): ?>
+                                            <span class="badge-lote">Lote #<?= $mov['id_lote'] ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= number_format($mov['cantidad'], 2) ?></td>
+                                    <td>$<?= number_format($mov['costo_unitario'], 2) ?></td>
+                                    <td>$<?= number_format($mov['cantidad'] * $mov['costo_unitario'], 2) ?></td>
+                                    <td>
+                                        <?= $mov['admin_nombre'] ? htmlspecialchars($mov['admin_nombre'] . ' ' . $mov['admin_apellido']) : 'Sistema' ?>
+                                    </td>
+                                    <td><?= htmlspecialchars($mov['motivo']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($movimientos)): ?>
+                                <tr>
+                                    <td colspan="8" class="text-center">No hay movimientos registrados</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <h3 class="mt-4">Agregar/Quitar inventario</h3>
+            <form id="formMovimientoInventario" method="POST" action="<?php echo $URL_ROOT; ?>/php/inventario/guardar_movimiento.php" class="formulario-inputs">
+                <input type="hidden" name="id_producto" value="<?= $producto['id'] ?>">
+
+                <div class="grid-formulario">
+                    <div class="grid-item">
+                        <label>Tipo de movimiento</label>
+                        <select name="tipo_movimiento" class="textfield" required>
+                            <option value="entrada">Entrada (Agregar)</option>
+                            <option value="salida">Salida (Quitar)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Cantidad (<?= htmlspecialchars($producto['unidad_nombre']) ?>)</label>
+                        <input type="number" name="cantidad" min="0.01" step="0.01" class="textfield" required>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Costo unitario</label>
+                        <input type="number" name="costo_unitario" min="0" step="0.01" class="textfield" required>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Lote</label>
+                        <select name="id_lote" class="textfield">
+                            <option value="nuevo">Nuevo lote</option>
+                            <?php foreach ($lotes as $lote): ?>
+                                <option value="<?= $lote['id'] ?>">Lote #<?= $lote['id'] ?> - <?= htmlspecialchars(substr($lote['descripcion'] ?? 'Sin descripción', 0, 30)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Descripción del lote</label>
+                        <input type="text" name="lote_descripcion" class="textfield" placeholder="Ej: Compra a proveedor X">
+                    </div>
+
+                    <div class="grid-item">
+                        <label>Motivo/Comentario</label>
+                        <input type="text" name="motivo" class="textfield" placeholder="Opcional">
+                    </div>
+
+                    <div class="grid-item grid-item-full acciones-formulario">
+                        <button type="submit" class="btnadd">
+                            <i class="fas fa-save"></i> Guardar movimiento
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <?php include_once '../../includes/popup.php'; ?>
+    </main>
+    <script src="../../scripts/inventario/editar_cantidad.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const formulario = document.getElementById('formEditarCantidad');
-            const btnGuardar = document.getElementById('btnGuardar');
-            const mensajeError = document.getElementById('mensajeError');
-            const inputNuevaCantidad = document.getElementById('nueva_cantidad');
-
-            // Validación en tiempo real
-            inputNuevaCantidad.addEventListener('input', function() {
-                const valor = parseFloat(this.value);
-                if (isNaN(valor)) {
-                    mostrarError('Ingrese un número válido');
-                } else if (valor < 0) {
-                    mostrarError('La cantidad no puede ser negativa');
-                } else {
-                    ocultarError();
-                }
-            });
-
-            formulario.addEventListener('submit', async function(e) {
-                e.preventDefault();
-
-                // Validación básica
-                const nuevaCantidad = parseFloat(inputNuevaCantidad.value);
-                if (isNaN(nuevaCantidad)) {
-                    mostrarError('Ingrese una cantidad válida');
-                    inputNuevaCantidad.focus();
-                    return;
-                }
-
-                if (nuevaCantidad < 0) {
-                    mostrarError('La cantidad no puede ser negativa');
-                    inputNuevaCantidad.focus();
-                    return;
-                }
-
-                btnGuardar.disabled = true;
-                btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
-
-                try {
-                    const formData = new FormData(formulario);
-                    const response = await fetch('../../php/inventario/guardar_unidad.php', {
-                        method: 'POST',
-                        body: formData
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Error en la respuesta del servidor');
-                    }
-
-                    const data = await response.json();
-
-                    if (data.status === 1) {
-                        displayPopUp();
-                        displayMensajeExitoso(data.mensaje || "Cambios guardados", "window.history.back()");
-                    } else {
-                        throw new Error(data.message || 'Error desconocido');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    mostrarError('Error: ' + error.message);
-                    btnGuardar.disabled = false;
-                    btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar';
-                }
-            });
-
-            function mostrarError(mensaje) {
-                mensajeError.textContent = mensaje;
-                mensajeError.style.display = 'block';
-            }
-
-            function ocultarError() {
-                mensajeError.style.display = 'none';
+            const form = document.getElementById('formMovimientoInventario');
+            if (form) {
+                form.dataset.disponible = <?= json_encode($producto['cantidad_disponible']) ?>;
             }
         });
     </script>

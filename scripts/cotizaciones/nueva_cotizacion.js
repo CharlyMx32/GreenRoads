@@ -16,7 +16,7 @@ function configurarEventos() {
     document.getElementById('area_irregular')?.addEventListener('change', calcularArea);
 
     // Eventos para instalación
-    document.getElementById('precio_instalacion')?.addEventListener('change', actualizarTotales);
+    document.getElementById('area_total')?.addEventListener('change', actualizarTotales);
 
     // Eventos para extras
     document.querySelectorAll('.extra-check').forEach(ck => {
@@ -41,12 +41,14 @@ function configurarEventos() {
     document.querySelectorAll('#productos_container .product-select').forEach(select => {
         select.addEventListener('change', function () {
             actualizarProductos(this);
+            actualizarTotales();
         });
     });
 
     document.querySelectorAll('#productos_container input[type="number"]').forEach(input => {
         input.addEventListener('input', function () {
             actualizarProductos(this);
+            actualizarTotales();
         });
     });
 
@@ -78,10 +80,27 @@ function configurarEventos() {
 }
 
 async function inicializarAplicacion() {
-    await cargarParametrosSistema();
-    configurarEventos();
-    toggleTerreno();
-    actualizarTotales();
+    try {
+        // Cargar parámetros primero y esperar a que terminen
+        await cargarParametrosSistema();
+
+        if (parametrosSistema.garantiaDefault <= 0 || parametrosSistema.precioInstalacion <= 0) {
+            throw new Error('Los parámetros del sistema no se cargaron correctamente');
+        }
+
+        configurarEventos();
+        toggleTerreno();
+        actualizarTotales();
+
+        const areaTotalInput = document.getElementById('area_total');
+        if (areaTotalInput) {
+            areaTotalInput.value = '0.00';
+        }
+    } catch (error) {
+        console.error('Error en inicialización:', error);
+        alert('Error al cargar la aplicación: ' + error.message);
+    }
 }
+
 
 document.addEventListener('DOMContentLoaded', inicializarAplicacion);

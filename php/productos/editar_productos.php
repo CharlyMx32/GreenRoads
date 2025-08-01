@@ -19,7 +19,7 @@ if (!tieneSesion()) {
 // Obtener datos del formulario
 $id = intval($_POST['id'] ?? 0);
 $nombre = trim($_POST['nombre'] ?? '');
-$precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
+// $precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
 $tipo_producto = intval($_POST['tipo_producto'] ?? 0);
 $tipo_inventario = in_array($_POST['tipo_inventario'] ?? '', ['unidad', 'rollo']) ? $_POST['tipo_inventario'] : 'unidad';
 $id_modelo = intval($_POST['id_modelo'] ?? 0);
@@ -97,7 +97,6 @@ $stmt = mysqli_prepare($conn, "
     UPDATE productos 
     SET 
         nombre = ?, 
-        precio_unitario = ?, 
         id_tipo_producto = ?,
         tipo_inventario = ?,
         id_modelo = ?,
@@ -110,9 +109,8 @@ $id_modelo = $id_modelo > 0 ? $id_modelo : NULL;
 
 mysqli_stmt_bind_param(
     $stmt, 
-    'sdissssi',
+    'sissssi',
     $nombre,
-    $precio_unitario,
     $tipo_producto,
     $tipo_inventario,
     $id_modelo,

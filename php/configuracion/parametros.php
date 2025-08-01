@@ -1,8 +1,11 @@
 <?php
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
-error_reporting(0);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type");
 $ROOT = '../..';
 include_once $ROOT . '/db/conexion.php';
 include_once $ROOT . '/includes/sesion.php';
@@ -26,7 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // }
 
 try {
-    // Validar datos recibidos
     $clave = trim($_POST['clave'] ?? '');
     $valor = trim($_POST['valor'] ?? '');
 
@@ -34,7 +36,6 @@ try {
         throw new Exception("La clave del parámetro es requerida.");
     }
 
-    // Obtener información del parámetro
     $stmt = $conn->prepare("SELECT tipo, editable FROM parametros_sistema WHERE clave = ?");
     $stmt->bind_param('s', $clave);
     $stmt->execute();

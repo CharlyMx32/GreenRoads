@@ -126,7 +126,7 @@ if ($result = mysqli_query($conn, $query)) {
 
                     <div class="textfield-container">
                         <select name="id_unidad" class="textfield" required
-                            aria-required="true" aria-label="Unidad de medida">
+                            aria-required="true" aria-label="Unidad de medida" id="unidad">
                             <option value=""></option>
                             <?php foreach ($unidades as $unidad): ?>
                                 <option value="<?= htmlspecialchars($unidad['id']) ?>"><?= htmlspecialchars($unidad['nombre']) ?></option>
@@ -135,7 +135,7 @@ if ($result = mysqli_query($conn, $query)) {
                         <label placeholder="Unidad *"></label>
                     </div>
 
-                    <div class="textfield-container">
+                    <div class="textfield-container" style="display:none;">
                         <select name="tipo_inventario" class="textfield" id="tipoInventario" required
                             aria-required="true">
                             <option value="">Selecciona tipo de inventario</option>
@@ -164,12 +164,7 @@ if ($result = mysqli_query($conn, $query)) {
                         <label placeholder="Modelo (solo para pasto)"></label>
                     </div>
 
-
-                    <div class="textfield-container">
-                        <input type="number" class="textfield" name="precio_unitario" step="0.01" min="0"
-                            aria-label="Precio unitario">
-                        <label placeholder="Precio unitario"></label>
-                    </div>
+                    
                 </div>
             </div>
         </form>

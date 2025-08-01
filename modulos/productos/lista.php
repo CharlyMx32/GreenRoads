@@ -54,7 +54,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <th>Imagen</th>
                         <th>Nombre</th>
                         <th>Tipo</th>
-                        <th>Precio unitario</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
@@ -84,13 +83,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 
                                 <!-- Tipo del producto -->
                                 <td><?php echo ucfirst($producto['tipo_producto']); ?></td>
-
-                                <!-- Precio formateado -->
-                                <td>
-                                    $<?php echo number_format($producto['precio_unitario'], 2); ?>
-                                    <small>/ <?php echo $producto['unidad_medida']; ?></small>
-                                </td>
-
 
                                 <!-- Estado -->
                                 <td><?php echo $producto['estado']; ?></td>

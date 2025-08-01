@@ -34,6 +34,21 @@ foreach ($camposRequeridos as $campo) {
     }
 }
 
+function obtenerCostoProducto($conn, $idProducto) {
+    $query = "SELECT costo_unitario 
+             FROM movimientos_inventario 
+             WHERE id_producto = ? AND tipo_movimiento = 'entrada'
+             ORDER BY fecha DESC 
+             LIMIT 1";
+             
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $idProducto);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    return $result->fetch_assoc()['costo_unitario'] ?? 0;
+}
+
 mysqli_begin_transaction($conn);
 
 try {
@@ -89,7 +104,7 @@ try {
                 WHERE id_producto = ?
                 AND id_color = ?
                 AND estado = 'disponible'";
-            
+
             $stmt_verificar = mysqli_prepare($conn, $sql_verificar);
             mysqli_stmt_bind_param($stmt_verificar, "ii", $rollo['id_producto'], $rollo['id_color']);
             mysqli_stmt_execute($stmt_verificar);
@@ -117,7 +132,7 @@ try {
                 $rollo['id_producto'],
                 $rollo['id_color'],
                 $rollo['cantidad'],
-                $rollo['cantidad'], 
+                $rollo['cantidad'],
                 $rollo['precio_unitario']
             );
             mysqli_stmt_execute($stmt);
@@ -132,41 +147,54 @@ try {
                 AND id_color = ? 
                 AND estado = 'disponible'
                 ORDER BY fecha_ingreso ASC";
-            
+
             $stmt = mysqli_prepare($conn, $query_rollos);
             mysqli_stmt_bind_param($stmt, "ii", $rollo['id_producto'], $rollo['id_color']);
             mysqli_stmt_execute($stmt);
             $result = mysqli_stmt_get_result($stmt);
-            
+
             while (($row = mysqli_fetch_assoc($result)) && $m2_requeridos > 0) {
                 $area_a_reservar = min($row['area_m2'], $m2_requeridos);
-                
+
                 $query_reserva = "UPDATE inventario_rollos 
                     SET estado = 'reservado', id_cotizacion_reserva = ?
                     WHERE id = ?";
-                
+
                 $stmt_reserva = mysqli_prepare($conn, $query_reserva);
                 mysqli_stmt_bind_param($stmt_reserva, "ii", $id_cotizacion, $row['id']);
                 mysqli_stmt_execute($stmt_reserva);
                 mysqli_stmt_close($stmt_reserva);
-                
+
                 $m2_requeridos -= $area_a_reservar;
             }
         }
     }
 
-    // Procesar productos generales
+    // En la sección de procesar productos generales:
     if (!empty($datos['productos']) && is_array($datos['productos'])) {
         foreach ($datos['productos'] as $producto) {
             if (empty($producto['id_producto'])) continue;
 
+            // Obtener el costo real del producto
+            $sqlCosto = "SELECT costo_unitario 
+                    FROM movimientos_inventario 
+                    WHERE id_producto = ? AND tipo_movimiento = 'entrada'
+                    ORDER BY fecha DESC 
+                    LIMIT 1";
+            $stmtCosto = $conn->prepare($sqlCosto);
+            $stmtCosto->bind_param("i", $producto['id_producto']);
+            $stmtCosto->execute();
+            $resultCosto = $stmtCosto->get_result();
+            $costo = $resultCosto->fetch_assoc()['costo_unitario'] ?? 0;
+
+            // Insertar en detalle_cotizacion con el costo real (sin margen)
             $query = "INSERT INTO detalle_cotizacion (
-                id_cotizacion, 
-                id_producto, 
-                cantidad, 
-                precio_unitario
-            ) VALUES (?, ?, ?, ?)";
-            
+            id_cotizacion, 
+            id_producto, 
+            cantidad, 
+            precio_unitario
+        ) VALUES (?, ?, ?, ?)";
+
             $stmt = mysqli_prepare($conn, $query);
             mysqli_stmt_bind_param(
                 $stmt,
@@ -174,7 +202,7 @@ try {
                 $id_cotizacion,
                 $producto['id_producto'],
                 $producto['cantidad'],
-                $producto['precio_unitario']
+                $costo // Precio unitario = costo real (sin margen)
             );
             mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);
@@ -191,7 +219,7 @@ try {
                 id_extra, 
                 precio_aplicado
             ) VALUES (?, ?, ?)";
-            
+
             $stmt = mysqli_prepare($conn, $query);
             mysqli_stmt_bind_param(
                 $stmt,
