@@ -21,7 +21,7 @@ function actualizarRollos(element) {
         
         if (modeloText) modeloText.textContent = select.selectedOptions[0].dataset.modelo || '';
         if (coloresText) coloresText.textContent = select.selectedOptions[0].dataset.colores || '';
-        if (areaText) areaText.textContent = `${cantidad.value} m² disponibles`;
+        if (areaText) areaText.textContent = `${cantidad.value} m²`;
 
         let colorSelectContainer = detalles.querySelector('.color-select-container');
         if (!colorSelectContainer) {
@@ -91,6 +91,9 @@ function cargarColoresRollos(selectElement) {
                 const option = document.createElement('option');
                 option.value = color.id;
                 option.textContent = color.nombre;
+                if (color.codigo_hex) {
+                    option.style.color = color.codigo_hex;
+                }
                 colorSelect.appendChild(option);
             });
             

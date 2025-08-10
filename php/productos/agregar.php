@@ -28,12 +28,13 @@ if (!tieneSesion()) {
 
 // Obtener datos
 $nombre = trim($_POST['nombre'] ?? '');
-// $precio_unitario = floatval($_POST['precio_unitario'] ?? 0);
+$costo_base = floatval($_POST['costo_base'] ?? 0);
 $tipo_producto = intval($_POST['tipo_producto'] ?? 0);
 $id_unidad = intval($_POST['id_unidad'] ?? 0);
 $tipo_inventario = $_POST['tipo_inventario'] ?? 'unidad';
 $tipo_inventario = in_array($tipo_inventario, ['unidad', 'rollo']) ? $tipo_inventario : 'unidad';
 $id_modelo = null;
+$colores_rollo = isset($_POST['color_rollo']) ? $_POST['color_rollo'] : [];
 
 // Validaciones
 if (empty($nombre)) {
@@ -58,8 +59,12 @@ if ($tipo_inventario === 'rollo') {
     if ($id_modelo <= 0) {
         die(json_encode(['status' => 0, 'mensaje' => 'Seleccione un modelo válido para el pasto']));
     }
-}
 
+    // Validar colores para rollos
+    if (empty($colores_rollo)) {
+        die(json_encode(['status' => 0, 'mensaje' => 'Seleccione al menos un color para el rollo']));
+    }
+}
 
 // Manejo de imagen
 $nombreImagen = null;
@@ -85,9 +90,13 @@ try {
         }
     }
 
+    // Iniciar transacción
+    $conn->begin_transaction();
+
+    // Insertar producto
     $stmt = $conn->prepare("INSERT INTO productos (
-        nombre, id_unidad, id_tipo_producto, tipo_inventario, imagen,   id_modelo, estado
-    ) VALUES (?, ?, ?, ?, ?, ?, 'activo')");
+        nombre, costo_base, id_unidad, id_tipo_producto, tipo_inventario, imagen, id_modelo, estado
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo')");
 
     if (!$stmt) {
         throw new Exception('Error al preparar la consulta: ' . $conn->error);
@@ -96,8 +105,9 @@ try {
     $id_modelo_sql = $id_modelo > 0 ? $id_modelo : null;
 
     $stmt->bind_param(
-        'siisss', 
+        'sdiiiss', 
         $nombre,
+        $costo_base,
         $id_unidad,
         $tipo_producto,
         $tipo_inventario,
@@ -105,17 +115,42 @@ try {
         $id_modelo
     );
 
-
     if (!$stmt->execute()) {
         throw new Exception('Error al ejecutar la consulta: ' . $stmt->error);
     }
 
+    $id_producto = $stmt->insert_id;
+
+    // Si es un rollo, guardar los colores asociados
+    if ($tipo_inventario === 'rollo' && !empty($colores_rollo)) {
+        foreach ($colores_rollo as $id_color) {
+            $id_color = intval($id_color);
+            if ($id_color > 0) {
+                $stmt_color = $conn->prepare("INSERT INTO producto_colores (id_producto, id_color) VALUES (?, ?)");
+                if (!$stmt_color) {
+                    throw new Exception('Error al preparar consulta de colores: ' . $conn->error);
+                }
+                $stmt_color->bind_param('ii', $id_producto, $id_color);
+                if (!$stmt_color->execute()) {
+                    throw new Exception('Error al guardar colores: ' . $stmt_color->error);
+                }
+                $stmt_color->close();
+            }
+        }
+    }
+
+    // Confirmar transacción
+    $conn->commit();
+
     echo json_encode([
         'status' => 1,
         'mensaje' => 'Producto agregado correctamente',
-        'id' => $stmt->insert_id
+        'id' => $id_producto
     ]);
 } catch (Exception $e) {
+    // Revertir transacción en caso de error
+    $conn->rollback();
+    
     if ($nombreImagen && file_exists($destino)) {
         unlink($destino);
     }
@@ -125,6 +160,6 @@ try {
     http_response_code(500);
     echo json_encode([
         'status' => 0,
-        'mensaje' => 'Error interno del servidor'
+        'mensaje' => 'Error interno del servidor: ' . $e->getMessage()
     ]);
 }

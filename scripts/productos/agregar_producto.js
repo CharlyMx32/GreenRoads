@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const nombreModelo = document.getElementById('nombreModelo');
     const alturaModelo = document.getElementById('alturaModelo');
     const selectModelo = document.getElementById('selectModelo');
+    const selectColorRollo = document.getElementById('divcolorRollo');
 
     document.getElementById('btnSubirImg').onclick =
         document.getElementById('btnSubirSinImg').onclick = () => inputImagen.click();
@@ -55,14 +56,19 @@ document.addEventListener('DOMContentLoaded', function () {
             tipoInventario.value = 'rollo';
             tipoInventario.disabled = false;
             campoModelo.style.display = 'block';
+            selectColorRollo.style.display = 'block';
+
 
             unidad.value = 1;
         } else {
             tipoInventario.value = 'unidad';
             tipoInventario.disabled = false;
             campoModelo.style.display = 'none';
+            selectColorRollo.value = '';
+            selectColorRollo.style.display = 'none';
+            selectColorRollo.disabled = true;
 
-            unidad.value = 2; 
+            unidad.value = 2;
         }
     }
 
@@ -135,6 +141,8 @@ document.addEventListener('DOMContentLoaded', function () {
     window.agregar = function () {
         const formData = new FormData(form);
         const nombre = formData.get("nombre")?.trim();
+        const tipoProductoValue = parseInt(tipoProducto.value);
+        const esRollo = tipoProductoValue === 1;
 
         if (!nombre) {
             displayMensajeError("Favor de indicar el nombre del producto.");
@@ -147,14 +155,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (!formData.get("tipo_inventario")) {
-            displayMensajeError("Seleccione el tipo de inventario: unidad o rollo.");
-            return;
-        }
+        if (esRollo) {
+            if (!formData.get("id_modelo")) {
+                displayMensajeError("Seleccione un modelo para el pasto.");
+                return;
+            }
 
-        if (tipoProducto.value == '1' && !formData.get("id_modelo")) {
-            displayMensajeError("Seleccione un modelo para el pasto.");
-            return;
+            // Validar que se haya seleccionado al menos un color
+            const coloresSeleccionados = document.querySelectorAll('input[name="color_rollo[]"]:checked');
+            if (coloresSeleccionados.length === 0) {
+                displayMensajeError("Seleccione al menos un color para el rollo.");
+                return;
+            }
         }
 
         if (!confirm("¿Está seguro que desea agregar este producto?")) return;

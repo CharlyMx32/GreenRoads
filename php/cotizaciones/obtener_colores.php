@@ -4,15 +4,13 @@ require_once '../../db/conexion.php';
 
 $id_producto = isset($_GET['id_producto']) ? intval($_GET['id_producto']) : 0;
 
-$query = "SELECT DISTINCT c.id, c.nombre 
-          FROM colores c
-          JOIN inventario_rollos ir ON c.id = ir.id_color
-          WHERE ir.id_producto = ? 
-            AND ir.estado = 'disponible'
-            AND ir.area_m2 > 0
-          ORDER BY c.nombre";
+    $sql = "SELECT c.id, c.nombre, c.codigo_hex 
+            FROM colores c
+            JOIN producto_colores pc ON c.id = pc.id_color
+            WHERE pc.id_producto = ?
+            ORDER BY c.nombre ASC";
 
-$stmt = $conn->prepare($query);
+$stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $id_producto);
 $stmt->execute();
 $result = $stmt->get_result();

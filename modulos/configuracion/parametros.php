@@ -10,11 +10,6 @@ include_once $ROOT . 'db/conexion.php';
 include_once $ROOT . 'includes/sesion.php';
 include_once $ROOT . 'includes/config.php';
 
-// if (!tieneSesion() || !tienePermiso('admin_parametros')) {
-//     header("Location: $URL_ROOT/login");
-//     exit();
-// }
-
 function sanitizar($data, $conn)
 {
     return htmlspecialchars(mysqli_real_escape_string($conn, trim($data)));
@@ -48,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Obtener parámetros agrupados por categoría
 $parametros = [];
 $sql = "SELECT id, clave, valor, descripcion, tipo, editable, fecha_actualizacion 
         FROM parametros_sistema 
@@ -64,7 +58,6 @@ while ($row = mysqli_fetch_assoc($result)) {
     $parametros[$categoria][] = $row;
 }
 
-// Obtener tabuladores
 $tabuladores = [];
 $sql_tabuladores = "SELECT * FROM tabuladores ORDER BY tipo, rango_min ASC";
 $result_tabuladores = mysqli_query($conn, $sql_tabuladores);
@@ -288,6 +281,20 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
     <script src="../../scripts/configuracion/tabulador.js"></script>
     <script src="../../scripts/configuracion/parametros.js"></script>
     <?php include_once '../../includes/popup.php'; ?>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        <?php if (isset($_SESSION['mensaje_exito'])): ?>
+            displayPopUp();
+            displayMensajeExitoso('<?= htmlspecialchars($_SESSION['mensaje_exito']) ?>');
+            <?php unset($_SESSION['mensaje_exito']); ?>
+        <?php elseif (isset($_SESSION['mensaje_error'])): ?>
+            displayPopUp();
+            displayMensajeError('<?= htmlspecialchars($_SESSION['mensaje_error']) ?>');
+            <?php unset($_SESSION['mensaje_error']); ?>
+        <?php endif; ?>
+    });
+    </script>
 </body>
 
 </html>

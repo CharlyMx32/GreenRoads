@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 require_once '../../db/conexion.php';
 require_once '../../includes/sesion.php';
+require_once '../../includes/funciones_corte_rollos.php';
 
 if (!tieneSesion()) {
     echo json_encode(['success' => false, 'message' => 'No autorizado']);
@@ -61,6 +62,27 @@ try {
 
     if (!mysqli_stmt_execute($stmt)) {
         throw new Exception("Error al ejecutar la actualización: " . mysqli_stmt_error($stmt));
+    }
+
+    // Gestionar inventario según el nuevo estado
+    if ($estado == 'aceptada') {
+        // Cambiar rollos reservados a instalado
+        $query_rollos = "UPDATE inventario_rollos 
+                        SET estado = 'instalado' 
+                        WHERE id_cotizacion_reserva = ? AND estado = 'reservado'";
+        
+        $stmt_rollos = mysqli_prepare($conn, $query_rollos);
+        mysqli_stmt_bind_param($stmt_rollos, "i", $id);
+        
+        if (!mysqli_stmt_execute($stmt_rollos)) {
+            throw new Exception("Error al actualizar estado de rollos");
+        }
+        
+    } elseif ($estado == 'rechazada' || $estado == 'cancelada') {
+        // Liberar rollos y reunificar si es posible
+        if (!liberarRollosCortados($conn, $id)) {
+            throw new Exception("Error al liberar rollos cortados");
+        }
     }
 
     mysqli_commit($conn);

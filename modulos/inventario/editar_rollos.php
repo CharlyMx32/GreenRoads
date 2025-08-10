@@ -20,10 +20,11 @@ if ($id <= 0) {
 $id_color_activo = isset($_GET['id_color']) ? intval($_GET['id_color']) : 0;
 
 // Consultar información del producto
-$sql_producto = "SELECT p.id, p.nombre, p.descripcion, p.id_tipo_producto, u.simbolo, m.nombre AS modelo_nombre, p.imagen, m.altura_mm
+$sql_producto = "SELECT p.id, p.nombre, p.descripcion, p.id_tipo_producto, u.simbolo, 
+                m.nombre AS modelo_nombre, p.imagen, m.altura_mm, p.tipo_inventario
                 FROM productos p
                 JOIN unidades u ON p.id_unidad = u.id
-                JOIN modelos m ON p.id_modelo = m.id
+                LEFT JOIN modelos m ON p.id_modelo = m.id
                 WHERE p.id = ? LIMIT 1";
 $stmt = $conn->prepare($sql_producto);
 $stmt->bind_param("i", $id);
@@ -45,14 +46,21 @@ $sql_rollos = "SELECT
                 COALESCE(SUM(r.largo_metros * r.ancho_metros), 0) AS total_m2,
                 COALESCE(SUM(r.costo_unitario), 0) AS costo_total
             FROM colores c
+            JOIN producto_colores pc ON c.id = pc.id_color AND pc.id_producto = ?
             LEFT JOIN inventario_rollos r ON c.id = r.id_color AND r.id_producto = ? AND r.estado = 'disponible'
             GROUP BY c.id, c.nombre, c.codigo_hex
             ORDER BY c.nombre ASC";
 $stmt = $conn->prepare($sql_rollos);
-$stmt->bind_param("i", $id);
+$stmt->bind_param("ii", $id, $id);
 $stmt->execute();
 $colores_disponibles = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
+
+// Si no hay colores asignados, mostrar mensaje y no permitir continuar
+if (empty($colores_disponibles)) {
+    header("Location: lista.php?error=producto_sin_colores");
+    exit();
+}
 
 // Si hay color seleccionado, obtener sus rollos disponibles
 $rollos_del_color = [];
@@ -97,22 +105,22 @@ foreach ($colores_disponibles as $c) {
 // Consultar historial de movimientos
 $historial = [];
 if ($id_color_activo > 0) {
-    $sql_historial = "SELECT 
-                        m.fecha,
-                        'entrada' AS tipo_movimiento,
-                        m.cantidad,
-                        SUM(r.largo_metros * r.ancho_metros) AS area,
-                        m.costo_total,
-                        m.id_lote,
-                        l.descripcion AS lote_descripcion,
-                        CONCAT(a.nombre, ' ', a.apellido) AS responsable
-                    FROM movimientos_inventario m
-                    JOIN inventario_rollos r ON m.id_producto = r.id_producto
-                    LEFT JOIN lotes l ON m.id_lote = l.id
-                    LEFT JOIN admins a ON m.id_admin = a.id
-                    WHERE m.id_producto = ? AND r.id_color = ?
-                    GROUP BY m.id
-                    ORDER BY m.fecha DESC";
+$sql_historial = "SELECT 
+                    m.fecha,
+                    'entrada' AS tipo_movimiento,
+                    m.cantidad,
+                    SUM(r.largo_metros * r.ancho_metros) AS area,
+                    m.costo_total,
+                    m.id_lote,
+                    l.descripcion AS lote_descripcion,
+                    CONCAT(a.nombre, ' ', a.apellido) AS responsable
+                FROM movimientos_inventario m
+                JOIN inventario_rollos r ON m.id_producto = r.id_producto AND m.id_lote = r.id_lote
+                LEFT JOIN lotes l ON m.id_lote = l.id
+                LEFT JOIN admins a ON m.id_admin = a.id
+                WHERE m.id_producto = ? AND r.id_color = ?
+                GROUP BY m.id
+                ORDER BY m.fecha DESC";
     $stmt = $conn->prepare($sql_historial);
     $stmt->bind_param("ii", $id, $id_color_activo);
     $stmt->execute();

@@ -18,10 +18,10 @@ if ($id <= 0) {
 }
 
 // Consultar información del producto
-$sql_producto = "SELECT p.id, p.nombre, p.descripcion, p.id_tipo_producto, u.simbolo, m.nombre AS modelo_nombre, p.imagen, m.altura_mm
+$sql_producto = "SELECT p.id, p.nombre, p.descripcion, p.id_tipo_producto, u.simbolo, m.nombre AS modelo_nombre, p.imagen, m.altura_mm, p.tipo_inventario
                 FROM productos p
                 JOIN unidades u ON p.id_unidad = u.id
-                JOIN modelos m ON p.id_modelo = m.id
+                LEFT JOIN modelos m ON p.id_modelo = m.id
                 WHERE p.id = ? LIMIT 1";
 $stmt = $conn->prepare($sql_producto);
 $stmt->bind_param("i", $id);
@@ -48,9 +48,30 @@ if ($tieneInventario) {
     exit();
 }
 
-// Consultar colores disponibles
-$colores_disponibles = $conn->query("SELECT id, nombre, codigo_hex FROM colores ORDER BY nombre ASC")->fetch_all(MYSQLI_ASSOC);
+// Consultar colores disponibles para este producto
+$colores_disponibles = [];
+if ($producto['tipo_inventario'] === 'rollo') {
+    $sql_colores = "SELECT c.id, c.nombre, c.codigo_hex 
+                   FROM colores c
+                   JOIN producto_colores pc ON c.id = pc.id_color
+                   WHERE pc.id_producto = ?
+                   ORDER BY c.nombre ASC";
+    $stmt = $conn->prepare($sql_colores);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $colores_disponibles = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
 
+    // Si no hay colores asignados pero es rollo, mostrar error
+    if (empty($colores_disponibles)) {
+        header("Location: lista.php?error=producto_sin_colores");
+        exit();
+    }
+} else {
+    // Si no es rollo, redirigir a inventariar normal
+    header("Location: inventariar.php?id=$id");
+    exit();
+}
 // Manejar envío del formulario
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $largo = floatval($_POST['largo'] ?? 0);

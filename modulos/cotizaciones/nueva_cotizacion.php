@@ -15,7 +15,6 @@ if (!tieneSesion()) {
     exit();
 }
 
-// Obtener lista de clientes y productos
 $clientes = [];
 $sql = "SELECT id, nombre FROM clientes WHERE estado = 'activo' ORDER BY nombre ASC";
 $result = mysqli_query($conn, $sql);
@@ -120,6 +119,21 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <label>Área Total (m2)</label>
                         <input type="number" id="area_total" class="textfield" readonly>
                     </div>
+
+                    <!-- Canvas para dibujar el terreno -->
+                    <div class="form-group">
+                        <label>Diseño del Terreno (Ilustrativo)</label>
+                        <div class="canvas-container">
+                            <canvas id="canvas_terreno" width="300" height="200"></canvas>
+                            <div class="canvas-controls">
+                                <button type="button" id="btn_limpiar_canvas">🗑️ Limpiar</button>
+                                <button type="button" id="btn_rectangulo">⬜ Rectángulo</button>
+                                <button type="button" id="btn_triangulo">🔺 Triángulo</button>
+                                <button type="button" id="btn_circulo">⭕ Círculo</button>
+                                <button type="button" id="btn_dibujo_libre" class="active">✏️ Dibujo Libre</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -139,9 +153,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                                         p.nombre, 
                                         m.nombre AS modelo,
                                         (SELECT GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') 
-                                        FROM inventario_rollos ir 
-                                        JOIN colores c ON ir.id_color = c.id 
-                                        WHERE ir.id_producto = p.id) AS colores_disponibles,
+                                        FROM producto_colores pc
+                                        JOIN colores c ON pc.id_color = c.id 
+                                        WHERE pc.id_producto = p.id) AS colores_asignados,
                                         
                                         (SELECT SUM(ir.area_m2)
                                         FROM inventario_rollos ir
@@ -159,7 +173,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     while ($rollo = mysqli_fetch_assoc($result_rollos)) :
                                         $precio = $rollo['precio_unitario_rollo_completo'] ?? 0;
                                         $modelo = htmlspecialchars($rollo['modelo'] ?? '');
-                                        $colores = htmlspecialchars($rollo['colores_disponibles'] ?? '');
+                                        $colores = htmlspecialchars($rollo['colores_asignados'] ?? '');
                                         $area = $rollo['area_disponible_total'] ?? 0;
                                         $nombre = htmlspecialchars($rollo['nombre'] ?? '');
                                     ?>
@@ -297,6 +311,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <?php include_once '../../includes/popup.php'; ?>
 </body>
 <script src="../../scripts/cotizaciones/formas_irregulares.js"></script>
+<script src="../../scripts/cotizaciones/canvas_terreno.js"></script>
 <script type="module" src="../../scripts/cotizaciones/nueva_cotizacion.js"></script>
 
 

@@ -186,8 +186,14 @@ async function guardarCotizacion() {
         total: totalSinIVA,
         rollos: rollos,
         productos: productos,
-        extras: extras
+        extras: extras,
+        dibujo_terreno: null // Inicializar como null
     };
+
+    // Agregar el dibujo del canvas si existe y tiene contenido
+    if (window.canvasTerreno && window.canvasTerreno.hasContent()) {
+        datos.dibujo_terreno = window.canvasTerreno.getCanvasAsBase64();
+    }
 
     try {
         const response = await fetch('../../php/cotizaciones/guardar_cotizacion.php', {

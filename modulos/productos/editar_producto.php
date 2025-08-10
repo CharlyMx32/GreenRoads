@@ -1,10 +1,5 @@
 <?php
 
-/**
- * Controlador para edición de productos
- * 
- * Permite modificar información básica de productos y su imagen
- */
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -113,6 +108,10 @@ while ($row = mysqli_fetch_assoc($res)) {
             <form id="formProducto" enctype="multipart/form-data">
                 <input required type="text" class="textfield" name="nombre" id="nombre" value="<?= htmlspecialchars($producto['nombre']) ?>">
                 <label for="nombre" placeholder="Nombre *"></label>
+
+                <input type="number" class="textfield" name="costo_base" id="costo_base" 
+                       step="0.01" min="0" value="<?= htmlspecialchars($producto['costo_base'] ?? '') ?>">
+                <label for="costo_base" placeholder="Costo base"></label>
 
                 <select name="tipo_producto" class="textfield" required>
                     <option value=""></option>

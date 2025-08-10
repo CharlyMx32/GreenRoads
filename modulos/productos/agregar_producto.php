@@ -1,28 +1,17 @@
 <?php
 
-/**
- * Controlador para creación de nuevos productos
- * 
- * Permite registrar nuevos productos en el sistema con sus características básicas
- * y configuración de inventario.
- */
-
-// Configuración inicial
 $ROOT = '../..';
 $TITULO = "Nuevo producto";
 
-// Incluir archivos necesarios
 require_once $ROOT . '/db/conexion.php';
 require_once $ROOT . '/includes/sesion.php';
 require_once $ROOT . '/includes/config.php';
 
-// Verificar sesión activa
 if (!tieneSesion()) {
     header("Location: $URL_ROOT/login");
     exit();
 }
 
-// Usar consultas preparadas para obtener datos
 $unidades = [];
 $tiposProducto = [];
 
@@ -34,7 +23,6 @@ if ($result = mysqli_query($conn, $query)) {
     }
     mysqli_free_result($result);
 } else {
-    // Manejo de error en consulta
     error_log("Error al obtener tipos de producto: " . mysqli_error($conn));
 }
 
@@ -61,6 +49,21 @@ if ($result = mysqli_query($conn, $query)) {
 } else {
     error_log("Error al obtener unidades: " . mysqli_error($conn));
 }
+
+// Obtener colores disponibles
+$colores = [];
+$query = "SELECT id, nombre, codigo_hex FROM colores ORDER BY nombre ASC";
+if ($result = mysqli_query($conn, $query)) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $colores[] = $row;
+    }
+    mysqli_free_result($result);
+} else {
+    error_log("Error al obtener colores: " . mysqli_error($conn));
+}
+
+
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -114,6 +117,12 @@ if ($result = mysqli_query($conn, $query)) {
                     </div>
 
                     <div class="textfield-container">
+                        <input type="number" class="textfield" name="costo_base" id="costo_base"
+                            step="0.01" min="0" aria-label="Costo base del producto">
+                        <label for="costo_base" placeholder="Costo base"></label>
+                    </div>
+
+                    <div class="textfield-container">
                         <select name="tipo_producto" class="textfield" required id="tipoProducto"
                             aria-required="true" aria-label="Tipo de producto">
                             <option value=""></option>
@@ -164,7 +173,21 @@ if ($result = mysqli_query($conn, $query)) {
                         <label placeholder="Modelo (solo para pasto)"></label>
                     </div>
 
-                    
+                    <!-- campo para escojer los colores del ROLLO -->
+                    <div class="textfield-container" id="divcolorRollo" style="display:none;">
+                        <label style="display:block; margin-bottom: 5px;">Colores del rollo *</label>
+                        <div class="color-grid">
+                            <?php foreach ($colores as $color): ?>
+                                <label class="color-option">
+                                    <input type="checkbox" name="color_rollo[]" value="<?= $color['id'] ?>">
+                                    <span class="color-box" style="background-color: <?= $color['codigo_hex'] ?>"></span>
+                                    <?= htmlspecialchars($color['nombre']) ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+
                 </div>
             </div>
         </form>
@@ -201,6 +224,7 @@ if ($result = mysqli_query($conn, $query)) {
     </div>
 
     <script src="../../scripts/productos/agregar_producto.js"></script>
+
 </body>
 
 </html>

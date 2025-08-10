@@ -4,12 +4,7 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 $ROOT = '../..';
-
 $TITULO = "Nuevo cliente";
-
-// include_once $ROOT . '/db/conexion.php';
-// include_once $ROOT . '/includes/sesion.php';
-// include_once $ROOT . '/includes/config.php';
 
 include_once '../../db/conexion.php';
 include_once '../../includes/sesion.php';
@@ -27,12 +22,10 @@ include_once '../../includes/config.php';
 
 <body>
     <?php
-    // HEADER
     $headerParams = [
         "titulo" => $TITULO,
         "btn_atras" => "window.history.back()"
     ];
-    // include_once $ROOT . '/includes/header.php';
     include_once '../../includes/header.php';
     ?>
 
@@ -60,8 +53,7 @@ include_once '../../includes/config.php';
     </div>
 
 
-    <!-- POPUP -->
-    <?php  // include_once $ROOT . '/includes/popup.php'; 
+    <?php
     include_once '../../includes/popup.php';
     ?>
 

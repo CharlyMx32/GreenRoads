@@ -46,7 +46,6 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <head>
     <?php include_once "$ROOT/includes/head.php"; ?>
-    <script src="<?php echo $ROOT ?>/../js/buscador.js?cache=<?php echo uniqid(); ?>"></script>
 </head>
 
 <body>
@@ -65,9 +64,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <tr>
                         <th>ID</th>
                         <th>Cliente</th>
-                        <!--<th>Terreno</th>
-                        <th>Instalación</th>
-                        <th>Garantía</th>-->
                         <th>Fecha</th>
                         <th>Estado</th>
                         <th>Total</th>
@@ -87,9 +83,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <tr>
                                 <td>#<?= $cotizacion['id'] ?></td>
                                 <td><?= htmlspecialchars($cotizacion['nombre_cliente'] ?? '') ?></td>
-                                <!-- <td><?= ucfirst($cotizacion['tipo_terreno'] ?? '') ?></td>
-                                <td><?= ucfirst($cotizacion['tipo_instalacion'] ?? '') ?></td>
-                                <td><?= ($cotizacion['garantia_anios'] ? $cotizacion['garantia_anios'] . ' años' : '-') ?></td> -->
                                 <td><?= date('Y-m-d', strtotime($cotizacion['fecha'])) ?></td>
                                 <td><?= ucfirst($cotizacion['estado']) ?></td>
                                 <td>$<?= isset($cotizacion['total']) ? number_format((float)$cotizacion['total'], 2) : '0.00' ?></td>
@@ -107,6 +100,14 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 </td>
                                 <td>
                                     <div class="opciones-tabla-lista">
+                                        <!-- Botón ver detalle -->
+                                        <div class="ver-detalle" 
+                                            onclick="location.href='detalle.php?id=<?= $cotizacion['id'] ?>'"
+                                            title="Ver detalle"
+                                            style="color: #5facffff;">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </div>
+
                                         <!-- Botón editar -->
                                         <div class="editar <?= $cotizacion['estado'] != 'pendiente' ? 'disabled' : '' ?>"
                                             onclick="<?= $cotizacion['estado'] == 'pendiente' ? "location.href='{$ROOT}/cotizaciones/editar_cotizacion?id={$cotizacion['id']}'" : '' ?>"

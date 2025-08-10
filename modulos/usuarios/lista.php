@@ -35,8 +35,6 @@
     <head>
         <?php include_once $ROOT.'/includes/head.php'; ?>
         
-        <!-- LINKS JS INTERNO -->
-        <script src="<?php $ROOT ?>/js/buscador.js?cache=<?php echo uniqid(); ?>"></script>
     </head>
 
     <body>

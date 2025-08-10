@@ -128,7 +128,7 @@ function createTableRow(tabulador) {
         <tr data-id="${tabulador.id}" data-tipo="${tabulador.tipo}" class="${tabulador.tipo === 'precio_instalacion' ? '' : 'hidden'}">
             <td>${parseFloat(tabulador.rango_min).toFixed(2)}</td>
             <td>${parseFloat(tabulador.rango_max).toFixed(2)}</td>
-            <td>$${parseFloat(tabulador.valor).toFixed(2)}</td>
+            <td>$${parseFloat(tabulador.valor || 0).toFixed(2)}</td>
             <td>${tabulador.descripcion || ''}</td>
             <td><span class="estado ${tabulador.activo ? 'activo' : 'inactivo'}">${tabulador.activo ? 'Activo' : 'Inactivo'}</span></td>
             <td>${new Date(tabulador.fecha_actualizacion).toLocaleDateString('es-MX')}</td>
@@ -169,7 +169,7 @@ async function guardarTabulador() {
             id: document.getElementById('tabulador_id').value || 0,
             rango_min: rangoMin,
             rango_max: rangoMax,
-            valor: precioM2,
+            valor: precioM2,  // Usar 'valor' que es el nombre correcto en la BD
             descripcion: document.getElementById('descripcion').value,
             activo: document.getElementById('activo').checked ? 1 : 0,
             tipo: document.getElementById('tipo').value
@@ -277,7 +277,7 @@ async function mostrarModalTabulador(id, tipo = null) {
                 const tabulador = data.tabuladores[0];
                 document.getElementById('rango_min').value = parseFloat(tabulador.rango_min).toFixed(2);
                 document.getElementById('rango_max').value = parseFloat(tabulador.rango_max).toFixed(2);
-                document.getElementById('valor').value = parseFloat(tabulador.valor).toFixed(2);
+                document.getElementById('valor').value = parseFloat(tabulador.valor || 0).toFixed(2);
                 document.getElementById('descripcion').value = tabulador.descripcion || '';
                 document.getElementById('activo').checked = tabulador.activo == 1;
                 document.getElementById('tipo').value = tabulador.tipo || 'precio_instalacion';
@@ -294,11 +294,17 @@ async function mostrarModalTabulador(id, tipo = null) {
     } else {
         titulo.textContent = 'Nuevo Tabulador';
         document.getElementById('tabulador_id').value = '';
+        if (tipo) {
+            document.getElementById('tipo').value = tipo;
+        }
     }
 
     modal.style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
+
+// Hacer la función disponible globalmente
+window.mostrarModalTabulador = mostrarModalTabulador;
 
 function editarTabulador(id) {
     console.log("Consultando tabulador con ID:", id);
@@ -324,6 +330,12 @@ function eliminarTabulador(id) {
             displayMensajeError(error.message);
         });
 }
+
+// Hacer las funciones disponibles globalmente
+window.editarTabulador = editarTabulador;
+window.eliminarTabulador = eliminarTabulador;
+window.guardarTabulador = guardarTabulador;
+window.cerrarModalTabulador = cerrarModalTabulador;
 
 window.onclick = function (event) {
     if (event.target === document.getElementById('modalTabulador')) {

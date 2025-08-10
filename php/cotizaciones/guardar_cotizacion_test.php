@@ -1,4 +1,5 @@
 <?php
+// Archivo temporal para probar guardado sin autenticación
 header('Content-Type: application/json');
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -10,21 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once '../../db/conexion.php';
-require_once '../../includes/sesion.php';
-
-// Iniciar sesión si no está iniciada
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Verificar autenticación
-if (!tieneSesion() || !isset($_SESSION['usuario_id'])) {
-    echo json_encode(['status' => 0, 'mensaje' => 'No autorizado']);
-    exit();
-}
-
-// Usar ID admin de la sesión
-$id_admin = $_SESSION['usuario_id'];
 
 $input = file_get_contents('php://input');
 $datos = json_decode($input, true);
@@ -43,25 +29,10 @@ foreach ($camposRequeridos as $campo) {
     }
 }
 
-function obtenerCostoProducto($conn, $idProducto) {
-    $query = "SELECT costo_unitario 
-             FROM movimientos_inventario 
-             WHERE id_producto = ? AND tipo_movimiento = 'entrada'
-             ORDER BY fecha DESC 
-             LIMIT 1";
-             
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $idProducto);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    return $result->fetch_assoc()['costo_unitario'] ?? 0;
-}
-
 mysqli_begin_transaction($conn);
 
 try {
-    // Incluir dibujo_terreno en la consulta
+    // Insertar cotización
     $query = "INSERT INTO cotizaciones (
         id_cliente, 
         id_admin, 
@@ -72,29 +43,24 @@ try {
         tipo_instalacion,   
         garantia_anios,     
         precio_instalacion_m2,
-        dibujo_terreno,
         fecha
-    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, NOW())";
+    ) VALUES (?, 1, 'pendiente', ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = mysqli_prepare($conn, $query);
     if (!$stmt) {
         throw new Exception("Error al preparar la consulta: " . mysqli_error($conn));
     }
 
-    $id_admin = isset($_SESSION['usuario_id']) ? $_SESSION['usuario_id'] : 1;
-    
     mysqli_stmt_bind_param(
         $stmt,
-        "iiddssids",
+        "iddssid",
         $datos['id_cliente'],
-        $id_admin,
         $datos['total'],
         $datos['area_total'],
         $datos['tipo_terreno'],
         $datos['tipo_instalacion'],
         $datos['garantia'],
-        $datos['precio_instalacion'],
-        $datos['dibujo_terreno']
+        $datos['precio_instalacion']
     );
 
     if (!mysqli_stmt_execute($stmt)) {
@@ -112,11 +78,9 @@ try {
             }
 
             // Verificar disponibilidad
-            $sql_verificar = "SELECT SUM(area_m2) AS area_disponible
+            $sql_verificar = "SELECT SUM(area_m2) AS area_disponible, COUNT(*) as num_rollos
                 FROM inventario_rollos
-                WHERE id_producto = ?
-                AND id_color = ?
-                AND estado = 'disponible'";
+                WHERE id_producto = ? AND id_color = ? AND estado = 'disponible'";
 
             $stmt_verificar = mysqli_prepare($conn, $sql_verificar);
             mysqli_stmt_bind_param($stmt_verificar, "ii", $rollo['id_producto'], $rollo['id_color']);
@@ -124,18 +88,24 @@ try {
             $result_verificar = mysqli_stmt_get_result($stmt_verificar);
             $disponibilidad = mysqli_fetch_assoc($result_verificar);
 
-            // Si no hay inventario disponible, usar precio base por defecto
+            $area_disponible = $disponibilidad['area_disponible'] ?? 0;
+            $num_rollos = $disponibilidad['num_rollos'] ?? 0;
+
+            // Determinar precio según disponibilidad
             $precio_unitario = $rollo['precio_unitario'];
-            if ($disponibilidad['area_disponible'] <= 0) {
-                // No hay inventario, usar precio base de 1000
+            $mensaje_inventario = "";
+            
+            if ($area_disponible <= 0) {
                 $precio_unitario = 1000.00;
-                error_log("Cotización: No hay inventario para producto {$rollo['id_producto']}, color {$rollo['id_color']}. Usando precio base de $1000");
-            } else if ($disponibilidad['area_disponible'] < $rollo['cantidad']) {
-                // Hay inventario pero insuficiente, usar precio del inventario disponible
-                error_log("Cotización: Inventario insuficiente para producto {$rollo['id_producto']}, color {$rollo['id_color']}. Disponible: {$disponibilidad['area_disponible']}, Solicitado: {$rollo['cantidad']}");
+                $mensaje_inventario = "Sin inventario - usando precio base $1000";
+            } else if ($area_disponible < $rollo['cantidad']) {
+                $mensaje_inventario = "Inventario insuficiente ({$area_disponible} m² disponibles) - usando precio original";
+            } else {
+                $mensaje_inventario = "Inventario suficiente ({$area_disponible} m²) - precio normal";
             }
 
-            $query = "INSERT INTO detalle_cotizacion (
+            // Insertar detalle
+            $query_detalle = "INSERT INTO detalle_cotizacion (
                 id_cotizacion, 
                 id_producto, 
                 id_color,
@@ -144,50 +114,35 @@ try {
                 precio_unitario
             ) VALUES (?, ?, ?, ?, ?, ?)";
 
-            $stmt = mysqli_prepare($conn, $query);
+            $stmt_detalle = mysqli_prepare($conn, $query_detalle);
             mysqli_stmt_bind_param(
-                $stmt,
+                $stmt_detalle,
                 "iiiddd",
                 $id_cotizacion,
                 $rollo['id_producto'],
                 $rollo['id_color'],
                 $rollo['cantidad'],
                 $rollo['cantidad'],
-                $precio_unitario // Usar el precio calculado (original o base)
+                $precio_unitario
             );
-            mysqli_stmt_execute($stmt);
-            $id_detalle = mysqli_insert_id($conn);
-            mysqli_stmt_close($stmt);
-
-            // Solo procesar reserva si hay inventario disponible
-            if ($disponibilidad['area_disponible'] > 0) {
-                // Comentando temporalmente la función de corte hasta que esté disponible
-                /*
-                $resultado_corte = procesarReservaConCorte(
-                    $conn, 
-                    $id_cotizacion, 
-                    $rollo['id_producto'], 
-                    $rollo['id_color'], 
-                    min($rollo['cantidad'], $disponibilidad['area_disponible'])
-                );
-                
-                if (!$resultado_corte['exito'] && $resultado_corte['area_faltante'] > 0) {
-                    error_log("Cotización {$id_cotizacion}: Inventario insuficiente. " . $resultado_corte['mensaje']);
-                }
-                */
-                error_log("Cotización {$id_cotizacion}: Rollo agregado con inventario disponible");
-            } else {
-                error_log("Cotización {$id_cotizacion}: Rollo agregado sin inventario - usando precio base");
+            
+            if (!mysqli_stmt_execute($stmt_detalle)) {
+                throw new Exception("Error al insertar detalle: " . mysqli_stmt_error($stmt_detalle));
             }
+            mysqli_stmt_close($stmt_detalle);
+            
+            error_log("Cotización $id_cotizacion - Rollo procesado: $mensaje_inventario");
         }
     }
 
-    // En la sección de procesar productos generales:
+    // Procesar productos generales
     if (!empty($datos['productos']) && is_array($datos['productos'])) {
         foreach ($datos['productos'] as $producto) {
             if (empty($producto['id_producto'])) continue;
 
-            // Obtener el costo real del producto
+            // Obtener el costo real del producto o usar precio base
+            $costo = 50.00; // Precio base para productos sin historial
+            
             $sqlCosto = "SELECT costo_unitario 
                     FROM movimientos_inventario 
                     WHERE id_producto = ? AND tipo_movimiento = 'entrada'
@@ -197,27 +152,32 @@ try {
             $stmtCosto->bind_param("i", $producto['id_producto']);
             $stmtCosto->execute();
             $resultCosto = $stmtCosto->get_result();
-            $costo = $resultCosto->fetch_assoc()['costo_unitario'] ?? 0;
+            $row = $resultCosto->fetch_assoc();
+            if ($row && $row['costo_unitario'] > 0) {
+                $costo = $row['costo_unitario'];
+            }
 
-            // Insertar en detalle_cotizacion con el costo real (sin margen)
-            $query = "INSERT INTO detalle_cotizacion (
-            id_cotizacion, 
-            id_producto, 
-            cantidad, 
-            precio_unitario
-        ) VALUES (?, ?, ?, ?)";
+            $query_producto = "INSERT INTO detalle_cotizacion (
+                id_cotizacion, 
+                id_producto, 
+                cantidad, 
+                precio_unitario
+            ) VALUES (?, ?, ?, ?)";
 
-            $stmt = mysqli_prepare($conn, $query);
+            $stmt_producto = mysqli_prepare($conn, $query_producto);
             mysqli_stmt_bind_param(
-                $stmt,
+                $stmt_producto,
                 "iidd",
                 $id_cotizacion,
                 $producto['id_producto'],
                 $producto['cantidad'],
-                $costo // Precio unitario = costo real (sin margen)
+                $costo
             );
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
+            
+            if (!mysqli_stmt_execute($stmt_producto)) {
+                throw new Exception("Error al insertar producto: " . mysqli_stmt_error($stmt_producto));
+            }
+            mysqli_stmt_close($stmt_producto);
         }
     }
 
@@ -226,29 +186,43 @@ try {
         foreach ($datos['extras'] as $extra) {
             if (empty($extra['id_extra'])) continue;
 
-            $query = "INSERT INTO cotizacion_extras (
+            $query_extra = "INSERT INTO cotizacion_extras (
                 id_cotizacion, 
                 id_extra, 
                 precio_aplicado
             ) VALUES (?, ?, ?)";
 
-            $stmt = mysqli_prepare($conn, $query);
+            $stmt_extra = mysqli_prepare($conn, $query_extra);
             mysqli_stmt_bind_param(
-                $stmt,
+                $stmt_extra,
                 "iid",
                 $id_cotizacion,
                 $extra['id_extra'],
                 $extra['precio']
             );
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
+            
+            if (!mysqli_stmt_execute($stmt_extra)) {
+                throw new Exception("Error al insertar extra: " . mysqli_stmt_error($stmt_extra));
+            }
+            mysqli_stmt_close($stmt_extra);
         }
     }
 
     mysqli_commit($conn);
-    echo json_encode(['status' => 1, 'mensaje' => 'Cotización guardada correctamente', 'id_cotizacion' => $id_cotizacion]);
+    echo json_encode([
+        'status' => 1, 
+        'mensaje' => 'Cotización guardada correctamente', 
+        'id_cotizacion' => $id_cotizacion,
+        'detalles' => [
+            'rollos_procesados' => count($datos['rollos'] ?? []),
+            'productos_procesados' => count($datos['productos'] ?? []),
+            'extras_procesados' => count($datos['extras'] ?? [])
+        ]
+    ]);
+    
 } catch (Exception $e) {
     mysqli_rollback($conn);
     error_log("Error al guardar cotización: " . $e->getMessage());
     echo json_encode(['status' => 0, 'mensaje' => 'Error al guardar: ' . $e->getMessage()]);
 }
+?>
