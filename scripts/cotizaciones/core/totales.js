@@ -4,28 +4,43 @@ import {
     obtenerValorTabulador
 } from './parametros.js';
 
-async function calcularCostoRollos(rollos) {
+async function obtenerInfoRollo(idProducto, idColor, cantidad) {
     try {
-        const response = await fetch('../../php/cotizaciones/calcular_costo_rollos.php', {
+        const response = await fetch('../../php/cotizaciones/obtener_precio_inventario.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rollos })
+            body: JSON.stringify({
+                id_producto: idProducto,
+                id_color: idColor,
+                cantidad: cantidad
+            })
         });
 
         const data = await response.json();
-
-        if (!data.success) {
-            console.error('Error al calcular costo de rollos:', data.error);
-            return { costoTotal: 0, rollosUsados: [] };
+        
+        if (data.success) {
+            return {
+                costoTotalRollo: data.costo_total_rollo,
+                areaTotalRollo: data.area_total_rollo,
+                areaDisponible: data.area_disponible,
+                tieneInventario: data.tiene_inventario
+            };
+        } else {
+            console.error('Error al obtener info del rollo:', data.message);
+            return {
+                costoTotalRollo: 1000, // Fallback
+                areaTotalRollo: 200, // Fallback
+                areaDisponible: 200, // Fallback
+                tieneInventario: false
+            };
         }
-
-        return {
-            costoTotal: data.costoTotal,
-            rollosUsados: data.rollosUsados
-        };
     } catch (error) {
         console.error('Error:', error);
-        return { costoTotal: 0, rollosUsados: [] };
+        return {
+            costoUnitario: 1000, 
+            areaDisponible: 200, 
+            tieneInventario: false
+        };
     }
 }
 
@@ -38,6 +53,83 @@ async function obtenerCostoProducto(idProducto) {
         console.error('Error al obtener costo:', error);
         return 0;
     }
+}
+
+async function calcularMaterialesAutomaticos() {
+    try {
+        const tipoInstalacion = document.getElementById('tipo_instalacion')?.value;
+        const area = parseFloat(document.getElementById('area_total')?.value || 0);
+
+        if (!tipoInstalacion || area <= 0) {
+            return 0; 
+        }
+
+        const response = await fetch('/greenroads/php/cotizaciones/calcular_materiales.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tipo_terreno: tipoInstalacion,
+                area: area
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            agregarProductosCalculados(data.materiales);
+            return data.costo_total;
+        } else {
+            console.error('Error al calcular materiales:', data.error);
+            return 0;
+        }
+
+    } catch (error) {
+        console.error('Error en calcular materiales automáticos:', error);
+        return 0;
+    }
+}
+
+function agregarProductosCalculados(materiales) {
+    document.querySelectorAll('#productos_container .product-item[data-auto="true"]').forEach(item => {
+        item.remove();
+    });
+
+    materiales.forEach(material => {
+        agregarProductoAuto(material.nombre, material.cantidad, material.precio_unitario, material.id_producto);
+    });
+}
+
+function agregarProductoAuto(nombre, cantidad, precio, idProducto) {
+    const container = document.getElementById('productos_container');
+    if (!container) return;
+
+    const productItem = document.createElement('div');
+    productItem.className = 'product-item';
+    productItem.setAttribute('data-auto', 'true');
+    
+    productItem.innerHTML = `
+        <div class="form-group">
+            <label>Producto (Auto)</label>
+            <select class="product-select textfield" disabled>
+                <option value="${idProducto}" data-precio="${precio}" selected>${nombre}</option>
+            </select>
+        </div>
+        <div class="form-group" style="max-width: 120px;">
+            <label>Cantidad</label>
+            <input type="number" value="${cantidad}" min="0" step="0.01" readonly>
+        </div>
+        <div class="product-controls">
+            <span class="auto-badge">AUTO</span>
+        </div>
+    `;
+    
+    container.appendChild(productItem);
 }
 
 async function actualizarTotales() {
@@ -53,19 +145,53 @@ async function actualizarTotales() {
             return;
         }
 
-        // 1. Calcular costo real de los rollos seleccionados
-        const rollosSeleccionados = obtenerDatosRollos();
-        const { costoTotal: costoRollos } = await calcularCostoRollos(rollosSeleccionados);
-
-        // 2. Obtener margen de utilidad según área (solo para rollos)
-        const margenUtilidad = obtenerValorTabulador('margen_utilidad', area) / 100;
-        const precioRollos = costoRollos * (1 + margenUtilidad);
-
-        // 3. Calcular productos (sumar directamente su precio)
-        let costoProductos = 0;
-        const productos = obtenerDatosProductos();
+        // 1. Calcular costo REAL de rollos usando información dinámica de la BD
+        let costoRollosReal = 0;
+        let detalleRollos = [];
         
+        const rollosElements = document.querySelectorAll('#rollos_container .product-item');
+        for (const item of rollosElements) {
+            const select = item.querySelector('.rollo-select');
+            const cantidadInput = item.querySelector('input[type="number"]');
+            const colorSelect = item.querySelector('.color-select');
+            
+            if (select?.value && cantidadInput?.value && colorSelect?.value) {
+                const areaUsada = parseFloat(cantidadInput.value);
+                const idProducto = parseInt(select.value);
+                const idColor = parseInt(colorSelect.value);
+                
+                const infoRollo = await obtenerInfoRollo(idProducto, idColor, areaUsada);
+                
+                // Calcular costo como proporción: (área_usada / área_total_rollo) × costo_total_rollo
+                const proporcionUsada = areaUsada / infoRollo.areaTotalRollo;
+                const costoReal = proporcionUsada * infoRollo.costoTotalRollo;
+                
+                costoRollosReal += costoReal;
+                
+                detalleRollos.push({
+                    nombre: select.options[select.selectedIndex].text,
+                    areaUsada: areaUsada,
+                    areaTotalRollo: infoRollo.areaTotalRollo,
+                    costoTotalRollo: infoRollo.costoTotalRollo,
+                    proporcionUsada: proporcionUsada,
+                    costoReal: costoReal,
+                    tieneInventario: infoRollo.tieneInventario
+                });
+            }
+        }
 
+        // 2. Aplicar DESCUENTO por volumen según área (se resta del costo)
+        const descuentoVolumenPorcentaje = obtenerValorTabulador('descuento_volumen', area) / 100;
+        const descuentoRollos = costoRollosReal * descuentoVolumenPorcentaje;
+        const precioRollosConDescuento = costoRollosReal - descuentoRollos;
+
+        // 3. Calcular materiales automáticos según tipo de instalación
+        const costoMaterialesAuto = await calcularMaterialesAutomaticos();
+
+        // 4. Calcular productos manuales (clavos, etc.)
+        let costoProductos = 0;
+        let detalleProductos = [];
+        
         document.querySelectorAll('#productos_container .product-item').forEach(item => {
             const select = item.querySelector('.product-select');
             const input = item.querySelector('input[type="number"]');
@@ -73,24 +199,42 @@ async function actualizarTotales() {
             if (select && select.value && input && input.value) {
                 const precio = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
                 const cantidad = parseFloat(input.value) || 0;
-                costoProductos += precio * cantidad;
+                const subtotal = precio * cantidad;
+                costoProductos += subtotal;
+                
+                detalleProductos.push({
+                    nombre: select.options[select.selectedIndex].text,
+                    cantidad: cantidad,
+                    precioUnitario: precio,
+                    subtotal: subtotal
+                });
             }
         });
 
-        // 4. Calcular extras
+        // 5. Calcular extras
         let extras = 0;
+        let detalleExtras = [];
         document.querySelectorAll('.extra-check:checked').forEach(ck => {
-            extras += parseFloat(ck.dataset.precio) || 0;
+            const precio = parseFloat(ck.dataset.precio) || 0;
+            extras += precio;
+            detalleExtras.push({
+                nombre: ck.nextSibling.textContent.trim(),
+                precio: precio
+            });
         });
 
-        // 5. Calcular precio de instalación
+        // 6. Calcular precio de instalación
         const precioInstalacion = obtenerValorTabulador('precio_instalacion', area);
         const costoInstalacion = area * precioInstalacion;
 
-        // 6. Calcular total
-        const subtotal = precioRollos + costoProductos + extras + costoInstalacion;
+        // 7. Calcular mano de obra adicional
+        const manoObraPorM2 = obtenerValorTabulador('mano_obra', area);
+        const costoManoObra = area * manoObraPorM2;
 
-        // Verificar si el IVA está aplicado
+        // 8. Calcular subtotal
+        const subtotal = precioRollosConDescuento + costoProductos + costoMaterialesAuto + extras + costoInstalacion + costoManoObra;
+
+        // 9. Verificar si el IVA está aplicado
         const aplicarIva = document.getElementById('aplicar_iva')?.checked ?? true;
         const iva = aplicarIva ? subtotal * parametrosSistema.ivaPorcentaje : 0;
         const total = subtotal + iva;
@@ -107,40 +251,40 @@ async function actualizarTotales() {
             ivaContainer.style.display = aplicarIva ? 'flex' : 'none';
         }
 
-        mostrarDesglose({
-            area,
-            costoRollos,
-            margenUtilidad: margenUtilidad * 100,
-            precioRollos,
-            costoProductos,
-            extras,
-            precioInstalacion,
-            costoInstalacion,
-            subtotal,
-            iva,
-            total
-        });
-
     } catch (error) {
         console.error('Error al actualizar totales:', error);
     }
 }
 
-function obtenerDatosRollos() {
+async function obtenerDatosRollos() {
     const rollos = [];
 
-    document.querySelectorAll('#rollos_container .product-item').forEach(item => {
+    const rollosElements = document.querySelectorAll('#rollos_container .product-item');
+    for (const item of rollosElements) {
         const select = item.querySelector('.rollo-select');
         const input = item.querySelector('input[type="number"]');
+        const colorSelect = item.querySelector('.color-select');
 
-        if (select && select.value && input && input.value) {
+        if (select && select.value && input && input.value && colorSelect && colorSelect.value) {
+            const cantidad = parseFloat(input.value);
+            const idProducto = parseInt(select.value);
+            const idColor = parseInt(colorSelect.value);
+            
+            // Obtener información del rollo desde la BD
+            const infoRollo = await obtenerInfoRollo(idProducto, idColor, cantidad);
+            
+            // Calcular precio unitario como proporción del costo total
+            const proporcionUsada = cantidad / infoRollo.areaTotalRollo;
+            const precioUnitario = proporcionUsada * infoRollo.costoTotalRollo / cantidad;
+            
             rollos.push({
-                id_producto: parseInt(select.value),
-                id_color: parseInt(select.selectedOptions[0]?.dataset.idColor) || null,
-                area: parseFloat(input.value)
+                id_producto: idProducto,
+                id_color: idColor,
+                cantidad: cantidad,
+                precio_unitario: precioUnitario // Precio calculado por proporción
             });
         }
-    });
+    }
 
     return rollos;
 }
@@ -161,78 +305,6 @@ function obtenerDatosProductos() {
     });
 
     return productos;
-}
-
-function mostrarDesglose(desglose) {
-    const html = `
-        <div class="desglose-cotizacion">
-            <h4>Detalles de cotización</h4>
-            <div class="desglose-item">
-                <span>Área total:</span>
-                <span>${desglose.area.toFixed(2)} m²</span>
-            </div>
-            
-            <div class="desglose-seccion">
-                <h5>Rollos de pasto</h5>
-                <div class="desglose-item">
-                    <span>Costo real:</span>
-                    <span>$${desglose.costoRollos.toFixed(2)}</span>
-                </div>
-                <div class="desglose-item">
-                    <span>Margen (${desglose.margenUtilidad.toFixed(2)}%):</span>
-                    <span>$${(desglose.precioRollos - desglose.costoRollos).toFixed(2)}</span>
-                </div>
-                <div class="desglose-item">
-                    <span>Precio con margen:</span>
-                    <span>$${desglose.precioRollos.toFixed(2)}</span>
-                </div>
-            </div>
-            
-            <div class="desglose-seccion">
-                <h5>Otros productos</h5>
-                <div class="desglose-item">
-                    <span>Costo total:</span>
-                    <span>$${desglose.costoProductos.toFixed(2)}</span>
-                </div>
-            </div>
-            
-            <div class="desglose-seccion">
-                <h5>Instalación</h5>
-                <div class="desglose-item">
-                    <span>Precio (${desglose.precioInstalacion.toFixed(2)}/m² × ${desglose.area.toFixed(2)}m²):</span>
-                    <span>$${desglose.costoInstalacion.toFixed(2)}</span>
-                </div>
-            </div>
-            
-            <div class="desglose-seccion">
-                <h5>Extras</h5>
-                <div class="desglose-item">
-                    <span>Total:</span>
-                    <span>$${desglose.extras.toFixed(2)}</span>
-                </div>
-            </div>
-            
-            <div class="desglose-total">
-                <div class="desglose-item">
-                    <strong>Subtotal:</strong>
-                    <strong>$${desglose.subtotal.toFixed(2)}</strong>
-                </div>
-                <div class="desglose-item">
-                    <span>IVA (${(parametrosSistema.ivaPorcentaje * 100).toFixed(2)}%):</span>
-                    <span>$${desglose.iva.toFixed(2)}</span>
-                </div>
-                <div class="desglose-item">
-                    <strong>Total:</strong>
-                    <strong>$${desglose.total.toFixed(2)}</strong>
-                </div>
-            </div>
-        </div>
-    `;
-
-    const contenedor = document.getElementById('resumen_cotizacion');
-    if (contenedor) {
-        contenedor.innerHTML = html;
-    }
 }
 
 export { actualizarTotales, obtenerDatosRollos, obtenerDatosProductos };

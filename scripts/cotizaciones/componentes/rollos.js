@@ -21,7 +21,7 @@ function actualizarRollos(element) {
         
         if (modeloText) modeloText.textContent = select.selectedOptions[0].dataset.modelo || '';
         if (coloresText) coloresText.textContent = select.selectedOptions[0].dataset.colores || '';
-        if (areaText) areaText.textContent = `${cantidad.value} m²`;
+        if (areaText) areaText.textContent = `${cantidad.value || 0} m²`;
 
         let colorSelectContainer = detalles.querySelector('.color-select-container');
         if (!colorSelectContainer) {
@@ -38,6 +38,10 @@ function actualizarRollos(element) {
             colorSelect.className = 'color-select textfield';
             colorSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
             colorSelectContainer.appendChild(colorSelect);
+            
+            colorSelect.addEventListener('change', function() {
+                calcularCostoCompleto(item);
+            });
         }
 
         cargarColoresRollos(select);
@@ -45,11 +49,72 @@ function actualizarRollos(element) {
         detalles.style.display = 'none';
     }
 
-    const precio = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
-    const cant = parseFloat(cantidad.value) || 0;
-    if (subtotal) subtotal.textContent = `$${(precio * cant).toFixed(2)}`;
+    calcularCostoCompleto(item);
+}
 
-    actualizarTotales();
+function calcularCostoCompleto(item) {
+    const select = item.querySelector('.rollo-select');
+    const cantidadInput = item.querySelector('input[type="number"]');
+    const colorSelect = item.querySelector('.color-select');
+    const subtotal = item.querySelector('.product-price');
+    
+    const tieneModelo = select && select.value;
+    const tieneCantidad = cantidadInput && cantidadInput.value && parseFloat(cantidadInput.value) > 0;
+    const tieneColor = colorSelect && colorSelect.value;
+    
+    if (tieneModelo && tieneCantidad && tieneColor) {
+        obtenerPrecioInventario(select.value, colorSelect.value, parseFloat(cantidadInput.value))
+            .then(costoTotal => {
+                // costoTotal ya viene calculado como proporción total
+                if (subtotal) {
+                    subtotal.textContent = `$${costoTotal.toFixed(2)}`;
+                }
+                actualizarTotales();
+            })
+            .catch(error => {
+                console.error('Error al obtener precio:', error);
+                const precioBase = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
+                const cantidad = parseFloat(cantidadInput.value);
+                const costoTotal = precioBase * cantidad;
+                if (subtotal) {
+                    subtotal.textContent = `$${costoTotal.toFixed(2)} (sin inventario)`;
+                }
+                actualizarTotales();
+            });
+    } else {
+        if (subtotal) {
+            subtotal.textContent = '$0.00 (pendiente)';
+        }
+        actualizarTotales();
+    }
+}
+
+async function obtenerPrecioInventario(idProducto, idColor, cantidad) {
+    try {
+        const response = await fetch(`../../php/cotizaciones/obtener_precio_inventario.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_producto: idProducto,
+                id_color: idColor,
+                cantidad: cantidad
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Calcular precio usando la nueva lógica de proporción
+            const proporcionUsada = cantidad / data.area_total_rollo;
+            const precioTotal = proporcionUsada * data.costo_total_rollo;
+            return precioTotal; // Retorna el costo total para esa cantidad
+        } else {
+            throw new Error(data.message || 'Error al obtener precio');
+        }
+    } catch (error) {
+        console.error('Error en obtenerPrecioInventario:', error);
+        throw error;
+    }
 }
 
 function cargarColoresRollos(selectElement) {

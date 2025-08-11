@@ -27,6 +27,20 @@ function initTabs() {
             cargarTabuladores(tipo);
         });
     });
+
+    // Manejar las pestañas de subtabs para tabuladores
+    document.querySelectorAll('.subtab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Solo para pestañas dentro de tabuladores
+            if (tab.closest('#tabuladores')) {
+                document.querySelectorAll('#tabuladores .subtab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const tipo = tab.getAttribute('data-subtab');
+                cargarTabuladores(tipo);
+                mostrarFilasPorTipo(tipo);
+            }
+        });
+    });
 }
 
 function initParamForms() {
@@ -92,43 +106,108 @@ function updateLastModified(form) {
     }
 }
 
-function cargarTabuladores(tipo) {
-    console.log("Consultando tabuladores de tipo:", tipo);
+function mostrarFilasPorTipo(tipo) {
+    const filas = document.querySelectorAll('.tabla-lista tbody tr');
+    filas.forEach(fila => {
+        const tipoFila = fila.getAttribute('data-tipo');
+        if (tipoFila === tipo) {
+            fila.style.display = '';
+            fila.classList.remove('hidden');
+        } else {
+            fila.style.display = 'none';
+            fila.classList.add('hidden');
+        }
+    });
+}
 
-    fetch(`../../php/configuracion/obtener_tabulador.php?tipo=${tipo}`)
-        .then(handleResponse)
+function cargarTabuladores(tipo) {
+    fetch(`../../php/configuracion/obtener_tabulador.php?tipo=${tipo}&t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(async response => {
+            const text = await response.text();
+            
+            try {
+                const data = JSON.parse(text);
+                return data;
+            } catch (e) {
+                console.error('Error parsing JSON:', e);
+                console.error('Texto recibido:', text);
+                throw new Error('El servidor devolvió una respuesta inválida al cargar tabuladores.');
+            }
+        })
         .then(data => {
             if (data.status === 1) {
-                actualizarTablaTabuladores(data.tabuladores);
+                actualizarTablaTabuladores(data.tabuladores, tipo);
+                mostrarFilasPorTipo(tipo);
             } else {
-                throw new Error(data.mensaje);
+                throw new Error(data.mensaje || 'Error al cargar tabuladores');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            displayMensajeError('Error al cargar tabuladores');
+            displayPopUp();
+            displayMensajeError('Error al cargar tabuladores: ' + error.message, 'hidePopup()');
         });
 }
 function cerrarModalTabulador() {
-    document.getElementById('modalTabulador').style.display = 'none';
+    const modal = document.getElementById('modalTabulador');
+    modal.style.display = 'none';
     document.body.style.overflow = 'auto';
+    
+    // Limpiar formulario
+    const form = document.getElementById('formTabulador');
+    if (form) {
+        form.reset();
+    }
+    
+    // Limpiar errores
+    const errorContainer = document.getElementById('error-container');
+    if (errorContainer) {
+        errorContainer.remove();
+    }
 }
 
-function actualizarTablaTabuladores(tabuladores) {
-    const tbody = document.querySelector('.tabla-tabulador tbody');
+function actualizarTablaTabuladores(tabuladores, tipoActual = null) {
+    const tbody = document.querySelector('.tabla-lista tbody');
     if (!tbody) return;
 
-    tbody.innerHTML = tabuladores.length === 0
-        ? '<tr><td colspan="9">No hay rangos configurados</td></tr>'
-        : tabuladores.map(createTableRow).join('');
+    if (tabuladores.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No hay rangos configurados para este tipo</td></tr>';
+        return;
+    }
+
+    const tabuladoresFiltrados = tipoActual 
+        ? tabuladores.filter(t => t.tipo === tipoActual)
+        : tabuladores;
+
+    tbody.innerHTML = tabuladoresFiltrados.length === 0
+        ? '<tr><td colspan="7">No hay rangos configurados para este tipo</td></tr>'
+        : tabuladoresFiltrados.map(createTableRow).join('');
 }
 
 function createTableRow(tabulador) {
+    let simbolo = '$';
+    if (tabulador.tipo === 'descuento_volumen') {
+        simbolo = ''; 
+    }
+    
+    let valorFormateado = parseFloat(tabulador.valor || 0).toFixed(2);
+    if (tabulador.tipo === 'descuento_volumen') {
+        valorFormateado += '%';  
+    } else {
+        valorFormateado = simbolo + valorFormateado;
+    }
+
     return `
-        <tr data-id="${tabulador.id}" data-tipo="${tabulador.tipo}" class="${tabulador.tipo === 'precio_instalacion' ? '' : 'hidden'}">
+        <tr data-id="${tabulador.id}" data-tipo="${tabulador.tipo}">
             <td>${parseFloat(tabulador.rango_min).toFixed(2)}</td>
             <td>${parseFloat(tabulador.rango_max).toFixed(2)}</td>
-            <td>$${parseFloat(tabulador.valor || 0).toFixed(2)}</td>
+            <td>${valorFormateado}</td>
             <td>${tabulador.descripcion || ''}</td>
             <td><span class="estado ${tabulador.activo ? 'activo' : 'inactivo'}">${tabulador.activo ? 'Activo' : 'Inactivo'}</span></td>
             <td>${new Date(tabulador.fecha_actualizacion).toLocaleDateString('es-MX')}</td>
@@ -154,7 +233,6 @@ async function guardarTabulador() {
     btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
 
     try {
-        // Validaciones básicas
         const rangoMin = parseFloat(document.getElementById('rango_min').value);
         const rangoMax = parseFloat(document.getElementById('rango_max').value);
         const precioM2 = parseFloat(document.getElementById('valor').value);
@@ -164,41 +242,55 @@ async function guardarTabulador() {
         if (isNaN(precioM2)) throw new Error('Precio inválido');
         if (rangoMin >= rangoMax) throw new Error('Rango mínimo debe ser menor al máximo');
 
-        // Preparar datos
         const data = {
             id: document.getElementById('tabulador_id').value || 0,
             rango_min: rangoMin,
             rango_max: rangoMax,
-            valor: precioM2,  // Usar 'valor' que es el nombre correcto en la BD
+            valor: precioM2, 
             descripcion: document.getElementById('descripcion').value,
             activo: document.getElementById('activo').checked ? 1 : 0,
             tipo: document.getElementById('tipo').value
         };
 
-        const response = await fetch('../../php/configuracion/guardar_tabulador.php', {
+        const response = await fetch(`../../php/configuracion/guardar_tabulador.php?t=${Date.now()}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(data)
         });
 
-        const result = await response.json();
+        const text = await response.text();
+        
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            console.error('Error parsing JSON:', e);
+            console.error('Texto recibido:', text);
+            throw new Error('El servidor devolvió una respuesta inválida al guardar.');
+        }
 
         if (!response.ok || !result.status) {
             throw new Error(result.mensaje || 'Error al guardar');
         }
 
-        displayMensajeExitoso(result.mensaje || 'Cambios guardados correctamente');
-
+        cerrarModalTabulador();
+        
         setTimeout(() => {
-            cerrarModalTabulador();
-            setTimeout(() => location.reload(), 500);
-        }, 1500);
+            displayPopUp();
+            displayMensajeExitosoSinRecargar(result.mensaje || 'Cambios guardados correctamente', function() {
+                const pestanaActiva = document.querySelector('#tabuladores .subtab.active');
+                const tipo = pestanaActiva ? pestanaActiva.getAttribute('data-subtab') : 'precio_instalacion';
+                cargarTabuladores(tipo);
+            });
+        }, 100);
 
     } catch (error) {
         console.error('Error:', error);
-        mostrarErrorEnModal(error.message);
+        displayPopUp();
+        displayMensajeError(error.message, 'hidePopup()');
     } finally {
         btnGuardar.disabled = false;
         btnGuardar.innerHTML = 'Guardar';
@@ -258,6 +350,11 @@ async function mostrarModalTabulador(id, tipo = null) {
     form.reset(); 
     document.getElementById('activo').checked = true; 
 
+    if (!tipo) {
+        const pestanaActiva = document.querySelector('#tabuladores .subtab.active');
+        tipo = pestanaActiva ? pestanaActiva.getAttribute('data-subtab') : 'precio_instalacion';
+    }
+
     if (id) {
         titulo.textContent = 'Editar Tabulador';
         document.getElementById('tabulador_id').value = id;
@@ -286,7 +383,8 @@ async function mostrarModalTabulador(id, tipo = null) {
             }
         } catch (error) {
             console.error('Error:', error);
-            mostrarErrorEnModal('Error al cargar datos: ' + error.message);
+            displayPopUp();
+            displayMensajeError('Error al cargar datos: ' + error.message, 'hidePopup()');
         } finally {
             const loader = modal.querySelector('.modal-loader');
             if (loader) loader.remove();
@@ -294,20 +392,16 @@ async function mostrarModalTabulador(id, tipo = null) {
     } else {
         titulo.textContent = 'Nuevo Tabulador';
         document.getElementById('tabulador_id').value = '';
-        if (tipo) {
-            document.getElementById('tipo').value = tipo;
-        }
+        document.getElementById('tipo').value = tipo;
     }
 
     modal.style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
 
-// Hacer la función disponible globalmente
 window.mostrarModalTabulador = mostrarModalTabulador;
 
 function editarTabulador(id) {
-    console.log("Consultando tabulador con ID:", id);
     mostrarModalTabulador(id);
 }
 
@@ -316,22 +410,44 @@ function eliminarTabulador(id) {
 
     displayPopUp("Eliminando rango...");
 
-    fetch(`../../php/configuracion/eliminar_tabulador.php?id=${id}`)
-        .then(response => response.json())
+    fetch(`../../php/configuracion/eliminar_tabulador.php?id=${id}&t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(async response => {
+            const text = await response.text();
+            
+            try {
+                const data = JSON.parse(text);
+                return data;
+            } catch (e) {
+                console.error('Error parsing JSON:', e);
+                console.error('Texto recibido:', text);
+                throw new Error('El servidor devolvió una respuesta inválida. Por favor revise la consola del navegador.');
+            }
+        })
         .then(data => {
             if (data.status === 1) {
-                displayMensajeExitoso(data.mensaje);
-                setTimeout(() => location.reload(), 1000);
+                displayPopUp();
+                displayMensajeExitosoSinRecargar(data.mensaje, function() {
+                    const pestanaActiva = document.querySelector('#tabuladores .subtab.active');
+                    const tipo = pestanaActiva ? pestanaActiva.getAttribute('data-subtab') : 'precio_instalacion';
+                    cargarTabuladores(tipo);
+                });
             } else {
-                throw new Error(data.mensaje);
+                throw new Error(data.mensaje || 'Error desconocido al eliminar el tabulador');
             }
         })
         .catch(error => {
-            displayMensajeError(error.message);
+            console.error('Error completo:', error);
+            displayPopUp();
+            displayMensajeError(error.message, 'hidePopup()');
         });
 }
 
-// Hacer las funciones disponibles globalmente
 window.editarTabulador = editarTabulador;
 window.eliminarTabulador = eliminarTabulador;
 window.guardarTabulador = guardarTabulador;

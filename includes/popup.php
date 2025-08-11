@@ -30,4 +30,16 @@
         $('#btnAccion').css('display', 'block');
         $('#btnAccion').attr('onclick', accion);
     }
+
+    function displayMensajeExitosoSinRecargar(mensaje, callback = null) {
+        $('#iconAccion').html('<i class="fal fa-check-circle"></i>');
+        $('#mensajeAccion').html(mensaje);
+        $('#btnAccion').css('display', 'block');
+        $('#btnAccion').attr('onclick', 'hidePopup()');
+        
+        if (callback && typeof callback === 'function') {
+            // Ejecutar callback después de un breve delay
+            setTimeout(callback, 1500);
+        }
+    }
 </script>

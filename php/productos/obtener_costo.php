@@ -9,8 +9,8 @@ try {
         throw new Exception("ID de producto no proporcionado");
     }
 
-    // Obtener costo del producto
-    $query = "SELECT costo_unitario FROM productos WHERE id = ?";
+    // Obtener costo base del producto
+    $query = "SELECT costo_base FROM productos WHERE id = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("i", $idProducto);
     $stmt->execute();
@@ -24,7 +24,7 @@ try {
     
     echo json_encode([
         'success' => true,
-        'costo' => (float)$producto['costo_unitario']
+        'costo' => (float)$producto['costo_base']
     ]);
     
 } catch (Exception $e) {

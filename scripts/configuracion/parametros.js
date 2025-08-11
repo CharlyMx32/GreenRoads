@@ -40,12 +40,21 @@ document.addEventListener('DOMContentLoaded', function () {
             tab.classList.add('active');
             const tipo = tab.getAttribute('data-subtab');
 
+            // Cargar tabuladores del tipo seleccionado
+            if (typeof cargarTabuladores === 'function') {
+                cargarTabuladores(tipo);
+            }
+
+            // Filtrar filas de la tabla
             const tabla = document.querySelector('#tabuladores .tabla-lista');
             if (tabla) {
                 tabla.querySelectorAll('tbody tr').forEach(row => {
-                    if (row.getAttribute('data-tipo') === tipo) {
+                    const tipoFila = row.getAttribute('data-tipo');
+                    if (tipoFila === tipo) {
+                        row.style.display = '';
                         row.classList.remove('hidden');
                     } else {
+                        row.style.display = 'none';
                         row.classList.add('hidden');
                     }
                 });
@@ -53,12 +62,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Manejar envío de formularios de parámetros
-    // DESHABILITADO: Los formularios de parámetros usan el sistema PHP tradicional
-    // document.querySelectorAll('.parametro-card form').forEach(form => {
-    //     form.addEventListener('submit', function (e) {
-    //         e.preventDefault();
-    //         // ... resto del código AJAX comentado
-    //     });
-    // });
+    // Cargar tabuladores por defecto al inicializar
+    if (document.getElementById('tabuladores')) {
+        setTimeout(() => {
+            if (typeof cargarTabuladores === 'function') {
+                cargarTabuladores('precio_instalacion');
+            }
+        }, 100);
+    }
 });

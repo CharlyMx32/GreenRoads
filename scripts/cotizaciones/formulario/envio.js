@@ -98,18 +98,22 @@ async function guardarCotizacion() {
         return;
     }
 
+    // Verificar si es modo edición
+    const modoEdicion = window.modoEdicion || false;
+    const idCotizacion = window.idCotizacion || null;
+
     // Obtener parámetros del sistema
-    const garantia = parametrosSistema.garantiaDefault;
+    const garantia = document.getElementById('garantia')?.value || parametrosSistema.garantiaDefault;
     const areaTerreno = parseFloat(document.getElementById('area_total').value) || 0;
-    const precioInstalacion = obtenerPrecioPorM2(areaTerreno);
+    const tipoInstalacion = document.getElementById('tipo_instalacion').value;
+    const precioInstalacion = obtenerPrecioPorM2(areaTerreno, tipoInstalacion);
 
     displayPopUp();
     $('#iconAccion').html('<i class="fas fa-spinner fa-spin"></i>');
-    $('#mensajeAccion').html('Guardando cotización...');
+    $('#mensajeAccion').html(modoEdicion ? 'Actualizando cotización...' : 'Guardando cotización...');
     $('#btnAccion').css('display', 'none');
 
-    let totalSinIVA = 0;
-
+    // Recolectar datos de rollos
     const rollos = [];
     document.querySelectorAll('#rollos_container .product-item').forEach(item => {
         const select = item.querySelector('.rollo-select');
@@ -118,13 +122,14 @@ async function guardarCotizacion() {
 
         if (select.value && input.value && colorSelect?.value) {
             const cantidad = parseFloat(input.value);
+            const precioUnitario = parseFloat(select.selectedOptions[0].dataset.precio);
+            
             rollos.push({
-                id_producto: select.value,
+                id_producto: parseInt(select.value),
                 cantidad: cantidad,
-                area_usada: cantidad,
-                precio_unitario: parseFloat(select.selectedOptions[0].dataset.precio),
-                id_color: colorSelect.value,
-                color_nombre: colorSelect.options[colorSelect.selectedIndex].text
+                precio_unitario: precioUnitario,
+                id_color: parseInt(colorSelect.value),
+                subtotal: cantidad * precioUnitario
             });
         }
     });
@@ -136,10 +141,14 @@ async function guardarCotizacion() {
         const input = item.querySelector('input[type="number"]');
 
         if (select.value && input.value) {
+            const cantidad = parseFloat(input.value);
+            const precioUnitario = parseFloat(select.selectedOptions[0].dataset.precio);
+            
             productos.push({
-                id_producto: select.value,
-                cantidad: parseFloat(input.value),
-                precio_unitario: parseFloat(select.selectedOptions[0].dataset.precio)
+                id_producto: parseInt(select.value),
+                cantidad: cantidad,
+                precio_unitario: precioUnitario,
+                subtotal: cantidad * precioUnitario
             });
         }
     });
@@ -148,55 +157,56 @@ async function guardarCotizacion() {
     const extras = [];
     document.querySelectorAll('.extra-check:checked').forEach(ck => {
         extras.push({
-            id_extra: ck.dataset.id,
+            id_extra: parseInt(ck.dataset.id),
             precio: parseFloat(ck.dataset.precio)
         });
     });
 
-    // Calcular total
-    // Sumar rollos
-    rollos.forEach(rollo => {
-        totalSinIVA += rollo.precio_unitario * rollo.cantidad;
-    });
-
-    // Sumar productos
-    productos.forEach(producto => {
-        totalSinIVA += producto.precio_unitario * producto.cantidad;
-    });
-
-    // Sumar extras
-    extras.forEach(extra => {
-        totalSinIVA += extra.precio;
-    });
-
-    // Sumar instalación (usando parámetro del sistema)
-    totalSinIVA += areaTerreno * precioInstalacion;
+    // Obtener total actual del DOM
+    const totalDisplay = document.getElementById('total').textContent;
+    const total = parseFloat(totalDisplay.replace('$', '').replace(',', '')) || 0;
 
     // Preparar datos para enviar
     const datos = {
-        id_cliente: document.getElementById('cliente').value,
+        id_cliente: parseInt(document.getElementById('cliente').value),
         tipo_terreno: document.getElementById('tipo_terreno').value,
-        forma_terreno: document.getElementById('forma_terreno').value,
-        dimension1: document.getElementById('dimension1').value,
-        dimension2: document.getElementById('dimension2').value,
+        tipo_instalacion: tipoInstalacion,
+        garantia_anios: parseInt(garantia),
+        precio_instalacion_m2: precioInstalacion,
         area_total: areaTerreno,
-        tipo_instalacion: document.getElementById('tipo_instalacion').value,
-        garantia: garantia,
-        precio_instalacion: precioInstalacion,
-        total: totalSinIVA,
+        total: total,
         rollos: rollos,
-        productos: productos,
+        materiales: productos, // Para compatibilidad con el backend
         extras: extras,
-        dibujo_terreno: null // Inicializar como null
+        dibujo_terreno: null
     };
 
-    // Agregar el dibujo del canvas si existe y tiene contenido
-    if (window.canvasTerreno && window.canvasTerreno.hasContent()) {
+    // Agregar campos específicos del terreno si es regular
+    if (datos.tipo_terreno === 'regular') {
+        datos.forma_terreno = document.getElementById('forma_terreno')?.value;
+        datos.dimension1 = document.getElementById('dimension1')?.value;
+        datos.dimension2 = document.getElementById('dimension2')?.value;
+    }
+
+    // Agregar el dibujo del canvas si existe
+    if (window.canvasData) {
+        datos.dibujo_terreno = window.canvasData;
+    } else if (window.canvasTerreno && window.canvasTerreno.hasContent()) {
         datos.dibujo_terreno = window.canvasTerreno.getCanvasAsBase64();
     }
 
+    // Si es modo edición, agregar ID de cotización
+    if (modoEdicion && idCotizacion) {
+        datos.id_cotizacion = idCotizacion;
+    }
+
     try {
-        const response = await fetch('../../php/cotizaciones/guardar_cotizacion.php', {
+        // Seleccionar endpoint según el modo
+        const endpoint = modoEdicion 
+            ? '../../php/cotizaciones/actualizar_cotizacion.php'
+            : '../../php/cotizaciones/guardar_cotizacion.php';
+
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -212,17 +222,21 @@ async function guardarCotizacion() {
         const data = await response.json();
 
         if (data.status === 1) {
+            const mensaje = modoEdicion 
+                ? 'Cotización actualizada correctamente'
+                : 'Cotización guardada correctamente';
+                
             displayMensajeExitoso(
-                'Cotización guardada correctamente',
+                mensaje,
                 `window.location.href = 'lista.php';`
             );
         } else {
-            displayMensajeError(data.mensaje || 'Error desconocido al guardar la cotización');
+            displayMensajeError(data.mensaje || 'Error desconocido al procesar la cotización');
             $('#btnAccion').css('display', 'block');
         }
     } catch (err) {
         console.error('Error:', err);
-        displayMensajeError(`Error al guardar: ${err.message}`);
+        displayMensajeError(`Error al procesar: ${err.message}`);
         $('#btnAccion').css('display', 'block');
     }
 }

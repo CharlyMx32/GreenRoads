@@ -17,11 +17,20 @@ function configurarEventos() {
 
     // Eventos para instalación
     document.getElementById('area_total')?.addEventListener('change', actualizarTotales);
+    
+    // Eventos para tipo de instalación (materiales automáticos)
+    document.getElementById('tipo_instalacion')?.addEventListener('change', function() {
+        calcularMaterialesAutomaticos();
+        actualizarTotales();
+    });
 
     // Eventos para extras
     document.querySelectorAll('.extra-check').forEach(ck => {
         ck.addEventListener('change', actualizarTotales);
     });
+
+    // Evento para IVA opcional
+    document.getElementById('aplicar_iva')?.addEventListener('change', actualizarTotales);
 
     // Eventos para rollos
     document.querySelectorAll('#rollos_container .rollo-select').forEach(select => {

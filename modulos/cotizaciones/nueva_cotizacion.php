@@ -123,15 +123,12 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <!-- Canvas para dibujar el terreno -->
                     <div class="form-group">
                         <label>Diseño del Terreno (Ilustrativo)</label>
-                        <div class="canvas-container">
-                            <canvas id="canvas_terreno" width="300" height="200"></canvas>
-                            <div class="canvas-controls">
-                                <button type="button" id="btn_limpiar_canvas">🗑️ Limpiar</button>
-                                <button type="button" id="btn_rectangulo">⬜ Rectángulo</button>
-                                <button type="button" id="btn_triangulo">🔺 Triángulo</button>
-                                <button type="button" id="btn_circulo">⭕ Círculo</button>
-                                <button type="button" id="btn_dibujo_libre" class="active">✏️ Dibujo Libre</button>
-                            </div>
+                        <button type="button" id="btn_abrir_canvas" class="btn-secondary" style="width: 100%; padding: 15px; margin: 10px 0;">
+                            Abrir Diseñador de Terreno
+                        </button>
+                        <div id="canvas_preview" style="display: none; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
+                            <small>Vista previa del diseño guardado</small>
+                            <canvas id="canvas_preview_small" width="250" height="150" style="border: 1px solid #ccc; width: 100%;"></canvas>
                         </div>
                     </div>
                 </div>
@@ -188,6 +185,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 </select>
 
                                 <input type="number" class="textfield" placeholder="m²" min="0.01" step="0.01" style="width: 80px;">
+                                <span class="product-price" style="font-weight: bold; color: #7dc042; width: 100px; text-align: right;">$0.00</span>
                                 <div class="eliminar">
                                     <i class="fa-solid fa-trash" type="button" id="btn-remover-rollo"></i>
                                 </div>
@@ -309,9 +307,59 @@ while ($row = mysqli_fetch_assoc($result)) {
     </div>
 
     <?php include_once '../../includes/popup.php'; ?>
+
+    <!-- Modal para Canvas de Terreno -->
+    <div id="canvasModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 2% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 900px; height: 85%; display: flex; flex-direction: column;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #7dc042; padding-bottom: 15px;">
+                <h2 style="color: #7dc042; margin: 0;">Diseñador de Terreno</h2>
+                <button type="button" id="btn_cerrar_canvas" style="background: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 18px;">✕</button>
+            </div>
+            
+            <div class="canvas-container" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="canvas-controls" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center;">
+                    <button type="button" id="btn_limpiar_canvas" class="canvas-btn">🗑️ Limpiar</button>
+                    <button type="button" id="btn_rectangulo" class="canvas-btn">⬜ Rectángulo</button>
+                    <button type="button" id="btn_triangulo" class="canvas-btn">🔺 Triángulo</button>
+                    <button type="button" id="btn_circulo" class="canvas-btn">⭕ Círculo</button>
+                    <button type="button" id="btn_dibujo_libre" class="canvas-btn active">✏️ Dibujo Libre</button>
+                </div>
+                
+                <div style="flex: 1; display: flex; justify-content: center; align-items: center; border: 2px solid #7dc042; border-radius: 10px; background: white;">
+                    <canvas id="canvas_terreno" width="800" height="500" style="border: 1px solid #ccc; max-width: 100%; max-height: 100%;"></canvas>
+                </div>
+                
+                <div class="modal-footer" style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">
+                    <button type="button" id="btn_guardar_canvas" class="btnadd">💾 Guardar Diseño</button>
+                    <button type="button" id="btn_cancelar_canvas" class="btncancel">❌ Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .canvas-btn {
+            background: #7dc042;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .canvas-btn:hover {
+            background: #4a7c59;
+        }
+        .canvas-btn.active {
+            background: #8bd792ff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+    </style>
 </body>
 <script src="../../scripts/cotizaciones/formas_irregulares.js"></script>
 <script src="../../scripts/cotizaciones/canvas_terreno.js"></script>
+<script src="../../scripts/cotizaciones/modal_canvas.js"></script>
 <script type="module" src="../../scripts/cotizaciones/nueva_cotizacion.js"></script>
 
 

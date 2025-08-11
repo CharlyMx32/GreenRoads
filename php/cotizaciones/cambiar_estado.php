@@ -79,7 +79,6 @@ try {
         }
         
     } elseif ($estado == 'rechazada' || $estado == 'cancelada') {
-        // Liberar rollos y reunificar si es posible
         if (!liberarRollosCortados($conn, $id)) {
             throw new Exception("Error al liberar rollos cortados");
         }

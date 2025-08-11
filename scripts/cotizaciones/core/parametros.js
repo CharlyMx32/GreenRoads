@@ -2,7 +2,8 @@ const parametrosSistema = {
     garantiaDefault: null,
     ivaPorcentaje: null,
     tabuladorPrecios: [],
-    tabuladorMargenes: []
+    tabuladorDescuentos: [],
+    tabuladorManoObra: []
 };
 
 async function cargarParametrosSistema() {
@@ -27,12 +28,20 @@ async function cargarParametrosSistema() {
             parametrosSistema.tabuladorPrecios = dataTabuladorPrecios.tabuladores;
         }
 
+        // Cargar tabulador de descuentos por volumen
+        const responseTabuladorDescuentos = await fetch('../../php/configuracion/obtener_tabulador.php?tipo=descuento_volumen');
+        const dataTabuladorDescuentos = await responseTabuladorDescuentos.json();
+        
+        if (dataTabuladorDescuentos.status === 1) {
+            parametrosSistema.tabuladorDescuentos = dataTabuladorDescuentos.tabuladores;
+        }
 
-        const responseTabuladorMargenes = await fetch('../../php/configuracion/obtener_tabulador.php?tipo=margen_utilidad');
-        const dataTabuladorMargenes = await responseTabuladorMargenes.json();
-        console.log("Datos del tabulador de márgenes:", dataTabuladorMargenes); // Para depuración
-        if (dataTabuladorMargenes.status === 1) {
-            parametrosSistema.tabuladorMargenes = dataTabuladorMargenes.tabuladores;
+        // Cargar tabulador de mano de obra
+        const responseTabuladorManoObra = await fetch('../../php/configuracion/obtener_tabulador.php?tipo=mano_obra');
+        const dataTabuladorManoObra = await responseTabuladorManoObra.json();
+        
+        if (dataTabuladorManoObra.status === 1) {
+            parametrosSistema.tabuladorManoObra = dataTabuladorManoObra.tabuladores;
         }
 
     } catch (error) {
@@ -57,8 +66,9 @@ function obtenerPrecioInstalacion(area) {
 // Función genérica para obtener cualquier valor de tabulador
 function obtenerValorTabulador(tipo, area) {
     const propertyMap = {
-        'margen_utilidad': 'tabuladorMargenes',
-        'precio_instalacion': 'tabuladorPrecios'
+        'descuento_volumen': 'tabuladorDescuentos',
+        'precio_instalacion': 'tabuladorPrecios',
+        'mano_obra': 'tabuladorManoObra'
     };
     
     const propertyName = propertyMap[tipo];

@@ -177,9 +177,10 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
                 <div class="subtabs-container">
                     <div class="subtabs">
                         <div class="subtab active" data-subtab="precio_instalacion">Precio Instalación</div>
+                        <div class="subtab" data-subtab="descuento_volumen">Descuento por Volumen</div>
+                        <div class="subtab" data-subtab="mano_obra">Mano de Obra</div>
                         <div class="subtab" data-subtab="clavos">Clavos</div>
                         <div class="subtab" data-subtab="pegamento">Pegamento</div>
-                        <div class="subtab" data-subtab="margen_utilidad">Margen de Utilidad</div>
                         <div class="subtab" data-subtab="polvillo">Polvillo</div>
                     </div>
                 </div>
@@ -242,9 +243,10 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
                         <label for="tipo">Tipo de Tabulador</label>
                         <select id="tipo" name="tipo" class="textfield">
                             <option value="precio_instalacion">Precio Instalación</option>
+                            <option value="descuento_volumen">Descuento por Volumen</option>
+                            <option value="mano_obra">Mano de Obra</option>
                             <option value="clavos">Clavos</option>
                             <option value="pegamento">Pegamento</option>
-                            <option value="margen_utilidad">Margen de Utilidad</option>
                             <option value="polvillo">Polvillo</option>
                         </select>
                     </div>

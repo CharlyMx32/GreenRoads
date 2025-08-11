@@ -23,7 +23,6 @@ if ($id_cotizacion <= 0) {
     exit();
 }
 
-// Obtener datos de la cotización
 $sql_cotizacion = "
     SELECT 
         c.*,
@@ -50,7 +49,6 @@ if (!$cotizacion) {
     exit();
 }
 
-// Obtener detalles de productos
 $sql_detalles = "
     SELECT 
         dc.*,
@@ -75,7 +73,6 @@ while ($row = mysqli_fetch_assoc($result_detalles)) {
     $detalles[] = $row;
 }
 
-// Obtener extras de la cotización
 $sql_extras = "
     SELECT 
         ce.*,
@@ -96,7 +93,6 @@ while ($row = mysqli_fetch_assoc($result_extras)) {
     $extras[] = $row;
 }
 
-// Obtener inventario asignado (si existe)
 $sql_inventario = "
     SELECT 
         ir.*,
@@ -118,7 +114,6 @@ while ($row = mysqli_fetch_assoc($result_inventario)) {
     $inventario_asignado[] = $row;
 }
 
-// Obtener el dibujo del terreno
 $dibujo_terreno = obtenerDibujoTerreno($conn, $id_cotizacion);
 ?>
 
@@ -554,7 +549,6 @@ $dibujo_terreno = obtenerDibujoTerreno($conn, $id_cotizacion);
             <?php endif; ?>
         </div>
 
-        <!-- Extras -->
         <?php if (!empty($extras)): ?>
             <div class="detalle-card">
                 <h3><i class="fa-solid fa-plus-circle"></i> Extras</h3>
@@ -579,7 +573,6 @@ $dibujo_terreno = obtenerDibujoTerreno($conn, $id_cotizacion);
             </div>
         <?php endif; ?>
 
-        <!-- Inventario asignado -->
         <?php if (!empty($inventario_asignado)): ?>
             <div class="detalle-card">
                 <h3><i class="fa-solid fa-warehouse"></i> Inventario Asignado</h3>
@@ -610,11 +603,10 @@ $dibujo_terreno = obtenerDibujoTerreno($conn, $id_cotizacion);
         <!-- Total -->
         <div class="total-section">
             <h3><i class="fa-solid fa-calculator"></i> Total de la Cotización</h3>
-            <div class="total-amount">$<?= number_format($cotizacion['total'], 2) ?></div>
+            <div class="total-amount">$<?= isset($cotizacion['total']) ? number_format((float)$cotizacion['total'], 2) : '0.00' ?></div>
             <p>Incluye productos, instalación y extras</p>
         </div>
 
-        <!-- Botones de acción -->
         <div class="btn-group">
             <a href="lista.php" class="btn btn-secondary">
                 <i class="fa-solid fa-arrow-left"></i> Volver a Lista
@@ -678,12 +670,10 @@ $dibujo_terreno = obtenerDibujoTerreno($conn, $id_cotizacion);
             modal.appendChild(modalImg);
             document.body.appendChild(modal);
             
-            // Cerrar modal al hacer clic
             modal.addEventListener('click', function() {
                 document.body.removeChild(modal);
             });
             
-            // Cerrar modal con tecla Escape
             const handleEscape = function(e) {
                 if (e.key === 'Escape') {
                     document.body.removeChild(modal);

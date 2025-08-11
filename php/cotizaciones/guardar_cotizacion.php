@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once '../../db/conexion.php';
 require_once '../../includes/sesion.php';
+require_once '../../includes/funciones_corte_rollos.php';
 
 // Iniciar sesión si no está iniciada
 if (session_status() === PHP_SESSION_NONE) {
@@ -44,18 +45,14 @@ foreach ($camposRequeridos as $campo) {
 }
 
 function obtenerCostoProducto($conn, $idProducto) {
-    $query = "SELECT costo_unitario 
-             FROM movimientos_inventario 
-             WHERE id_producto = ? AND tipo_movimiento = 'entrada'
-             ORDER BY fecha DESC 
-             LIMIT 1";
+    $query = "SELECT costo_base FROM productos WHERE id = ?";
              
     $stmt = $conn->prepare($query);
     $stmt->bind_param("i", $idProducto);
     $stmt->execute();
     $result = $stmt->get_result();
     
-    return $result->fetch_assoc()['costo_unitario'] ?? 0;
+    return $result->fetch_assoc()['costo_base'] ?? 0;
 }
 
 mysqli_begin_transaction($conn);
@@ -124,15 +121,18 @@ try {
             $result_verificar = mysqli_stmt_get_result($stmt_verificar);
             $disponibilidad = mysqli_fetch_assoc($result_verificar);
 
-            // Si no hay inventario disponible, usar precio base por defecto
+            // Si no hay inventario disponible, usar precio base del producto
             $precio_unitario = $rollo['precio_unitario'];
             if ($disponibilidad['area_disponible'] <= 0) {
-                // No hay inventario, usar precio base de 1000
-                $precio_unitario = 1000.00;
-                error_log("Cotización: No hay inventario para producto {$rollo['id_producto']}, color {$rollo['id_color']}. Usando precio base de $1000");
-            } else if ($disponibilidad['area_disponible'] < $rollo['cantidad']) {
-                // Hay inventario pero insuficiente, usar precio del inventario disponible
-                error_log("Cotización: Inventario insuficiente para producto {$rollo['id_producto']}, color {$rollo['id_color']}. Disponible: {$disponibilidad['area_disponible']}, Solicitado: {$rollo['cantidad']}");
+                $sql_precio_base = "SELECT costo_base FROM productos WHERE id = ?";
+                $stmt_precio = mysqli_prepare($conn, $sql_precio_base);
+                mysqli_stmt_bind_param($stmt_precio, "i", $rollo['id_producto']);
+                mysqli_stmt_execute($stmt_precio);
+                $result_precio = mysqli_stmt_get_result($stmt_precio);
+                $producto_info = mysqli_fetch_assoc($result_precio);
+                $precio_unitario = $producto_info['costo_base'] ?? 1000.00;
+                mysqli_stmt_close($stmt_precio);
+                
             }
 
             $query = "INSERT INTO detalle_cotizacion (
@@ -153,7 +153,7 @@ try {
                 $rollo['id_color'],
                 $rollo['cantidad'],
                 $rollo['cantidad'],
-                $precio_unitario // Usar el precio calculado (original o base)
+                $precio_unitario
             );
             mysqli_stmt_execute($stmt);
             $id_detalle = mysqli_insert_id($conn);
@@ -161,8 +161,7 @@ try {
 
             // Solo procesar reserva si hay inventario disponible
             if ($disponibilidad['area_disponible'] > 0) {
-                // Comentando temporalmente la función de corte hasta que esté disponible
-                /*
+                // Procesamiento con corte de rollos habilitado
                 $resultado_corte = procesarReservaConCorte(
                     $conn, 
                     $id_cotizacion, 
@@ -173,33 +172,28 @@ try {
                 
                 if (!$resultado_corte['exito'] && $resultado_corte['area_faltante'] > 0) {
                     error_log("Cotización {$id_cotizacion}: Inventario insuficiente. " . $resultado_corte['mensaje']);
+                } else {
+                    error_log("Cotización {$id_cotizacion}: Rollos reservados con corte automático: " . implode(', ', $resultado_corte['rollos_reservados']));
                 }
-                */
-                error_log("Cotización {$id_cotizacion}: Rollo agregado con inventario disponible");
             } else {
                 error_log("Cotización {$id_cotizacion}: Rollo agregado sin inventario - usando precio base");
             }
         }
     }
 
-    // En la sección de procesar productos generales:
     if (!empty($datos['productos']) && is_array($datos['productos'])) {
         foreach ($datos['productos'] as $producto) {
             if (empty($producto['id_producto'])) continue;
 
-            // Obtener el costo real del producto
-            $sqlCosto = "SELECT costo_unitario 
-                    FROM movimientos_inventario 
-                    WHERE id_producto = ? AND tipo_movimiento = 'entrada'
-                    ORDER BY fecha DESC 
-                    LIMIT 1";
+            // Obtener el costo base del producto
+            $sqlCosto = "SELECT costo_base FROM productos WHERE id = ?";
             $stmtCosto = $conn->prepare($sqlCosto);
             $stmtCosto->bind_param("i", $producto['id_producto']);
             $stmtCosto->execute();
             $resultCosto = $stmtCosto->get_result();
-            $costo = $resultCosto->fetch_assoc()['costo_unitario'] ?? 0;
+            $costo = $resultCosto->fetch_assoc()['costo_base'] ?? 0;
 
-            // Insertar en detalle_cotizacion con el costo real (sin margen)
+            // Insertar en detalle_cotizacion con el costo base del producto
             $query = "INSERT INTO detalle_cotizacion (
             id_cotizacion, 
             id_producto, 
@@ -214,7 +208,7 @@ try {
                 $id_cotizacion,
                 $producto['id_producto'],
                 $producto['cantidad'],
-                $costo // Precio unitario = costo real (sin margen)
+                $costo // Precio unitario = costo base del producto
             );
             mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);

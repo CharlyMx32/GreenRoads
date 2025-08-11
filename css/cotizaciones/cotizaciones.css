@@ -20,6 +20,11 @@ select:focus {
 }
 
 /* Estructura principal */
+.main-container {
+    min-height: calc(100vh - 120px); /* Asegurar altura mínima */
+    padding-bottom: 80px; /* Espacio para los botones */
+}
+
 .form-container-grid {
     margin-top: 45px;
     display: grid;
@@ -27,12 +32,30 @@ select:focus {
     gap: 20px;
     padding: 20px;
     margin: 45px auto 0;
+    min-height: calc(100vh - 170px); /* Altura mínima para las columnas */
 }
 
 .grid-col {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    min-height: 100%; /* Asegurar que ocupen toda la altura disponible */
+}
+
+/* Contenedor de acciones fijo */
+.actions-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    z-index: 999;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
 }
 
 /* Secciones de formulario */
@@ -61,6 +84,33 @@ input[type="text"] {
     border-radius: 5px;
     width: 100%;
     box-sizing: border-box;
+    font-size: 14px;
+    transition: var(--transicion);
+}
+
+/* Estilos específicos para selectores en items */
+.rollo-item .textfield,
+.material-item .textfield,
+.rollo-item select,
+.material-item select {
+    margin-bottom: 10px;
+}
+
+.producto-select,
+.color-select,
+.cantidad-input {
+    width: 100%;
+}
+
+/* Grid para los campos dentro de items */
+.rollo-item .form-group,
+.material-item .form-group {
+    margin-bottom: 12px;
+}
+
+.rollo-item .form-group:last-child,
+.material-item .form-group:last-child {
+    margin-bottom: 0;
 }
 
 
@@ -489,12 +539,196 @@ label {
 .resumen-item {
     display: flex;
     justify-content: space-between;
-    padding: 5px 0;
-    border-bottom: 1px dashed #ddd;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    background: #f8f9fa;
+    border-left: 4px solid var(--color-primario);
+}
+
+.resumen-item.subtotal {
+    background: #e8f5e8;
+    font-weight: 600;
+    border-left-color: #28a745;
+}
+
+.resumen-item.total {
+    background: #d1ecf1;
+    font-weight: 700;
+    font-size: 1.1em;
+    border-left-color: #17a2b8;
 }
 
 .resumen-item:last-child {
     border-bottom: none;
+}
+
+/* Estilos para items de rollos y materiales */
+.rollo-item,
+.material-item {
+    background: #f8f9fa;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.rollo-item:hover,
+.material-item:hover {
+    background: #f0f0f0;
+    border-color: #dee2e6;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Botones específicos */
+.btn-remove {
+    background-color: var(--color-error);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.btn-remove:hover {
+    background-color: #dc3545;
+    transform: translateY(-1px);
+}
+
+.btn-canvas {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.btn-canvas:hover {
+    background-color: #5a6268;
+}
+
+.btn-primary {
+    background-color: var(--color-primario);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    min-width: 180px;
+}
+
+.btn-primary:hover {
+    background-color: rgb(109, 168, 58);
+    transform: translateY(-1px);
+}
+
+/* Estilos para el modal del canvas */
+.modal-canvas {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
+}
+
+.modal-canvas-content {
+    background-color: #fff;
+    margin: 2% auto;
+    padding: 0;
+    border-radius: var(--radio-borde);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-canvas-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--color-borde);
+    background: #f8f9fa;
+    border-radius: var(--radio-borde) var(--radio-borde) 0 0;
+}
+
+.modal-canvas-header h3 {
+    color: var(--color-primario);
+    margin: 0;
+    font-size: 18px;
+}
+
+.btn-close-modal {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #aaa;
+    padding: 5px;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-close-modal:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.modal-canvas-body {
+    padding: 20px;
+}
+
+.canvas-btn,
+.canvas-btn-primary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    margin: 0 5px;
+}
+
+.canvas-btn {
+    background-color: #f8f9fa;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.canvas-btn:hover,
+.canvas-btn.active {
+    background-color: var(--color-primario);
+    color: white;
+    border-color: var(--color-primario);
+}
+
+.canvas-btn-primary {
+    background-color: var(--color-primario);
+    color: white;
+}
+
+.canvas-btn-primary:hover {
+    background-color: rgb(109, 168, 58);
 }
 
 /* Estilos para el canvas de terreno */
@@ -540,13 +774,13 @@ label {
     border-color: #adb5bd;
 }
 
-.canvas-controls button.active {
-    background-color: #2c5530;
-    color: white;
-    border-color: #2c5530;
+/* Estilos responsivos para el canvas */
+@media (max-width: 1200px) {
+    .form-container-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
-/* Estilos responsivos para el canvas */
 @media (max-width: 1000px) {
     #canvas_terreno {
         width: 100%;
@@ -564,4 +798,84 @@ label {
         max-width: 200px;
         margin: 0 auto;
     }
+}
+
+@media (max-width: 768px) {
+    .form-container-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 15px;
+    }
+    
+    .grid-col {
+        gap: 10px;
+    }
+    
+    .form-section {
+        padding: 15px;
+    }
+    
+    .actions-container {
+        padding: 10px 15px;
+        flex-direction: column;
+    }
+    
+    .actions-container .btncancel,
+    .actions-container .btnadd {
+        width: 100%;
+        margin: 5px 0;
+    }
+    
+    /* Modal responsivo */
+    .modal-content {
+        width: 95% !important;
+        height: 90% !important;
+        margin: 5% auto !important;
+    }
+    
+    #canvas_terreno {
+        max-width: 100%;
+        max-height: 300px;
+    }
+    
+    .canvas-controls {
+        justify-content: center;
+    }
+}
+
+/* Estilos para productos automáticos */
+.product-item[data-auto="true"] {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    position: relative;
+}
+
+.product-item[data-auto="true"]:hover {
+    background: #d4edda;
+    border-color: #a3d4a3;
+}
+
+.auto-badge {
+    background: #28a745;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.product-item[data-auto="true"] select,
+.product-item[data-auto="true"] input {
+    background-color: #f8f9fa;
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.product-item[data-auto="true"] label::after {
+    content: " (Calculado automáticamente)";
+    font-size: 11px;
+    color: #6c757d;
+    font-style: italic;
 }

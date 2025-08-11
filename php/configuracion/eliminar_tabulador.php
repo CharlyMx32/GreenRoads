@@ -1,41 +1,54 @@
 <?php
-require_once '../../db/conexion.php';
-header('Content-Type: application/json');
+ob_start();
 
-$id = intval($_GET['id'] ?? 0);
+ini_set('display_errors', 0);
+error_reporting(0);
 
-if ($id <= 0) {
-    echo json_encode(['status' => 0, 'mensaje' => 'ID inválido']);
-    exit;
-}
+try {
+    require_once '../../db/conexion.php';
+    
+    ob_clean();
+    
+    header('Content-Type: application/json; charset=utf-8');
+    
+    $id = intval($_GET['id'] ?? 0);
+    
+    if ($id <= 0) {
+        echo json_encode(['status' => 0, 'mensaje' => 'ID inválido']);
+        exit;
+    }
 
-// Verificar si el tabulador está en uso
-$sqlCheck = "SELECT COUNT(*) AS total FROM cotizaciones 
-             WHERE precio_instalacion_m2 IN 
-             (SELECT precio_m2 FROM tabuladores WHERE id = ?)";
-$stmt = $conn->prepare($sqlCheck);
-$stmt->bind_param('i', $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$row = $result->fetch_assoc();
-
-if ($row['total'] > 0) {
+    
+    // Eliminar tabulador
+    $stmt = $conn->prepare("DELETE FROM tabuladores WHERE id = ?");
+    
+    if (!$stmt) {
+        throw new Exception('Error en la consulta de eliminación: ' . $conn->error);
+    }
+    
+    $stmt->bind_param('i', $id);
+    
+    if ($stmt->execute()) {
+        if ($stmt->affected_rows > 0) {
+            echo json_encode([
+                'status' => 1,
+                'mensaje' => 'Tabulador eliminado correctamente'
+            ]);
+        } else {
+            echo json_encode([
+                'status' => 0,
+                'mensaje' => 'No se encontró el tabulador a eliminar'
+            ]);
+        }
+    } else {
+        throw new Exception('Error al ejecutar la eliminación: ' . $stmt->error);
+    }
+    
+} catch (Exception $e) {
     echo json_encode([
-        'status' => 0, 
-        'mensaje' => 'No se puede eliminar, el tabulador está en uso por cotizaciones existentes'
+        'status' => 0,
+        'mensaje' => 'Error del servidor: ' . $e->getMessage()
     ]);
-    exit;
-}
-
-// Eliminar tabulador
-$stmt = $conn->prepare("DELETE FROM tabuladores WHERE id = ?");
-$stmt->bind_param('i', $id);
-
-if ($stmt->execute()) {
-    echo json_encode([
-        'status' => 1,
-        'mensaje' => 'Tabulador eliminado correctamente'
-    ]);
-} else {
-    echo json_encode(['status' => 0, 'mensaje' => 'Error al eliminar el tabulador']);
+} finally {
+    ob_end_flush();
 }

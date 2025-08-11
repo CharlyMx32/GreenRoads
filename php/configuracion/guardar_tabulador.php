@@ -1,13 +1,17 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+ob_start();
 
-
-require_once __DIR__ . '/../../db/conexion.php';
-require_once __DIR__ . '/../../includes/sesion.php';
+ini_set('display_errors', 0);
+error_reporting(0);
 
 try {
+    require_once __DIR__ . '/../../db/conexion.php';
+    require_once __DIR__ . '/../../includes/sesion.php';
+    
+    ob_clean();
+    
+    header('Content-Type: application/json; charset=utf-8');
+
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Método no permitido', 405);
     }
@@ -24,9 +28,9 @@ try {
     $descripcion = trim($input['descripcion'] ?? '');
     $activo = isset($input['activo']) ? (int)$input['activo'] : 0;
     $tipo = trim($input['tipo'] ?? 'precio_instalacion');
-    
-    $tiposPermitidos = ['precio_instalacion', 'clavos', 'pegamento', 'margen_utilidad', 'polvillo'];
-    
+
+    $tiposPermitidos = ['precio_instalacion', 'clavos', 'pegamento', 'descuento_volumen','mano_obra', 'polvillo'];
+
     if (!in_array($tipo, $tiposPermitidos)) {
         throw new Exception('Tipo de tabulador no válido', 400);
     }
@@ -48,6 +52,11 @@ try {
                 OR (rango_max BETWEEN ? AND ?))";
     
     $stmt = $conn->prepare($sqlCheck);
+    
+    if (!$stmt) {
+        throw new Exception('Error en la consulta de verificación: ' . $conn->error);
+    }
+    
     $stmt->bind_param('sidddddd', $tipo, $id, $rangoMin, $rangoMax, $rangoMin, $rangoMax, $rangoMin, $rangoMax);
     $stmt->execute();
     
@@ -61,12 +70,22 @@ try {
                 descripcion = ?, activo = ?, tipo = ?, fecha_actualizacion = NOW() 
                 WHERE id = ?";
         $stmt = $conn->prepare($sql);
+        
+        if (!$stmt) {
+            throw new Exception('Error en la consulta de actualización: ' . $conn->error);
+        }
+        
         $stmt->bind_param('dddsisi', $rangoMin, $rangoMax, $valor, $descripcion, $activo, $tipo, $id);
     } else {
         $sql = "INSERT INTO tabuladores 
                 (rango_min, rango_max, valor, descripcion, activo, tipo, fecha_creacion, fecha_actualizacion) 
                 VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
         $stmt = $conn->prepare($sql);
+        
+        if (!$stmt) {
+            throw new Exception('Error en la consulta de inserción: ' . $conn->error);
+        }
+        
         $stmt->bind_param('dddsis', $rangoMin, $rangoMax, $valor, $descripcion, $activo, $tipo);
     }
 
@@ -81,10 +100,13 @@ try {
     ]);
 
 } catch (Exception $e) {
-    http_response_code($e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500);
+    $httpCode = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;
+    http_response_code($httpCode);
     echo json_encode([
         'status' => 0,
         'mensaje' => $e->getMessage(),
         'error' => $e->getCode()
     ]);
+} finally {
+    ob_end_flush();
 }
