@@ -172,11 +172,13 @@ async function guardarCotizacion() {
         tipo_terreno: document.getElementById('tipo_terreno').value,
         tipo_instalacion: tipoInstalacion,
         garantia_anios: parseInt(garantia),
+        garantia: parseInt(garantia), 
         precio_instalacion_m2: precioInstalacion,
+        precio_instalacion: precioInstalacion,
         area_total: areaTerreno,
         total: total,
         rollos: rollos,
-        materiales: productos, // Para compatibilidad con el backend
+        materiales: productos, 
         extras: extras,
         dibujo_terreno: null
     };

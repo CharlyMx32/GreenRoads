@@ -95,8 +95,8 @@ try {
 
     // Insertar producto
     $stmt = $conn->prepare("INSERT INTO productos (
-        nombre, costo_base, id_unidad, id_tipo_producto, tipo_inventario, imagen, id_modelo, estado
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'activo')");
+        nombre, costo_base, id_unidad, id_tipo_producto, tipo_inventario, imagen, id_modelo
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
     if (!$stmt) {
         throw new Exception('Error al preparar la consulta: ' . $conn->error);
@@ -105,14 +105,14 @@ try {
     $id_modelo_sql = $id_modelo > 0 ? $id_modelo : null;
 
     $stmt->bind_param(
-        'sdiiiss', 
+        'sdiissi', 
         $nombre,
         $costo_base,
         $id_unidad,
         $tipo_producto,
         $tipo_inventario,
         $nombreImagen,
-        $id_modelo
+        $id_modelo_sql
     );
 
     if (!$stmt->execute()) {
