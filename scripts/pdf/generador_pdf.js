@@ -404,7 +404,9 @@ async function generarPDFCotizacion(cotizacionId) {
         console.log('Guardando PDF...');
 
         // Guardar el PDF
-        doc.save(`Cotizacion_GreenRoads_${data.cotizacion.id}.pdf`);
+        
+        window.open(doc.output('bloburl'));
+        //doc.save(`Cotizacion_GreenRoads_${data.cotizacion.id}.pdf`);
         
         console.log('PDF generado exitosamente!');
         alert('PDF generado exitosamente!');

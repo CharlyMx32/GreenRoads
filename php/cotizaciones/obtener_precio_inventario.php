@@ -20,6 +20,7 @@ $idColor = intval($data['id_color']);
 $cantidad = floatval($data['cantidad']);
 
 try {
+    /* Lógica original de inventario
     // Verificar disponibilidad en inventario para el color específico
     $sql = "SELECT ir.costo_unitario, ir.area_m2, ir.id
             FROM inventario_rollos ir
@@ -93,6 +94,29 @@ try {
             ]);
         }
     }
+    */
+    
+    // Siempre usar costo base del producto
+    $sqlBase = "SELECT costo_base FROM productos WHERE id = ?";
+    $stmtBase = $conn->prepare($sqlBase);
+    $stmtBase->bind_param("i", $idProducto);
+    $stmtBase->execute();
+    $resultBase = $stmtBase->get_result();
+    $base = $resultBase->fetch_assoc();
+    
+    $costoBasePorM2 = $base ? floatval($base['costo_base']) : 1000.00;
+    $costoTotal = $costoBasePorM2 * $cantidad;
+    
+    echo json_encode([
+        'success' => true,
+        'costo_total_rollo' => $costoTotal,
+        'area_total_rollo' => $cantidad,
+        'area_disponible' => $cantidad,
+        'inventario_id' => null,
+        'tiene_inventario' => false,
+        'inventario_parcial' => false,
+        'message' => "Usando precio base del producto: $" . number_format($costoBasePorM2, 2) . "/m²"
+    ]);
     
 } catch (Exception $e) {
     echo json_encode([
