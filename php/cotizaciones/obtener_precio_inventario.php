@@ -70,7 +70,7 @@ try {
                 'message' => "Solo hay {$parcial['area_total']} m² disponibles de {$cantidad} m² solicitados"
             ]);
         } else {
-            // No hay inventario, usar precio base del producto
+            // No hay inventario, usar costo base del producto
             $sqlBase = "SELECT costo_base FROM productos WHERE id = ?";
             $stmtBase = $conn->prepare($sqlBase);
             $stmtBase->bind_param("i", $idProducto);
@@ -78,17 +78,18 @@ try {
             $resultBase = $stmtBase->get_result();
             $base = $resultBase->fetch_assoc();
             
-            $precioBase = $base ? floatval($base['costo_base']) : 1000.00;
+            $costoBasePorM2 = $base ? floatval($base['costo_base']) : 1000.00;
+            $costoTotal = $costoBasePorM2 * $cantidad; // Multiplicar por la cantidad solicitada
             
             echo json_encode([
                 'success' => true,
-                'costo_total_rollo' => $precioBase, // Precio base como costo total
-                'area_total_rollo' => 200.00, // Área estándar por defecto
+                'costo_total_rollo' => $costoTotal, // Costo total basado en cantidad solicitada
+                'area_total_rollo' => $cantidad, // Área solicitada
                 'area_disponible' => 0,
                 'inventario_id' => null,
                 'tiene_inventario' => false,
                 'inventario_parcial' => false,
-                'message' => "Sin inventario disponible. Usando precio base: $" . number_format($precioBase, 2)
+                'message' => "Sin inventario disponible. Usando precio base: $" . number_format($costoBasePorM2, 2) . "/m²"
             ]);
         }
     }

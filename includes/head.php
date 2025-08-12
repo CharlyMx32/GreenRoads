@@ -47,3 +47,7 @@ $ROOT = '..';
 
         <!-- FONTAWESOME -->
         <script src="https://kit.fontawesome.com/22dc07990c.js" crossorigin="anonymous"></script>
+
+        <!-- jsPDF -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>

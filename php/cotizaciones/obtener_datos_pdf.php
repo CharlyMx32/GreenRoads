@@ -34,7 +34,7 @@ try {
     // Obtener detalles del pasto (producto principal)
     $sqlPasto = "SELECT p.nombre AS modelo, m.nombre AS tipo, col.nombre AS color, 
                         dc.precio_unitario, dc.area_usada,
-                        (dc.precio_unitario + c.precio_instalacion_m2) AS precio_con_instalacion
+                        (dc.precio_unitario + COALESCE(c.precio_instalacion_m2, 0)) AS precio_con_instalacion
                  FROM detalle_cotizacion dc
                  JOIN productos p ON dc.id_producto = p.id
                  LEFT JOIN modelos m ON p.id_modelo = m.id
@@ -47,7 +47,13 @@ try {
     $stmtPasto->bind_param('i', $cotizacionId);
     $stmtPasto->execute();
     $resultPasto = $stmtPasto->get_result();
-    $pasto = $resultPasto->num_rows > 0 ? $resultPasto->fetch_assoc() : [];
+    $pasto = $resultPasto->num_rows > 0 ? $resultPasto->fetch_assoc() : [
+        'modelo' => 'No especificado',
+        'tipo' => 'Residencial',
+        'color' => 'No especificado',
+        'precio_unitario' => 0,
+        'precio_con_instalacion' => 0
+    ];
     
     // Obtener extras
     $sqlExtras = "SELECT e.nombre, ce.precio_aplicado AS precio
@@ -59,11 +65,20 @@ try {
     $stmtExtras->bind_param('i', $cotizacionId);
     $stmtExtras->execute();
     $resultExtras = $stmtExtras->get_result();
-    $extras = $resultExtras->fetch_all(MYSQLI_ASSOC);
+    $extrasRaw = $resultExtras->fetch_all(MYSQLI_ASSOC);
+    
+    // Convertir precios a float
+    $extras = array_map(function($extra) {
+        return [
+            'nombre' => $extra['nombre'],
+            'precio' => floatval($extra['precio'])
+        ];
+    }, $extrasRaw);
     
     // Calcular totales
-    $subtotal = floatval($cotizacion['total']) / 1.16; // Asumiendo 16% de IVA
-    $iva = floatval($cotizacion['total']) - $subtotal;
+    $total = floatval($cotizacion['total']);
+    $subtotal = $total / 1.16; // Asumiendo 16% de IVA
+    $iva = $total - $subtotal;
     
     $response = [
         'success' => true,
@@ -89,7 +104,7 @@ try {
         'totales' => [
             'subtotal' => $subtotal,
             'iva' => $iva,
-            'total' => floatval($cotizacion['total'])
+            'total' => $total
         ]
     ];
 } catch (Exception $e) {
