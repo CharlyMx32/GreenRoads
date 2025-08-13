@@ -319,11 +319,6 @@
     display: none;
 }
 
-.error-input {
-    border-color: #e74c3c !important;
-    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
-}
-
 .modal {
     display: none;
     position: fixed;
@@ -430,30 +425,11 @@
     animation: shake 0.5s ease-in-out;
 }
 
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-    20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
-
 .no-data {
     text-align: center;
     padding: 20px;
     color: #777;
     font-style: italic;
-}
-
-.modal-loader {
-    text-align: center;
-    padding: 20px;
-    color: #333;
-    font-size: 16px;
-    margin-bottom: 20px;
-}
-
-.modal-loader i {
-    margin-right: 10px;
-    font-size: 20px;
 }
 
 .popup {

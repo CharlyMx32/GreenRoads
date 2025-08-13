@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_once '../../db/conexion.php';
 require_once '../../includes/sesion.php';
 require_once '../../includes/funciones_corte_rollos.php';
+require_once '../../includes/funciones_tabuladores.php';
 
 // Iniciar sesión si no está iniciada
 if (session_status() === PHP_SESSION_NONE) {
@@ -58,7 +59,36 @@ function obtenerCostoProducto($conn, $idProducto) {
 mysqli_begin_transaction($conn);
 
 try {
-    // Incluir dibujo_terreno en la consulta
+    // Obtener valores actuales de los tabuladores
+    $area_total = floatval($datos['area_total']);
+    
+    // Preparar lista de productos para calcular precio base correcto
+    $productos_para_tabulador = [];
+    if (!empty($datos['rollos'])) {
+        $productos_para_tabulador = array_merge($productos_para_tabulador, $datos['rollos']);
+    }
+    
+    $tabuladores = obtenerTabuladoresCotizacion($conn, $area_total, $productos_para_tabulador);
+    
+    // Calcular IVA si es necesario
+    // El total que viene del frontend ya incluye IVA si está aplicado
+    $total_con_iva = floatval($datos['total']);
+    $aplicar_iva = isset($datos['aplicar_iva']) && $datos['aplicar_iva'];
+    
+    // Si se aplica IVA, calcular el subtotal y el IVA por separado
+    if ($aplicar_iva) {
+        // Total = Subtotal + IVA, donde IVA = Subtotal * 0.16
+        // Entonces: Total = Subtotal * 1.16
+        // Subtotal = Total / 1.16
+        $iva_porcentaje = 0.16; // Obtener de configuración si es necesario
+        $subtotal = $total_con_iva / (1 + $iva_porcentaje);
+        $iva = $total_con_iva - $subtotal;
+    } else {
+        $subtotal = $total_con_iva;
+        $iva = null;
+    }
+
+    // Incluir dibujo_terreno y los nuevos campos de tabuladores en la consulta
     $query = "INSERT INTO cotizaciones (
         id_cliente, 
         id_admin, 
@@ -69,9 +99,13 @@ try {
         tipo_instalacion,   
         garantia_anios,     
         precio_instalacion_m2,
+        precio_mano_obra_m2,
+        descuento_volumen_porcentaje,
+        precio_base_pasto_m2,
+        iva,
         dibujo_terreno,
         fecha
-    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, NOW())";
+    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = mysqli_prepare($conn, $query);
     if (!$stmt) {
@@ -82,15 +116,19 @@ try {
     
     mysqli_stmt_bind_param(
         $stmt,
-        "iiddssids",
+        "iiddssiddddds",
         $datos['id_cliente'],
         $id_admin,
-        $datos['total'],
+        $total_con_iva,
         $datos['area_total'],
         $datos['tipo_terreno'],
         $datos['tipo_instalacion'],
         $datos['garantia'],
-        $datos['precio_instalacion'],
+        $tabuladores['precio_instalacion_m2'],
+        $tabuladores['precio_mano_obra_m2'],
+        $tabuladores['descuento_volumen_porcentaje'],
+        $tabuladores['precio_base_pasto_m2'],
+        $iva,
         $datos['dibujo_terreno']
     );
 

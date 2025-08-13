@@ -150,7 +150,7 @@ function procesarReservaConCorte($conn, $id_cotizacion, $id_producto, $id_color,
                 
                 if ($resultado_corte['exito']) {
                     $rollos_reservados[] = $resultado_corte['id_rollo_cortado'];
-                    $area_restante = 0; // Ya tenemos todo lo que necesitamos
+                    $area_restante = 0;
                 }
             }
         }
@@ -175,38 +175,28 @@ function procesarReservaConCorte($conn, $id_cotizacion, $id_producto, $id_color,
     }
 }
 
-/**
- * Corta un rollo en dos partes: la necesaria y el sobrante
- * @param mysqli $conn Conexión a la base de datos
- * @param array $rollo_original Datos del rollo original
- * @param float $metros_necesarios Metros de largo que se necesitan
- * @param int $id_cotizacion ID de la cotización
- * @return array Resultado del corte
- */
+// ** Corta un rollo en dos partes: la necesaria y el sobrante
+
 function cortarRollo($conn, $rollo_original, $metros_necesarios, $id_cotizacion) {
     try {
         $metros_sobrantes = $rollo_original['largo_metros'] - $metros_necesarios;
         
         // 1. Crear el rollo cortado (el que se va a usar)
-        $costo_proporcional = ($rollo_original['costo_unitario'] / $rollo_original['largo_metros']) * $metros_necesarios;
-        
         $query_cortado = "
             INSERT INTO inventario_rollos 
             (id_producto, id_lote, id_color, largo_metros, ancho_metros, 
              costo_unitario, costo_total, estado, id_cotizacion_reserva, 
              id_rollo_padre, tipo_rollo)
             SELECT id_producto, id_lote, id_color, ?, ?, 
-                   ?, ?, 'reservado', ?, 
+                   costo_unitario, costo_total, 'reservado', ?, 
                    ?, 'cortado'
             FROM inventario_rollos WHERE id = ?
         ";
         
         $stmt_cortado = mysqli_prepare($conn, $query_cortado);
-        mysqli_stmt_bind_param($stmt_cortado, "ddddiii", 
+        mysqli_stmt_bind_param($stmt_cortado, "ddiii", 
             $metros_necesarios, 
             $rollo_original['ancho_metros'], 
-            $costo_proporcional,
-            $costo_proporcional,
             $id_cotizacion,
             $rollo_original['id'],
             $rollo_original['id']
@@ -217,20 +207,16 @@ function cortarRollo($conn, $rollo_original, $metros_necesarios, $id_cotizacion)
         mysqli_stmt_close($stmt_cortado);
         
         // 2. Actualizar el rollo original con las dimensiones del sobrante
-        if ($metros_sobrantes > 0.1) { // Solo si quedan más de 10cm
-            $costo_sobrante = ($rollo_original['costo_unitario'] / $rollo_original['largo_metros']) * $metros_sobrantes;
-            
+        if ($metros_sobrantes > 0.1) {
             $query_actualizar = "
                 UPDATE inventario_rollos 
-                SET largo_metros = ?, costo_unitario = ?, costo_total = ?
+                SET largo_metros = ?
                 WHERE id = ?
             ";
             
             $stmt_act = mysqli_prepare($conn, $query_actualizar);
-            mysqli_stmt_bind_param($stmt_act, "dddi", 
+            mysqli_stmt_bind_param($stmt_act, "di", 
                 $metros_sobrantes, 
-                $costo_sobrante, 
-                $costo_sobrante, 
                 $rollo_original['id']
             );
             mysqli_stmt_execute($stmt_act);

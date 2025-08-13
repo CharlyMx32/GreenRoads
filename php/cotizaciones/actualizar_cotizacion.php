@@ -12,6 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 require_once '../../db/conexion.php';
 require_once '../../includes/sesion.php';
 require_once '../../includes/funciones_corte_rollos.php';
+require_once '../../includes/funciones_tabuladores.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -64,6 +65,27 @@ $dibujo_terreno = isset($datos['dibujo_terreno']) ? $datos['dibujo_terreno'] : n
 mysqli_begin_transaction($conn);
 
 try {
+    // Obtener valores actuales de los tabuladores
+    // Preparar lista de productos para calcular precio base correcto
+    $productos_para_tabulador = [];
+    if (!empty($datos['rollos'])) {
+        $productos_para_tabulador = array_merge($productos_para_tabulador, $datos['rollos']);
+    }
+    
+    $tabuladores = obtenerTabuladoresCotizacion($conn, $area_total, $productos_para_tabulador);
+    
+    // Calcular IVA si es necesario
+    $total_con_iva = $total;
+    $aplicar_iva = isset($datos['aplicar_iva']) && $datos['aplicar_iva'];
+    
+    if ($aplicar_iva) {
+        $iva_porcentaje = 0.16;
+        $subtotal = $total_con_iva / (1 + $iva_porcentaje);
+        $iva = $total_con_iva - $subtotal;
+    } else {
+        $iva = null;
+    }
+
     // 1. Liberar rollos actuales de la cotización
     if (!liberarRollosCortados($conn, $id_cotizacion)) {
         throw new Exception("Error al liberar rollos actuales");
@@ -85,19 +107,27 @@ try {
                         tipo_terreno = ?, 
                         tipo_instalacion = ?, 
                         garantia_anios = ?, 
-                        precio_instalacion_m2 = ?, 
+                        precio_instalacion_m2 = ?,
+                        precio_mano_obra_m2 = ?,
+                        descuento_volumen_porcentaje = ?,
+                        precio_base_pasto_m2 = ?,
+                        iva = ?,
                         total = ?, 
                         dibujo_terreno = ?
                         WHERE id = ?";
                         
     $stmt_actualizar = mysqli_prepare($conn, $query_actualizar);
-    mysqli_stmt_bind_param($stmt_actualizar, "idssiidsi", 
+    mysqli_stmt_bind_param($stmt_actualizar, "idssiidddddsi", 
         $id_cliente, 
         $area_total, 
         $tipo_terreno, 
         $tipo_instalacion, 
         $garantia_anios, 
-        $precio_instalacion_m2, 
+        $tabuladores['precio_instalacion_m2'],
+        $tabuladores['precio_mano_obra_m2'],
+        $tabuladores['descuento_volumen_porcentaje'],
+        $tabuladores['precio_base_pasto_m2'],
+        $iva,
         $total, 
         $dibujo_terreno, 
         $id_cotizacion

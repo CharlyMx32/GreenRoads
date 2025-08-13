@@ -50,7 +50,7 @@ function obtenerDatos($conn, $query, $params, $types)
 try {
     $producto = obtenerDatos(
         $conn,
-        "SELECT nombre FROM productos WHERE id = ? AND estado != 'eliminado'",
+        "SELECT nombre, costo_base FROM productos WHERE id = ? AND estado != 'eliminado'",
         [$id_producto],
         "i"
     );
@@ -105,13 +105,32 @@ try {
 
             <div class="info-producto">
                 <h3>Producto y color seleccionado</h3>
-                <div style="display: flex; gap: 15px;">
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                     <span class="badge badge-producto">
                         <i class="fas fa-box"></i> <?= htmlspecialchars($producto['nombre']) ?>
                     </span>
                     <span class="badge badge-color">
                         <i class="fas fa-palette"></i> <?= htmlspecialchars($color['nombre']) ?>
                     </span>
+                </div>
+                
+                <!-- Campo para editar costo base del producto -->
+                <div class="costo-base-container">
+                    <label for="costo_base">
+                        <strong>Costo Base del Producto (Precio Unitario):</strong>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span>$</span>
+                        <input type="number" 
+                               id="costo_base" 
+                               name="costo_base" 
+                               value="<?= htmlspecialchars($producto['costo_base']) ?>" 
+                               step="0.01" 
+                               min="0.01" 
+                               class="input-costo-base"
+                               data-original="<?= htmlspecialchars($producto['costo_base']) ?>">
+                        <small style="color: #666;">Este es el precio unitario base del producto</small>
+                    </div>
                 </div>
             </div>
 
@@ -132,7 +151,7 @@ try {
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Costo</th>
+                                    <th>Costo de Compra</th>
                                     <th>Largo (m)</th>
                                     <th>Ancho (m)</th>
                                     <th>Área (m²)</th>
@@ -151,7 +170,8 @@ try {
                                                 step="0.01"
                                                 min="0.01"
                                                 class="input-costo"
-                                                data-original="<?= htmlspecialchars($r['costo_unitario']) ?>">
+                                                data-original="<?= htmlspecialchars($r['costo_unitario']) ?>"
+                                                title="Costo con el que se compró este rollo específico">
                                         </td>
                                         <td>
                                             <input type="number"
@@ -234,12 +254,24 @@ try {
             });
 
             // Detectar cambios en inputs
-            document.querySelectorAll('.input-largo, .input-ancho, .input-costo').forEach(input => {
+            document.querySelectorAll('.input-largo, .input-ancho, .input-costo, .input-costo-base').forEach(input => {
                 input.addEventListener('change', function() {
-                    const row = this.closest('tr');
                     const original = parseFloat(this.dataset.original);
                     const actual = parseFloat(this.value);
 
+                    // Para el costo base del producto
+                    if (this.classList.contains('input-costo-base')) {
+                        if (actual !== original) {
+                            this.classList.add('campo-modificado');
+                        } else {
+                            this.classList.remove('campo-modificado');
+                        }
+                        actualizarEstadoGuardado();
+                        return;
+                    }
+
+                    // Para campos de rollos individuales
+                    const row = this.closest('tr');
                     if (actual !== original) {
                         row.classList.add('rollo-modificado');
                     } else {
@@ -249,7 +281,7 @@ try {
                     if (this.classList.contains('input-largo') || this.classList.contains('input-ancho')) {
                         const largoInput = row.querySelector('.input-largo');
                         const anchoInput = row.querySelector('.input-ancho');
-                        const areaCell = row.querySelector('td:nth-child(4)');
+                        const areaCell = row.querySelector('td:nth-child(5)');
 
                         if (largoInput && anchoInput && areaCell) {
                             const largo = parseFloat(largoInput.value) || 0;
@@ -274,7 +306,10 @@ try {
             });
 
             function actualizarEstadoGuardado() {
-                const hayCambios = document.querySelectorAll('.rollo-modificado, .rollo-eliminado').length > 0;
+                const hayCambiosRollos = document.querySelectorAll('.rollo-modificado, .rollo-eliminado').length > 0;
+                const hayCambiosCostoBase = document.querySelector('.input-costo-base.campo-modificado') !== null;
+                const hayCambios = hayCambiosRollos || hayCambiosCostoBase;
+                
                 btnGuardar.disabled = !hayCambios;
 
                 if (hayCambios) {

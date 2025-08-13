@@ -36,6 +36,43 @@ body {
     font-weight: 500;
 }
 
+.costo-base-container {
+    margin-top: 15px;
+    padding: 12px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+}
+
+.costo-base-container label {
+    font-family: "Montserrat", sans-serif;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.input-costo-base {
+    width: 120px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: "Montserrat", sans-serif;
+    font-size: 14px;
+    text-align: right;
+}
+
+.input-costo-base:focus {
+    border-color: #7dc042;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(125, 192, 66, 0.2);
+}
+
+.input-costo-base.campo-modificado {
+    background-color: #fffde7;
+    border-color: #ffc107;
+}
+
 
 .badge-producto {
     background: #e3f2fd;

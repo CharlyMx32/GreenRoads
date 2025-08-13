@@ -34,7 +34,8 @@ try {
     // Obtener detalles del pasto (producto principal)
     $sqlPasto = "SELECT p.nombre AS modelo, m.nombre AS tipo, col.nombre AS color, 
                         dc.precio_unitario, dc.area_usada,
-                        (dc.precio_unitario + COALESCE(c.precio_instalacion_m2, 0)) AS precio_con_instalacion
+                        c.precio_base_pasto_m2, c.descuento_volumen_porcentaje, 
+                        c.precio_instalacion_m2, c.precio_mano_obra_m2
                  FROM detalle_cotizacion dc
                  JOIN productos p ON dc.id_producto = p.id
                  LEFT JOIN modelos m ON p.id_modelo = m.id
@@ -47,13 +48,44 @@ try {
     $stmtPasto->bind_param('i', $cotizacionId);
     $stmtPasto->execute();
     $resultPasto = $stmtPasto->get_result();
-    $pasto = $resultPasto->num_rows > 0 ? $resultPasto->fetch_assoc() : [
-        'modelo' => 'No especificado',
-        'tipo' => 'Residencial',
-        'color' => 'No especificado',
-        'precio_unitario' => 0,
-        'precio_con_instalacion' => 0
-    ];
+    
+    if ($resultPasto->num_rows > 0) {
+        $pastoData = $resultPasto->fetch_assoc();
+        
+        // Calcular el precio completo por m² según la nueva fórmula:
+        // Precio base - descuento por volumen + precio instalación + precio mano de obra
+        $precio_base = floatval($pastoData['precio_base_pasto_m2']);
+        $descuento_porcentaje = floatval($pastoData['descuento_volumen_porcentaje']);
+        $precio_instalacion = floatval($pastoData['precio_instalacion_m2']);
+        $precio_mano_obra = floatval($pastoData['precio_mano_obra_m2']);
+        
+        $precio_con_descuento = $precio_base * (1 - ($descuento_porcentaje / 100));
+        $precio_completo_m2 = $precio_con_descuento + $precio_instalacion + $precio_mano_obra;
+        
+        $pasto = [
+            'modelo' => $pastoData['modelo'],
+            'tipo' => $pastoData['tipo'] ?: 'Residencial',
+            'color' => $pastoData['color'] ?: 'No especificado',
+            'precio_unitario' => floatval($pastoData['precio_unitario']),
+            'precio_completo_m2' => $precio_completo_m2,
+            'precio_base' => $precio_base,
+            'descuento_porcentaje' => $descuento_porcentaje,
+            'precio_instalacion' => $precio_instalacion,
+            'precio_mano_obra' => $precio_mano_obra
+        ];
+    } else {
+        $pasto = [
+            'modelo' => 'No especificado',
+            'tipo' => 'Residencial',
+            'color' => 'No especificado',
+            'precio_unitario' => 0,
+            'precio_completo_m2' => 0,
+            'precio_base' => 0,
+            'descuento_porcentaje' => 0,
+            'precio_instalacion' => 0,
+            'precio_mano_obra' => 0
+        ];
+    }
     
     // Obtener extras
     $sqlExtras = "SELECT e.nombre, ce.precio_aplicado AS precio
@@ -75,10 +107,19 @@ try {
         ];
     }, $extrasRaw);
     
-    // Calcular totales
+    // Calcular totales basándose en si la cotización tiene IVA aplicado
     $total = floatval($cotizacion['total']);
-    $subtotal = $total / 1.16; // Asumiendo 16% de IVA
-    $iva = $total - $subtotal;
+    $iva_aplicado = !is_null($cotizacion['iva']) && floatval($cotizacion['iva']) > 0;
+    
+    if ($iva_aplicado) {
+        // Si tiene IVA, usar los valores directos de la base de datos
+        $iva = floatval($cotizacion['iva']);
+        $subtotal = $total - $iva;
+    } else {
+        // Si no tiene IVA, el total es el subtotal
+        $subtotal = $total;
+        $iva = 0;
+    }
     
     $response = [
         'success' => true,
@@ -104,7 +145,8 @@ try {
         'totales' => [
             'subtotal' => $subtotal,
             'iva' => $iva,
-            'total' => $total
+            'total' => $total,
+            'iva_aplicado' => $iva_aplicado
         ]
     ];
 } catch (Exception $e) {

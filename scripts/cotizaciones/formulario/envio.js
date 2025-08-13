@@ -177,6 +177,7 @@ async function guardarCotizacion() {
         precio_instalacion: precioInstalacion,
         area_total: areaTerreno,
         total: total,
+        aplicar_iva: document.getElementById('aplicar_iva')?.checked || false,
         rollos: rollos,
         materiales: productos, 
         extras: extras,

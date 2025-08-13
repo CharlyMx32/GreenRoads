@@ -449,6 +449,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 tipo_instalacion: document.getElementById('tipo_instalacion').value,
                 area_total: document.getElementById('area_total').value,
                 total: parseFloat(document.getElementById('total-final').textContent.replace('$', '').replace(',', '')) || 0,
+                aplicar_iva: document.getElementById('aplicar_iva')?.checked || false,
                 rollos: [],
                 materiales: [],
                 dibujo_terreno: window.canvasData || window.dibujoTerreno || null

@@ -27,6 +27,7 @@ try {
 
     $id_producto = filter_input(INPUT_POST, 'id_producto', FILTER_VALIDATE_INT);
     $id_color = filter_input(INPUT_POST, 'id_color', FILTER_VALIDATE_INT);
+    $costo_base = filter_input(INPUT_POST, 'costo_base', FILTER_VALIDATE_FLOAT);
     
     if (!$id_producto || $id_producto <= 0) sendError('ID de producto inválido', 400);
     if (!$id_color || $id_color <= 0) sendError('ID de color inválido', 400);
@@ -42,6 +43,17 @@ try {
     $rollos_editados = 0;
     $rollos_eliminados = 0;
     $id_lote = null;
+    $costo_base_actualizado = false;
+
+    // Actualizar costo base del producto si se proporcionó
+    if ($costo_base !== false && $costo_base > 0) {
+        $stmt = $conn->prepare("UPDATE productos SET costo_base = ? WHERE id = ?");
+        $stmt->bind_param("di", $costo_base, $id_producto);
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
+            $costo_base_actualizado = true;
+        }
+        $stmt->close();
+    }
 
     foreach ($rollos_data as $rollo_id => $datos) {
         $rollo_id = filter_var($rollo_id, FILTER_VALIDATE_INT);
@@ -95,12 +107,26 @@ try {
 
     $conn->commit();
 
+    // Preparar mensaje de éxito
+    $mensaje_partes = [];
+    if ($rollos_editados > 0 || $rollos_eliminados > 0) {
+        $mensaje_partes[] = "Rollos: $rollos_editados editados, $rollos_eliminados eliminados";
+    }
+    if ($costo_base_actualizado) {
+        $mensaje_partes[] = "Costo base del producto actualizado";
+    }
+    
+    $mensaje = !empty($mensaje_partes) ? 
+        "Cambios guardados correctamente. " . implode(". ", $mensaje_partes) : 
+        "No se realizaron cambios";
+
     echo json_encode([
         'status' => 1,
-        'mensaje' => "Cambios guardados correctamente",
+        'mensaje' => $mensaje,
         'data' => [
             'editados' => $rollos_editados,
-            'eliminados' => $rollos_eliminados
+            'eliminados' => $rollos_eliminados,
+            'costo_base_actualizado' => $costo_base_actualizado
         ]
     ]);
 
