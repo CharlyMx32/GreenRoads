@@ -409,6 +409,7 @@ async function generarPDFCotizacion(cotizacionId) {
         //doc.save(`Cotizacion_GreenRoads_${data.cotizacion.id}.pdf`);
         
         console.log('PDF generado exitosamente!');
+        
         alert('PDF generado exitosamente!');
         
         return true;
