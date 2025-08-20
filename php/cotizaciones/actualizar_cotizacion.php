@@ -140,22 +140,20 @@ try {
 
     // 4. Insertar nuevos detalles (rollos)
     if (!empty($datos['rollos']) && is_array($datos['rollos'])) {
-        $query_detalle = "INSERT INTO detalle_cotizacion (id_cotizacion, id_producto, id_color, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?)";
+        $query_detalle = "INSERT INTO detalle_cotizacion (id_cotizacion, id_producto, id_color, cantidad, precio_unitario) VALUES (?, ?, ?, ?, ?)";
         $stmt_detalle = mysqli_prepare($conn, $query_detalle);
 
         foreach ($datos['rollos'] as $rollo) {
             if (empty($rollo['id_producto']) || empty($rollo['cantidad'])) continue;
 
             $precio_unitario = (float)($rollo['precio_unitario'] ?? 0);
-            $subtotal = (float)($rollo['subtotal'] ?? 0);
 
-            mysqli_stmt_bind_param($stmt_detalle, "iiiddd", 
+            mysqli_stmt_bind_param($stmt_detalle, "iiidd", 
                 $id_cotizacion, 
                 $rollo['id_producto'], 
                 $rollo['id_color'], 
                 $rollo['cantidad'], 
-                $precio_unitario, 
-                $subtotal
+                $precio_unitario
             );
 
             if (!mysqli_stmt_execute($stmt_detalle)) {
@@ -178,32 +176,6 @@ try {
             }
         }
         mysqli_stmt_close($stmt_detalle);
-    }
-
-    // 5. Insertar nuevos materiales
-    if (!empty($datos['materiales']) && is_array($datos['materiales'])) {
-        $query_material = "INSERT INTO detalle_cotizacion (id_cotizacion, id_producto, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?)";
-        $stmt_material = mysqli_prepare($conn, $query_material);
-
-        foreach ($datos['materiales'] as $material) {
-            if (empty($material['id_producto']) || empty($material['cantidad'])) continue;
-
-            $precio_unitario = (float)($material['precio_unitario'] ?? 0);
-            $subtotal = (float)($material['subtotal'] ?? 0);
-
-            mysqli_stmt_bind_param($stmt_material, "iiddd", 
-                $id_cotizacion, 
-                $material['id_producto'], 
-                $material['cantidad'], 
-                $precio_unitario, 
-                $subtotal
-            );
-
-            if (!mysqli_stmt_execute($stmt_material)) {
-                throw new Exception("Error al insertar material");
-            }
-        }
-        mysqli_stmt_close($stmt_material);
     }
 
     mysqli_commit($conn);

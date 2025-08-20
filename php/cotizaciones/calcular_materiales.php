@@ -150,9 +150,6 @@ function obtenerProductosPorTipo($idTipoProducto) {
     return $productos;
 }
 
-/**
- * Verifica si hay inventario suficiente
- */
 function verificarInventarioSuficiente($productos, $cantidadNecesaria) {
     $stockTotal = 0;
     foreach ($productos as $producto) {

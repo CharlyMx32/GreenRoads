@@ -45,17 +45,6 @@ foreach ($camposRequeridos as $campo) {
     }
 }
 
-function obtenerCostoProducto($conn, $idProducto) {
-    $query = "SELECT costo_base FROM productos WHERE id = ?";
-             
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $idProducto);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    return $result->fetch_assoc()['costo_base'] ?? 0;
-}
-
 mysqli_begin_transaction($conn);
 
 try {
@@ -70,22 +59,29 @@ try {
     
     $tabuladores = obtenerTabuladoresCotizacion($conn, $area_total, $productos_para_tabulador);
     
-    // Calcular IVA si es necesario
-    // El total que viene del frontend ya incluye IVA si está aplicado
-    $total_con_iva = floatval($datos['total']);
-    $aplicar_iva = isset($datos['aplicar_iva']) && $datos['aplicar_iva'];
-    
-    // Si se aplica IVA, calcular el subtotal y el IVA por separado
-    if ($aplicar_iva) {
-        // Total = Subtotal + IVA, donde IVA = Subtotal * 0.16
-        // Entonces: Total = Subtotal * 1.16
-        // Subtotal = Total / 1.16
-        $iva_porcentaje = 0.16; // Obtener de configuración si es necesario
-        $subtotal = $total_con_iva / (1 + $iva_porcentaje);
-        $iva = $total_con_iva - $subtotal;
+    // Determinar el total a guardar según el tipo de cotización
+    if ($datos['es_comparativa'] === 'S' || $datos['es_comparativa'] === 1 || $datos['es_comparativa'] == 1) {
+        // Para cotizaciones comparativas, usar un valor temporal
+        // El total real se calculará cuando se seleccione una opción específica
+        $total_con_iva = 1000.00; // Valor temporal
+        $iva = null; // IVA se calculará después
     } else {
-        $subtotal = $total_con_iva;
-        $iva = null;
+        // Para cotizaciones simples, usar el total calculado del frontend
+        $total_con_iva = floatval($datos['total']);
+        $aplicar_iva = isset($datos['aplicar_iva']) && $datos['aplicar_iva'];
+        
+        // Si se aplica IVA, calcular el subtotal y el IVA por separado
+        if ($aplicar_iva) {
+            // Total = Subtotal + IVA, donde IVA = Subtotal * 0.16
+            // Entonces: Total = Subtotal * 1.16
+            // Subtotal = Total / 1.16
+            $iva_porcentaje = 0.16; // Obtener de configuración si es necesario
+            $subtotal = $total_con_iva / (1 + $iva_porcentaje);
+            $iva = $total_con_iva - $subtotal;
+        } else {
+            $subtotal = $total_con_iva;
+            $iva = null;
+        }
     }
 
     // Incluir dibujo_terreno y los nuevos campos de tabuladores en la consulta
@@ -103,9 +99,10 @@ try {
         descuento_volumen_porcentaje,
         precio_base_pasto_m2,
         iva,
+        es_comparativa,
         dibujo_terreno,
         fecha
-    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
     $stmt = mysqli_prepare($conn, $query);
     if (!$stmt) {
@@ -116,7 +113,7 @@ try {
     
     mysqli_stmt_bind_param(
         $stmt,
-        "iiddssiddddds",
+        "iiddssiddddsds",
         $datos['id_cliente'],
         $id_admin,
         $total_con_iva,
@@ -129,6 +126,7 @@ try {
         $tabuladores['descuento_volumen_porcentaje'],
         $tabuladores['precio_base_pasto_m2'],
         $iva,
+        $datos['es_comparativa'],
         $datos['dibujo_terreno']
     );
 
@@ -141,6 +139,8 @@ try {
 
     // Procesar rollos de pasto
     if (!empty($datos['rollos']) && is_array($datos['rollos'])) {
+        $opcion_comparativa_index = 1; // Para cotizaciones comparativas, numerar las opciones
+        
         foreach ($datos['rollos'] as $rollo) {
             if (!isset($rollo['id_producto'], $rollo['id_color'], $rollo['cantidad'], $rollo['precio_unitario'])) {
                 continue;
@@ -159,18 +159,23 @@ try {
             $result_verificar = mysqli_stmt_get_result($stmt_verificar);
             $disponibilidad = mysqli_fetch_assoc($result_verificar);
 
-            // Si no hay inventario disponible, usar precio base del producto
-            $precio_unitario = $rollo['precio_unitario'];
-            if ($disponibilidad['area_disponible'] <= 0) {
-                $sql_precio_base = "SELECT costo_base FROM productos WHERE id = ?";
-                $stmt_precio = mysqli_prepare($conn, $sql_precio_base);
-                mysqli_stmt_bind_param($stmt_precio, "i", $rollo['id_producto']);
-                mysqli_stmt_execute($stmt_precio);
-                $result_precio = mysqli_stmt_get_result($stmt_precio);
-                $producto_info = mysqli_fetch_assoc($result_precio);
-                $precio_unitario = $producto_info['costo_base'] ?? 1000.00;
-                mysqli_stmt_close($stmt_precio);
-                
+            // Obtener precio unitario correcto basado en tabuladores y costo base
+            $sql_precio_base = "SELECT costo_base FROM productos WHERE id = ?";
+            $stmt_precio = mysqli_prepare($conn, $sql_precio_base);
+            mysqli_stmt_bind_param($stmt_precio, "i", $rollo['id_producto']);
+            mysqli_stmt_execute($stmt_precio);
+            $result_precio = mysqli_stmt_get_result($stmt_precio);
+            $producto_info = mysqli_fetch_assoc($result_precio);
+            $costo_base = $producto_info['costo_base'] ?? 0;
+            mysqli_stmt_close($stmt_precio);
+            
+            // Usar el costo base del producto como precio unitario
+            // Los tabuladores se aplican en el cálculo del total, no en el precio unitario
+            $precio_unitario = $costo_base;
+            
+            // Si no hay inventario y no tenemos costo base, usar fallback
+            if ($precio_unitario <= 0) {
+                $precio_unitario = 1000.00; // Fallback para casos extremos
             }
 
             $query = "INSERT INTO detalle_cotizacion (
@@ -179,19 +184,37 @@ try {
                 id_color,
                 cantidad, 
                 area_usada,
-                precio_unitario
-            ) VALUES (?, ?, ?, ?, ?, ?)";
+                precio_unitario,
+                opcion_comparativa
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
             $stmt = mysqli_prepare($conn, $query);
+            
+            // Determinar opción comparativa: usar el valor del frontend si está disponible
+            if (isset($rollo['opcion_comparativa']) && !is_null($rollo['opcion_comparativa'])) {
+                // Convertir A/B a 1/2 si es necesario
+                if ($rollo['opcion_comparativa'] === 'A') {
+                    $opcion_actual = 1;
+                } elseif ($rollo['opcion_comparativa'] === 'B') {
+                    $opcion_actual = 2;
+                } else {
+                    $opcion_actual = (int)$rollo['opcion_comparativa'];
+                }
+            } else {
+                // Fallback para compatibilidad: null para simples, usar índice para comparativas
+                $opcion_actual = ($datos['es_comparativa'] === 'S' || $datos['es_comparativa'] === '1' || $datos['es_comparativa'] == 1) ? $opcion_comparativa_index : null;
+            }
+            
             mysqli_stmt_bind_param(
                 $stmt,
-                "iiiddd",
+                "iiidddi",
                 $id_cotizacion,
                 $rollo['id_producto'],
                 $rollo['id_color'],
                 $rollo['cantidad'],
-                $rollo['cantidad'],
-                $precio_unitario
+                $rollo['cantidad'], // area_usada = cantidad para rollos
+                $precio_unitario,
+                $opcion_actual
             );
             mysqli_stmt_execute($stmt);
             $id_detalle = mysqli_insert_id($conn);
@@ -216,40 +239,12 @@ try {
             } else {
                 error_log("Cotización {$id_cotizacion}: Rollo agregado sin inventario - usando precio base");
             }
-        }
-    }
-
-    if (!empty($datos['productos']) && is_array($datos['productos'])) {
-        foreach ($datos['productos'] as $producto) {
-            if (empty($producto['id_producto'])) continue;
-
-            // Obtener el costo base del producto
-            $sqlCosto = "SELECT costo_base FROM productos WHERE id = ?";
-            $stmtCosto = $conn->prepare($sqlCosto);
-            $stmtCosto->bind_param("i", $producto['id_producto']);
-            $stmtCosto->execute();
-            $resultCosto = $stmtCosto->get_result();
-            $costo = $resultCosto->fetch_assoc()['costo_base'] ?? 0;
-
-            // Insertar en detalle_cotizacion con el costo base del producto
-            $query = "INSERT INTO detalle_cotizacion (
-            id_cotizacion, 
-            id_producto, 
-            cantidad, 
-            precio_unitario
-        ) VALUES (?, ?, ?, ?)";
-
-            $stmt = mysqli_prepare($conn, $query);
-            mysqli_stmt_bind_param(
-                $stmt,
-                "iidd",
-                $id_cotizacion,
-                $producto['id_producto'],
-                $producto['cantidad'],
-                $costo // Precio unitario = costo base del producto
-            );
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
+            
+            // Incrementar índice solo para fallback de cotizaciones comparativas SIN opción definida
+            if (($datos['es_comparativa'] === 'S' || $datos['es_comparativa'] === '1' || $datos['es_comparativa'] == 1) && 
+                (!isset($rollo['opcion_comparativa']) || is_null($rollo['opcion_comparativa']))) {
+                $opcion_comparativa_index++;
+            }
         }
     }
 

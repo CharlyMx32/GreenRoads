@@ -1,63 +1,99 @@
 import { parametrosSistema, cargarParametrosSistema } from './core/parametros.js';
 import { toggleTerreno } from './componentes/terreno.js';
 import { calcularArea } from './core/calculos.js';
-import { actualizarRollos, agregarRollo, removerRollo, cargarColoresRollos } from './componentes/rollos.js';
+import { actualizarRollos, agregarRollo, removerRollo, cargarColoresRollos, actualizarAreasAutomaticas, verificarModoComparativo } from './componentes/rollos.js';
 import { actualizarTotales } from './core/totales.js';
 import { guardarCotizacion } from './formulario/envio.js';
-import { actualizarProductos, agregarProducto, removerProducto } from './componentes/productos.js';
+
+// Función para calcular materiales automáticos (extraída de totales.js para evitar ciclos)
+async function calcularMaterialesAutomaticos() {
+    try {
+        const tipoInstalacion = document.getElementById('tipo_instalacion')?.value;
+        const area = parseFloat(document.getElementById('area_total')?.value || 0);
+
+        if (!tipoInstalacion || area <= 0) {
+            return 0; 
+        }
+
+        const response = await fetch('/greenroads/php/cotizaciones/calcular_materiales.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tipo_terreno: tipoInstalacion,
+                area: area
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.costo_total;
+        } else {
+            console.error('Error al calcular materiales:', data.error);
+            return 0;
+        }
+
+    } catch (error) {
+        console.error('Error en calcular materiales automáticos:', error);
+        return 0;
+    }
+}
+
+// Hacer la función disponible globalmente
+window.calcularMaterialesAutomaticos = calcularMaterialesAutomaticos;
 
 
 function configurarEventos() {
     // Eventos para terreno
     document.getElementById('tipo_terreno')?.addEventListener('change', toggleTerreno);
-    document.getElementById('forma_terreno')?.addEventListener('change', calcularArea);
-    document.getElementById('dimension1')?.addEventListener('change', calcularArea);
-    document.getElementById('dimension2')?.addEventListener('change', calcularArea);
-    document.getElementById('area_irregular')?.addEventListener('change', calcularArea);
+    document.getElementById('forma_terreno')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
+    document.getElementById('dimension1')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
+    document.getElementById('dimension2')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
+    document.getElementById('area_irregular')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
 
     // Eventos para instalación
-    document.getElementById('area_total')?.addEventListener('change', actualizarTotales);
+    document.getElementById('area_total')?.addEventListener('change', function() {
+        actualizarAreasAutomaticas();
+        verificarModoComparativo();
+    });
     
     // Eventos para tipo de instalación (materiales automáticos)
     document.getElementById('tipo_instalacion')?.addEventListener('change', function() {
         calcularMaterialesAutomaticos();
-        actualizarTotales();
+        verificarModoComparativo();
     });
 
     // Eventos para extras
     document.querySelectorAll('.extra-check').forEach(ck => {
-        ck.addEventListener('change', actualizarTotales);
+        ck.addEventListener('change', verificarModoComparativo);
     });
 
     // Evento para IVA opcional
-    document.getElementById('aplicar_iva')?.addEventListener('change', actualizarTotales);
+    document.getElementById('aplicar_iva')?.addEventListener('change', verificarModoComparativo);
 
     // Eventos para rollos
     document.querySelectorAll('#rollos_container .rollo-select').forEach(select => {
         select.addEventListener('change', function () {
             cargarColoresRollos(this);
             actualizarRollos(this);
-        });
-    });
-
-    document.querySelectorAll('#rollos_container input[type="number"]').forEach(input => {
-        input.addEventListener('input', function () {
-            actualizarRollos(this);
-        });
-    });
-
-    // Eventos para productos
-    document.querySelectorAll('#productos_container .product-select').forEach(select => {
-        select.addEventListener('change', function () {
-            actualizarProductos(this);
-            actualizarTotales();
-        });
-    });
-
-    document.querySelectorAll('#productos_container input[type="number"]').forEach(input => {
-        input.addEventListener('input', function () {
-            actualizarProductos(this);
-            actualizarTotales();
         });
     });
 
@@ -82,9 +118,6 @@ function configurarEventos() {
         if (e.target.closest('.fa-trash') && e.target.closest('#rollos_container')) {
             removerRollo(e.target);
         }
-        if (e.target.closest('.fa-trash') && e.target.closest('#productos_container')) {
-            removerProducto(e.target);
-        }
     });
 }
 
@@ -99,7 +132,7 @@ async function inicializarAplicacion() {
 
         configurarEventos();
         toggleTerreno();
-        actualizarTotales();
+        verificarModoComparativo();
 
         const areaTotalInput = document.getElementById('area_total');
         if (areaTotalInput) {

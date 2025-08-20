@@ -28,6 +28,12 @@ $sql = "
         c.tipo_instalacion,
         c.garantia_anios,
         c.id_admin,  
+        c.es_comparativa,
+        c.opcion_seleccionada,
+        c.area_total,
+        c.precio_instalacion_m2,
+        c.precio_mano_obra_m2,
+        c.iva,
         COALESCE(a.nombre, 'Sin asignar') AS nombre_admin,
         COALESCE(a.apellido, '') AS apellido_admin
     FROM cotizaciones c
@@ -46,6 +52,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 
 <head>
     <?php include_once "$ROOT/includes/head.php"; ?>
+    <link rel="stylesheet" href="../../css/cotizaciones/cotizaciones.css?v=<?= time() ?>">
 </head>
 
 <body>
@@ -85,7 +92,38 @@ while ($row = mysqli_fetch_assoc($result)) {
                                 <td><?= htmlspecialchars($cotizacion['nombre_cliente'] ?? '') ?></td>
                                 <td><?= date('Y-m-d', strtotime($cotizacion['fecha'])) ?></td>
                                 <td><?= ucfirst($cotizacion['estado']) ?></td>
-                                <td>$<?= isset($cotizacion['total']) ? number_format((float)$cotizacion['total'], 2) : '0.00' ?></td>
+                                <td>
+                                    <?php if ($cotizacion['es_comparativa'] === 'S' || $cotizacion['es_comparativa'] === '1' || $cotizacion['es_comparativa'] == 1): ?>
+                                        <!-- Cotización comparativa -->
+                                        <?php if ($cotizacion['estado'] === 'aceptada' && !empty($cotizacion['opcion_seleccionada'])): ?>
+                                            <!-- Mostrar total de la opción aceptada (ya calculado en BD) -->
+                                            <?php 
+                                            $opcion_letra = ($cotizacion['opcion_seleccionada'] == 1) ? 'A' : 'B';
+                                            ?>
+                                            <div style="font-size: 12px; line-height: 1.2;">
+                                                <strong style="color: #28a745;">
+                                                    Opción <?= $opcion_letra ?> Aceptada
+                                                </strong><br>
+                                                <span style="font-weight: 600; color: #333;">
+                                                    $<?= number_format($cotizacion['total'], 2) ?>
+                                                </span>
+                                            </div>
+                                        <?php else: ?>
+                                            <!-- Mostrar "Pendiente" para comparativas no aceptadas -->
+                                            <div style="font-size: 12px; text-align: center;">
+                                                <span style="color: #ffc107; font-weight: 600;">
+                                                    <i class="fa-solid fa-clock"></i> Pendiente
+                                                </span><br>
+                                                <small style="color: #666;">Esperando selección</small>
+                                            </div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <!-- Cotización simple -->
+                                        <span style="font-weight: 600; color: #333;">
+                                            $<?= number_format($cotizacion['total'], 2) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?php
                                     if (!empty($cotizacion['id_admin'])) {
@@ -117,8 +155,9 @@ while ($row = mysqli_fetch_assoc($result)) {
 
                                         <!-- Botón aceptar -->
                                         <div class="aceptar <?= $cotizacion['estado'] != 'pendiente' ? 'disabled' : '' ?>"
-                                            onclick="<?= $cotizacion['estado'] == 'pendiente' ? "confirmChangeStatus({$cotizacion['id']}, 'aceptada')" : '' ?>"
-                                            style="<?= $cotizacion['estado'] == 'aceptada' ? 'color: #00dd0b;' : ($cotizacion['estado'] != 'pendiente' ? 'opacity: 0.5; cursor: not-allowed;' : '') ?>">
+                                            onclick="<?= $cotizacion['estado'] == 'pendiente' ? "location.href='detalle.php?id={$cotizacion['id']}&action=accept'" : '' ?>"
+                                            style="<?= $cotizacion['estado'] == 'aceptada' ? 'color: #00dd0b;' : ($cotizacion['estado'] != 'pendiente' ? 'opacity: 0.5; cursor: not-allowed;' : '') ?>"
+                                            title="<?= $cotizacion['estado'] == 'pendiente' ? 'Ver detalle para aceptar' : 'No disponible' ?>">
                                             <i class="fa-solid fa-check"></i>
                                         </div>
 

@@ -21,6 +21,28 @@ $stmt->bind_param("i", $id_cotizacion);
 $stmt->execute();
 
 if ($stmt->affected_rows > 0) {
+    // Crear instalación automáticamente cuando se acepta la cotización
+    // Verificar si ya existe una instalación para esta cotización
+    $sql_check_instalacion = "SELECT id FROM instalaciones WHERE id_cotizacion = ?";
+    $stmt_check = $conn->prepare($sql_check_instalacion);
+    $stmt_check->bind_param("i", $id_cotizacion);
+    $stmt_check->execute();
+    $result_check = $stmt_check->get_result();
+    
+    if ($result_check->num_rows == 0) {
+        // Solo crear si no existe ya una instalación
+        $sql_instalacion = "INSERT INTO instalaciones (
+            id_cotizacion, 
+            estado, 
+            progreso_porcentaje, 
+            fecha_creacion
+        ) VALUES (?, 'planificada', 0, NOW())";
+        
+        $stmt_instalacion = $conn->prepare($sql_instalacion);
+        $stmt_instalacion->bind_param("i", $id_cotizacion);
+        $stmt_instalacion->execute();
+    }
+
     // Obtener productos de la cotización para descontar del inventario
     $sql_productos = "SELECT dc.id_producto, dc.cantidad, dc.id_color, dc.area_usada,
                              p.tipo_inventario, p.nombre

@@ -1,4 +1,4 @@
-import { actualizarTotales } from './totales.js';
+import { verificarModoComparativo } from '../componentes/rollos.js';
 
 function calcularArea() {
     const tipoTerreno = document.getElementById('tipo_terreno')?.value;
@@ -34,9 +34,7 @@ function calcularArea() {
         areaTotalInput.value = area.toFixed(2);
     }
     
-    actualizarTotales();
+    verificarModoComparativo();
 }
-
-
 
 export { calcularArea };

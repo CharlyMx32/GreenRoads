@@ -4,32 +4,44 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
 $ROOT = '../..';
-$TITULO = "Detalle de Cotización";
 
 include_once "$ROOT/db/conexion.php";
 include_once "$ROOT/includes/sesion.php";
 include_once "$ROOT/includes/config.php";
-include_once "$ROOT/includes/funciones_dibujo.php";
+include_once "$ROOT/includes/funciones_tabuladores.php";
 
 if (!tieneSesion()) {
     header("Location: $URL_ROOT/login");
     exit();
 }
 
-$id_cotizacion = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$id_cotizacion = (int)($_GET['id'] ?? 0);
 
 if ($id_cotizacion <= 0) {
     header("Location: lista.php");
     exit();
 }
 
-$sql_cotizacion = "
+// Función para obtener costo base de productos
+function obtenerCostoBaseProducto($conn, $id_producto)
+{
+    $sql = "SELECT costo_base FROM productos WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_producto);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    return $row ? floatval($row['costo_base']) : 0;
+}
+
+// Obtener datos completos de la cotización
+$sql = "
     SELECT 
         c.*,
         cli.nombre AS nombre_cliente,
-        cli.telefono AS telefono_cliente,
-        cli.email AS email_cliente,
-        cli.direccion AS direccion_cliente,
+        cli.telefono,
+        cli.email,
+        cli.direccion,
         COALESCE(a.nombre, 'Sin asignar') AS nombre_admin,
         COALESCE(a.apellido, '') AS apellido_admin
     FROM cotizaciones c
@@ -38,83 +50,71 @@ $sql_cotizacion = "
     WHERE c.id = ?
 ";
 
-$stmt = mysqli_prepare($conn, $sql_cotizacion);
+$stmt = mysqli_prepare($conn, $sql);
 mysqli_stmt_bind_param($stmt, "i", $id_cotizacion);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
-$cotizacion = mysqli_fetch_assoc($result);
 
-if (!$cotizacion) {
+if (!$cotizacion = mysqli_fetch_assoc($result)) {
     header("Location: lista.php");
     exit();
 }
 
-$sql_detalles = "
+// Obtener productos de la cotización
+$productos_cotizacion = [];
+$sql_productos = "
     SELECT 
-        dc.*,
-        p.nombre AS nombre_producto,
-        p.descripcion AS descripcion_producto,
-        p.tipo_inventario,
-        COALESCE(c.nombre, 'Sin color') AS nombre_color,
-        COALESCE(c.codigo_hex, '#cccccc') AS color_hex
+        p.nombre,
+        p.costo_base,
+        p.tipo_inventario, 
+        dc.cantidad,
+        dc.area_usada,
+        dc.precio_unitario,
+        dc.subtotal,
+        dc.opcion_comparativa,
+        u.simbolo as unidad,
+        col.nombre as color,
+        col.codigo_hex
     FROM detalle_cotizacion dc
-    LEFT JOIN productos p ON dc.id_producto = p.id
-    LEFT JOIN colores c ON dc.id_color = c.id
+    INNER JOIN productos p ON dc.id_producto = p.id
+    LEFT JOIN unidades u ON p.id_unidad = u.id
+    LEFT JOIN colores col ON dc.id_color = col.id
     WHERE dc.id_cotizacion = ?
-    ORDER BY dc.id
+    ORDER BY dc.opcion_comparativa, dc.id
 ";
 
-$stmt_detalles = mysqli_prepare($conn, $sql_detalles);
-mysqli_stmt_bind_param($stmt_detalles, "i", $id_cotizacion);
-mysqli_stmt_execute($stmt_detalles);
-$result_detalles = mysqli_stmt_get_result($stmt_detalles);
-$detalles = [];
-while ($row = mysqli_fetch_assoc($result_detalles)) {
-    $detalles[] = $row;
+$stmt_productos = mysqli_prepare($conn, $sql_productos);
+mysqli_stmt_bind_param($stmt_productos, "i", $id_cotizacion);
+mysqli_stmt_execute($stmt_productos);
+$result_productos = mysqli_stmt_get_result($stmt_productos);
+
+while ($row = mysqli_fetch_assoc($result_productos)) {
+    $productos_cotizacion[] = $row;
 }
 
-$sql_extras = "
-    SELECT 
-        ce.*,
-        e.nombre AS nombre_extra,
-        e.descripcion AS descripcion_extra
+// Obtener extras de la cotización
+$extras_cotizacion = [];
+$sql_extras_cotizacion = "
+    SELECT e.id, e.nombre, e.descripcion, ce.precio_aplicado
     FROM cotizacion_extras ce
-    LEFT JOIN extras e ON ce.id_extra = e.id
+    INNER JOIN extras e ON ce.id_extra = e.id
     WHERE ce.id_cotizacion = ?
-    ORDER BY ce.id
 ";
-
-$stmt_extras = mysqli_prepare($conn, $sql_extras);
-mysqli_stmt_bind_param($stmt_extras, "i", $id_cotizacion);
-mysqli_stmt_execute($stmt_extras);
-$result_extras = mysqli_stmt_get_result($stmt_extras);
-$extras = [];
-while ($row = mysqli_fetch_assoc($result_extras)) {
-    $extras[] = $row;
+$stmt_extras_cotizacion = mysqli_prepare($conn, $sql_extras_cotizacion);
+mysqli_stmt_bind_param($stmt_extras_cotizacion, "i", $id_cotizacion);
+mysqli_stmt_execute($stmt_extras_cotizacion);
+$result_extras_cotizacion = mysqli_stmt_get_result($stmt_extras_cotizacion);
+while ($row = mysqli_fetch_assoc($result_extras_cotizacion)) {
+    $extras_cotizacion[] = $row;
 }
 
-$sql_inventario = "
-    SELECT 
-        ir.*,
-        p.nombre AS nombre_producto,
-        c.nombre AS nombre_color
-    FROM inventario_rollos ir
-    LEFT JOIN productos p ON ir.id_producto = p.id
-    LEFT JOIN colores c ON ir.id_color = c.id
-    WHERE ir.id_cotizacion_reserva = ?
-    ORDER BY ir.fecha_ingreso ASC
-";
-
-$stmt_inventario = mysqli_prepare($conn, $sql_inventario);
-mysqli_stmt_bind_param($stmt_inventario, "i", $id_cotizacion);
-mysqli_stmt_execute($stmt_inventario);
-$result_inventario = mysqli_stmt_get_result($stmt_inventario);
-$inventario_asignado = [];
-while ($row = mysqli_fetch_assoc($result_inventario)) {
-    $inventario_asignado[] = $row;
-}
-
-$dibujo_terreno = obtenerDibujoTerreno($conn, $id_cotizacion);
+// Verificar si tiene instalación asociada
+$sql_instalacion = "SELECT id, estado, progreso_porcentaje FROM instalaciones WHERE id_cotizacion = ?";
+$stmt_instalacion = mysqli_prepare($conn, $sql_instalacion);
+mysqli_stmt_bind_param($stmt_instalacion, "i", $id_cotizacion);
+mysqli_stmt_execute($stmt_instalacion);
+$result_instalacion = mysqli_stmt_get_result($stmt_instalacion);
+$instalacion_asociada = mysqli_fetch_assoc($result_instalacion);
 ?>
 
 <!DOCTYPE html>
@@ -122,566 +122,748 @@ $dibujo_terreno = obtenerDibujoTerreno($conn, $id_cotizacion);
 
 <head>
     <?php include_once "$ROOT/includes/head.php"; ?>
-    <link rel="stylesheet" href="../../css/cotizaciones/cotizaciones.css">
     <link rel="stylesheet" href="../../css/material.css">
-    <style>
-        .detalle-container {
-            max-width: 1200px;
-            margin: 60px auto 100px;
-            padding: 20px;
-        }
-
-        .detalle-header {
-            background-color: var(--color-primario);
-            color: white;
-            padding: 20px;
-            border-radius: var(--radio-borde);
-            margin-bottom: 20px;
-            box-shadow: var(--sombra);
-        }
-
-        .detalle-card {
-            background: white;
-            border-radius: var(--radio-borde);
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: var(--sombra);
-            border-left: 4px solid var(--color-primario);
-        }
-
-        .detalle-card h3 {
-            color: var(--color-primario);
-            margin-bottom: 15px;
-            font-size: 1.2em;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--color-primario);
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .info-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .info-label {
-            font-weight: 500;
-            color: #6c757d;
-            font-size: 0.85em;
-            margin-bottom: 5px;
-        }
-
-        .info-value {
-            color: #495057;
-            font-size: 1em;
-            padding: 8px 12px;
-            background: #f8f9fa;
-            border-radius: 5px;
-            border-left: 3px solid var(--color-primario);
-        }
-
-        .estado-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-weight: 500;
-            font-size: 0.85em;
-        }
-
-        .estado-pendiente {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .estado-aceptada {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .estado-rechazada {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .estado-cancelada {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-
-        .productos-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .productos-table th {
-            background: #f8f9fa;
-            font-weight: 500;
-            color: #495057;
-            padding: 10px;
-            text-align: left;
-            border-bottom: 2px solid var(--color-primario);
-        }
-
-        .productos-table td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .productos-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .color-indicator {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border-radius: 3px;
-            border: 1px solid #ddd;
-            vertical-align: middle;
-            margin-right: 6px;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 30px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: var(--transicion);
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-        }
-
-        .btn-primary {
-            background: var(--color-primario);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #6bb536;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-        }
-
-        .inventario-item {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 10px;
-            transition: var(--transicion);
-        }
-
-        .inventario-item:hover {
-            background: #f0f0f0;
-        }
-
-        .inventario-item.reservado {
-            border-left: 4px solid var(--color-secundario);
-        }
-
-        .inventario-item.instalado {
-            border-left: 4px solid #28a745;
-        }
-
-        .total-section {
-            background: var(--color-primario);
-            color: white;
-            padding: 20px;
-            border-radius: var(--radio-borde);
-            text-align: center;
-            margin-top: 20px;
-            box-shadow: var(--sombra);
-        }
-
-        .total-amount {
-            font-size: 2em;
-            font-weight: 600;
-            margin: 10px 0;
-        }
-
-        .imagen-terreno {
-            transition: transform 0.3s ease;
-            cursor: pointer;
-        }
-
-        .imagen-terreno:hover {
-            transform: scale(1.05);
-        }
-
-        .dibujo-container {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            display: inline-block;
-            border: 2px solid #e9ecef;
-            transition: box-shadow 0.3s ease;
-        }
-
-        .dibujo-container:hover {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        }
-
-        @media (max-width: 768px) {
-            .detalle-container {
-                padding: 15px;
-                margin-top: 20px;
-            }
-
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .btn-group {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="../../css/cotizaciones/cotizaciones.css">
+    <link rel="stylesheet" href="../../css/cotizaciones/detalle.css">
+    <link rel="stylesheet" href="../../css/instalaciones/instalaciones.css">
+    <link rel="stylesheet" href="../../css/responsive.css">
 </head>
 
 <body>
     <?php
     $headerParams = [
-        "titulo" => $TITULO,
-        "btn_atras" => "window.location.href='../cotizaciones/lista.php'"
+        "titulo" => "Cotización #" . $cotizacion['id'],
+        "btn_atras" => "window.location.href='lista.php'"
     ];
     include_once '../../includes/header.php';
     ?>
 
-    <div class="detalle-container">
-        <div class="detalle-header">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                <div>
-                    <h1 style="margin: 0; font-size: 1.5em;"><i class="fa-solid fa-file-invoice-dollar"></i> Cotización #<?= $cotizacion['id'] ?></h1>
-                    <p style="margin: 5px 0; opacity: 0.9; font-size: 0.9em;">
-                        <i class="fa-solid fa-calendar"></i>
-                        Creada el <?= date('d/m/Y H:i', strtotime($cotizacion['fecha'])) ?>
-                    </p>
-                </div>
-                <div>
-                    <span class="estado-badge estado-<?= $cotizacion['estado'] ?>">
-                        <?= ucfirst($cotizacion['estado']) ?>
-                    </span>
-                </div>
-            </div>
-        </div>
+    <div class="content">
+        <div class="main-container">
 
-        <!-- Información del cliente -->
-        <div class="detalle-card">
-            <h3><i class="fa-solid fa-user"></i> Información del Cliente</h3>
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">Nombre</span>
-                    <span class="info-value"><?= htmlspecialchars($cotizacion['nombre_cliente']) ?></span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Teléfono</span>
-                    <span class="info-value"><?= htmlspecialchars($cotizacion['telefono_cliente'] ?: 'No registrado') ?></span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Email</span>
-                    <span class="info-value"><?= htmlspecialchars($cotizacion['email_cliente'] ?: 'No registrado') ?></span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Dirección</span>
-                    <span class="info-value"><?= htmlspecialchars($cotizacion['direccion_cliente'] ?: 'No registrada') ?></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Información del proyecto -->
-        <div class="detalle-card">
-            <h3><i class="fa-solid fa-map"></i> Información del Proyecto</h3>
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">Área Total</span>
-                    <span class="info-value"><?= number_format($cotizacion['area_total'], 2) ?> m²</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Tipo de Terreno</span>
-                    <span class="info-value"><?= ucfirst($cotizacion['tipo_terreno']) ?></span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Tipo de Instalación</span>
-                    <span class="info-value"><?= htmlspecialchars($cotizacion['tipo_instalacion']) ?></span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Garantía</span>
-                    <span class="info-value"><?= $cotizacion['garantia_anios'] ?> años</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Precio Instalación</span>
-                    <span class="info-value">$<?= number_format($cotizacion['precio_instalacion_m2'], 2) ?> / m²</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Admin Asignado</span>
-                    <span class="info-value">
-                        <?= htmlspecialchars($cotizacion['nombre_admin'] . ' ' . $cotizacion['apellido_admin']) ?>
-                    </span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dibujo del terreno -->
-        <div class="detalle-card">
-            <h3><i class="fa-solid fa-pencil-ruler"></i> Diseño del Terreno</h3>
-            <?php if (!empty($dibujo_terreno)): ?>
-                <div style="text-align: center; padding: 15px;">
-                    <div class="dibujo-container">
-                        <img src="<?= htmlspecialchars($dibujo_terreno) ?>" 
-                             alt="Diseño del terreno" 
-                             style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
-                             class="imagen-terreno"
-                             onclick="ampliarImagen(this)">
+            <div class="instalacion-header">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; align-items: center;">
+                    <div class="info-item-header">
+                        <label>Cliente:</label>
+                        <span style="font-weight: 600; color: #333;"><?= htmlspecialchars($cotizacion['nombre_cliente']) ?></span>
                     </div>
-                    <p style="margin-top: 10px; color: #6c757d; font-size: 0.9em;">
-                        <i class="fa-solid fa-info-circle"></i> Diseño ilustrativo del terreno realizado durante la cotización
-                        <br><small>Haz clic en la imagen para ampliar</small>
-                    </p>
+                    <div class="info-item-header">
+                        <label for="estado">Estado</label>
+                        <span class="estado-detalle <?= $cotizacion['estado'] ?>">
+                            <?= ucfirst(str_replace('_', ' ', $cotizacion['estado'])) ?>
+                        </span>
+                    </div>
+                    <div class="info-item-header">
+                        <label>Fecha:</label>
+                        <span style="font-weight: 600; color: #333;"><?= date('d/m/Y', strtotime($cotizacion['fecha'])) ?></span>
+                    </div>
+                    <div class="info-item-header">
+                        <label>Área:</label>
+                        <span><?= number_format($cotizacion['area_total'] ?? 0, 2) ?> m²</span>
+                    </div>
+                    <div class="info-item-header">
+                        <label>Total:</label>
+                        <span style="font-weight: 600; color: #333;">$<?= number_format($cotizacion['total'], 2) ?></span>
+                    </div>
+                    <div class="info-item-header">
+                        <label>Admin:</label>
+                        <span><?= htmlspecialchars($cotizacion['nombre_admin'] . ' ' . $cotizacion['apellido_admin']) ?></span>
+                    </div>
+                    <?php if ($instalacion_asociada): ?>
+                        <div class="info-item-header">
+                            <label>Instalación:</label>
+                            <a href="../instalacion/detalle_instalacion.php?id=<?= $instalacion_asociada['id'] ?>"
+                                style="color: #ffffffff; text-decoration: none; font-weight: 600;">
+                                #<?= $instalacion_asociada['id'] ?>
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 </div>
-            <?php else: ?>
-                <div style="text-align: center; padding: 40px; color: #999;">
-                    <i class="fa-solid fa-image" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
-                    <p style="margin: 0; font-size: 1.1em;">No hay diseño disponible</p>
-                    <p style="margin: 5px 0 0 0; font-size: 0.9em;">El diseño del terreno no fue capturado durante la cotización</p>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <!-- Productos cotizados -->
-        <div class="detalle-card">
-            <h3><i class="fa-solid fa-boxes-stacked"></i> Productos Cotizados</h3>
-            <?php if (!empty($detalles)): ?>
-                <table class="productos-table">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Color</th>
-                            <th>Cantidad</th>
-                            <th>Área Usada</th>
-                            <th>Precio Unitario</th>
-                            <th>Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($detalles as $detalle): ?>
-                            <tr>
-                                <td>
-                                    <strong><?= htmlspecialchars($detalle['nombre_producto']) ?></strong>
-                                    <br>
-                                    <small style="color: #6c757d;">
-                                        <?= htmlspecialchars($detalle['descripcion_producto'] ?? '') ?>
-                                    </small>
-                                </td>
-                                <td>
-                                    <?php if ($detalle['id_color']): ?>
-                                        <span class="color-indicator" style="background-color: <?= $detalle['color_hex'] ?>;"></span>
-                                        <?= htmlspecialchars($detalle['nombre_color'] ?? '') ?>
-                                    <?php else: ?>
-                                        <span style="color: #6c757d;">N/A</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= number_format($detalle['cantidad'], 2) ?></td>
-                                <td>
-                                    <?php if ($detalle['area_usada']): ?>
-                                        <?= number_format($detalle['area_usada'], 2) ?> m²
-                                    <?php else: ?>
-                                        <span style="color: #6c757d;">N/A</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>$<?= number_format($detalle['precio_unitario'], 2) ?></td>
-                                <td><strong>$<?= number_format($detalle['subtotal'], 2) ?></strong></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <p style="color: #6c757d; text-align: center; padding: 20px;">
-                    <i class="fa-solid fa-box-open"></i> No hay productos en esta cotización
-                </p>
-            <?php endif; ?>
-        </div>
-
-        <?php if (!empty($extras)): ?>
-            <div class="detalle-card">
-                <h3><i class="fa-solid fa-plus-circle"></i> Extras</h3>
-                <table class="productos-table">
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Descripción</th>
-                            <th>Precio</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($extras as $extra): ?>
-                            <tr>
-                                <td><strong><?= htmlspecialchars($extra['nombre_extra']) ?></strong></td>
-                                <td><?= htmlspecialchars($extra['descripcion_extra'] ?: 'Sin descripción') ?></td>
-                                <td><strong>$<?= number_format($extra['precio_aplicado'], 2) ?></strong></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
             </div>
-        <?php endif; ?>
 
-        <?php if (!empty($inventario_asignado)): ?>
-            <div class="detalle-card">
-                <h3><i class="fa-solid fa-warehouse"></i> Inventario Asignado</h3>
-                <?php foreach ($inventario_asignado as $item): ?>
-                    <div class="inventario-item <?= $item['estado'] ?>">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong><?= htmlspecialchars($item['nombre_producto']) ?></strong>
-                                - <?= htmlspecialchars($item['nombre_color']) ?>
-                                <br>
-                                <small>
-                                    ID: <?= $item['id'] ?> |
-                                    Dimensiones: <?= $item['largo_metros'] ?>m × <?= $item['ancho_metros'] ?>m |
-                                    Área: <?= $item['area_m2'] ?> m²
-                                </small>
+            <div class="card-principal">
+                <div class="progreso-header" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; align-items: center; padding: 20px; background: linear-gradient(135deg, #2196F3 0%, #42A5F5 100%); border-radius: 12px; margin-bottom: 25px;">
+                    <div class="medida-item" style="text-align: center; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 15px;">
+                        <div class="medida-valor" style="font-size: 1.8rem; font-weight: 700; color: white; margin-bottom: 5px;"><?= number_format($cotizacion['area_total'] ?? 0, 2) ?> m²</div>
+                        <div class="medida-label" style="font-size: 0.9rem; color: rgba(255,255,255,0.9); font-weight: 500;">Área Total</div>
+                    </div>
+                    <div class="medida-item" style="text-align: center; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 15px;">
+                        <div class="medida-valor" style="font-size: 1.2rem; font-weight: 600; color: white; margin-bottom: 5px;"><?= htmlspecialchars($cotizacion['tipo_terreno'] ?? 'No especificado') ?></div>
+                        <div class="medida-label" style="font-size: 0.9rem; color: rgba(255,255,255,0.9); font-weight: 500;">Tipo de Terreno</div>
+                    </div>
+                    <div class="medida-item" style="text-align: center; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 15px;">
+                        <div class="medida-valor" style="font-size: 1.2rem; font-weight: 600; color: white; margin-bottom: 5px;"><?= htmlspecialchars($cotizacion['tipo_instalacion'] ?? 'No especificado') ?></div>
+                        <div class="medida-label" style="font-size: 0.9rem; color: rgba(255,255,255,0.9); font-weight: 500;">Tipo de Instalación</div>
+                    </div>
+                    <div class="medida-item" style="text-align: center; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 15px;">
+                        <div class="medida-valor" style="font-size: 1.8rem; font-weight: 700; color: white; margin-bottom: 5px;"><?= $cotizacion['garantia_anios'] ?? 0 ?> años</div>
+                        <div class="medida-label" style="font-size: 0.9rem; color: rgba(255,255,255,0.9); font-weight: 500;">Garantía</div>
+                    </div>
+                    <div class="medida-item" style="text-align: center; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 15px;">
+                        <div class="medida-valor" style="font-size: 1.5rem; font-weight: 700; color: white; margin-bottom: 5px;">$<?= number_format($cotizacion['precio_instalacion_m2'] ?? 0, 2) ?></div>
+                        <div class="medida-label" style="font-size: 0.9rem; color: rgba(255,255,255,0.9); font-weight: 500;">Precio/m²</div>
+                    </div>
+                    <?php if ($cotizacion['dibujo_terreno']): ?>
+                        <div class="medida-item" style="text-align: center;">
+                            <button class="btn-accion btn-ver" onclick="verDibujoTerreno()" style="background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; padding: 12px 20px; border-radius: 10px; font-weight: 600; transition: all 0.3s ease; backdrop-filter: blur(10px);" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                <i class="fa-solid fa-map" style="margin-right: 8px;"></i> Ver Terreno
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="form-container-grid">
+                    <!-- Columna 1 -->
+                    <div class="grid-col">
+                        <!-- Información del cliente -->
+                        <div class="progreso-container">
+                            <div class="progreso-header">
+                                <h3 class="progreso-title">Información del Cliente</h3>
                             </div>
-                            <div>
-                                <span class="estado-badge estado-<?= $item['estado'] ?>">
-                                    <?= ucfirst($item['estado']) ?>
-                                </span>
+                            <div class="instalacion-info">
+                                <div class="info-item">
+                                    <label>Nombre:</label>
+                                    <span><?= htmlspecialchars($cotizacion['nombre_cliente']) ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Teléfono:</label>
+                                    <span><?= htmlspecialchars($cotizacion['telefono'] ?: 'No especificado') ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Email:</label>
+                                    <span><?= htmlspecialchars($cotizacion['email'] ?: 'No especificado') ?></span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Dirección:</label>
+                                    <span><?= htmlspecialchars($cotizacion['direccion'] ?: 'No especificada') ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estado de la cotización -->
+                        <div class="progreso-container">
+                            <div class="progreso-header">
+                                <h3 class="progreso-title">Estado de la Cotización</h3>
+                            </div>
+
+                            <div class="timeline-instalacion">
+                                <div class="timeline-item completado">
+                                    <div class="timeline-step-title">Creada</div>
+                                    <div class="timeline-step-description">Cotización generada</div>
+                                    <div class="timeline-step-date">
+                                        <?= date('d/m/Y', strtotime($cotizacion['fecha'])) ?>
+                                    </div>
+                                </div>
+
+                                <div class="timeline-item <?= in_array($cotizacion['estado'], ['aceptada', 'en_instalacion']) ? 'completado' : ($cotizacion['estado'] == 'pendiente' ? 'en-progreso' : 'pendiente') ?>">
+                                    <div class="timeline-step-title">Revisión</div>
+                                    <div class="timeline-step-description">
+                                        <?php if ($cotizacion['estado'] == 'pendiente'): ?>
+                                            En espera de aprobación
+                                        <?php elseif ($cotizacion['estado'] == 'aceptada'): ?>
+                                            Aprobada por el cliente
+                                        <?php elseif ($cotizacion['estado'] == 'rechazada'): ?>
+                                            Rechazada
+                                        <?php else: ?>
+                                            Estado: <?= $cotizacion['estado'] ?>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="timeline-step-date">
+                                        <?= $cotizacion['fecha_actualizacion'] ? date('d/m/Y', strtotime($cotizacion['fecha_actualizacion'])) : 'Pendiente' ?>
+                                    </div>
+                                </div>
+
+                                <?php if ($instalacion_asociada): ?>
+                                    <div class="timeline-item <?= $instalacion_asociada['estado'] == 'completada' ? 'completado' : 'en-progreso' ?>">
+                                        <div class="timeline-step-title">Instalación</div>
+                                        <div class="timeline-step-description">
+                                            <?= ucfirst(str_replace('_', ' ', $instalacion_asociada['estado'])) ?>
+                                            <?php if ($instalacion_asociada['progreso_porcentaje'] > 0): ?>
+                                                - <?= number_format($instalacion_asociada['progreso_porcentaje'], 1) ?>%
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="timeline-step-date">
+                                            <a href="../instalacion/detalle_instalacion.php?id=<?= $instalacion_asociada['id'] ?>"
+                                                style="color: inherit; text-decoration: none;">
+                                                Ver instalación
+                                            </a>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="timeline-item pendiente">
+                                        <div class="timeline-step-title">Instalación</div>
+                                        <div class="timeline-step-description">Sin instalación programada</div>
+                                        <div class="timeline-step-date">Pendiente</div>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
 
-        <!-- Total -->
-        <div class="total-section">
-            <h3><i class="fa-solid fa-calculator"></i> Total de la Cotización</h3>
-            <div class="total-amount">$<?= isset($cotizacion['total']) ? number_format((float)$cotizacion['total'], 2) : '0.00' ?></div>
-            <p>Incluye productos, instalación y extras</p>
+                    <!-- Columna 2 -->
+                    <div class="grid-col">
+                        <!-- Productos cotizados -->
+                        <div class="progreso-container">
+                            <div class="progreso-header">
+                                <h3 class="progreso-title">Productos Cotizados</h3>
+                            </div>
+
+                            <div class="materiales-lista">
+                                <?php if (empty($productos_cotizacion)): ?>
+                                    <div class="estado-vacio">
+                                        <i class="fa-solid fa-boxes-stacked"></i>
+                                        <p>No hay productos en la cotización</p>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($productos_cotizacion as $producto): ?>
+                                        <div class="material-card">
+                                            <div class="material-nombre">
+                                                <?= htmlspecialchars($producto['nombre']) ?>
+                                                <?php if ($producto['color']): ?>
+                                                    <span style="font-size: 0.8rem; color: #666;">
+                                                        - <span class="color-indicator" style="background-color: <?= $producto['codigo_hex'] ?: '#ccc' ?>; display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 4px;"></span>
+                                                        <?= htmlspecialchars($producto['color']) ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="material-cantidad">
+                                                <span class="cantidad-necesaria">Cantidad: <?= $producto['cantidad'] ?> <?= $producto['unidad'] ?></span>
+                                                <?php if ($producto['area_usada']): ?>
+                                                    <span class="cantidad-usada">Área: <?= $producto['area_usada'] ?> m²</span>
+                                                <?php endif; ?>
+                                                <span class="cantidad-precio">
+                                                    $<?= number_format($producto['costo_base'], 2) ?> / <?= $producto['unidad'] ?>
+                                                    = <strong>$<?= number_format($producto['subtotal'], 2) ?></strong>
+                                                </span>
+                                            </div>
+                                            <div class="material-progreso">
+                                                <div class="material-progreso-bar" style="width: 100%; background: #2196F3;"></div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <!-- Extras de la cotización -->
+                        <div class="progreso-container">
+                            <h3 class="progreso-title">Extras de la Cotización</h3>
+                            <div class="materiales-lista">
+                                <?php if (empty($extras_cotizacion)): ?>
+                                    <div class="estado-vacio">
+                                        <p>No hay extras en la cotización</p>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($extras_cotizacion as $extra): ?>
+                                        <div class="material-card">
+                                            <div class="material-nombre"><?= htmlspecialchars($extra['nombre']) ?></div>
+                                            <div class="material-cantidad">
+                                                <span class="cantidad-necesaria">Precio: $<?= number_format($extra['precio_aplicado'], 2) ?></span>
+                                            </div>
+                                            <?php if ($extra['descripcion']): ?>
+                                                <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                                                    <?= htmlspecialchars($extra['descripcion']) ?>
+                                                </div>
+                                            <?php endif; ?>
+                                            <div class="material-progreso">
+                                                <div class="material-progreso-bar" style="width: 100%; background: #ff9800;"></div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Columna 3 -->
+                    <div class="grid-col">
+                        <!-- Resumen de precios -->
+                        <?php if ($cotizacion['es_comparativa'] != 1 && $cotizacion['es_comparativa'] != 'S'): ?>
+                            <div class="progreso-container" style="background: #f8f9fa; border: 2px solid #4CAF50;">
+                                <div class="progreso-header">
+                                    <h3 class="progreso-title" style="color: #4CAF50;">Resumen de Precios</h3>
+                                </div>
+
+                                <div style="padding: 15px;">
+                                    <?php
+                                    // Recalcular correctamente usando tabuladores y descuentos
+                                    $area_total = $cotizacion['area_total'];
+
+                                    // 1. Calcular productos (rollos con descuento aplicado)
+                                    $subtotal_productos_sin_descuento = 0;
+                                    foreach ($productos_cotizacion as $producto) {
+                                        if ($producto['tipo_inventario'] === 'rollo') {
+                                            // Para rollos: área × costo_base del producto
+                                            $costo_base = obtenerCostoBaseProducto($conn, $producto['id_producto']);
+                                            $subtotal_productos_sin_descuento += $area_total * $costo_base;
+                                        } else {
+                                            // Para otros productos usar subtotal original
+                                            $subtotal_productos_sin_descuento += $producto['subtotal'];
+                                        }
+                                    }
+
+                                    // 2. Aplicar descuento por volumen solo a rollos
+                                    $descuento_porcentaje = obtenerDescuentoVolumenPorcentaje($conn, $area_total);
+                                    $descuento_monto = $subtotal_productos_sin_descuento * ($descuento_porcentaje / 100);
+                                    $subtotal_productos = $subtotal_productos_sin_descuento - $descuento_monto;
+
+                                    // 3. Extras (sin descuento)
+                                    $subtotal_extras = array_sum(array_column($extras_cotizacion, 'precio_aplicado'));
+
+                                    // 4. Instalación
+                                    $precio_instalacion_m2 = obtenerPrecioInstalacionM2($conn, $area_total);
+                                    $costo_instalacion = $area_total * $precio_instalacion_m2;
+
+                                    // 5. Mano de obra
+                                    $precio_mano_obra_m2 = obtenerPrecioManoObraM2($conn, $area_total);
+                                    $costo_mano_obra = $area_total * $precio_mano_obra_m2;
+
+                                    // 6. Subtotal antes de IVA
+                                    $subtotal_sin_iva = $subtotal_productos + $subtotal_extras + $costo_instalacion + $costo_mano_obra;
+
+                                    // 7. IVA
+                                    // Verificar si la cotización original tenía IVA
+                                    $aplicaba_iva_original = ($cotizacion['iva'] > 0);
+                                    
+                                    if ($aplicaba_iva_original) {
+                                        $iva_monto = obtenerIVA($conn, $subtotal_sin_iva);
+                                    } else {
+                                        $iva_monto = 0;
+                                    }
+                                    
+                                    $total_con_iva = $subtotal_sin_iva + $iva_monto;
+                                    ?>
+
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span>Productos:</span>
+                                        <span>$<?= number_format($subtotal_productos, 2) ?></span>
+                                    </div>
+
+                                    <?php if ($subtotal_extras > 0): ?>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                            <span>Extras:</span>
+                                            <span>$<?= number_format($subtotal_extras, 2) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span>Instalación:</span>
+                                        <span>$<?= number_format($costo_instalacion, 2) ?></span>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span>Mano de obra:</span>
+                                        <span>$<?= number_format($costo_mano_obra, 2) ?></span>
+                                    </div>
+
+                                    <?php if ($iva_monto > 0): ?>
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                            <span>Subtotal:</span>
+                                            <span>$<?= number_format($subtotal_sin_iva, 2) ?></span>
+                                        </div>
+
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                            <span>IVA:</span>
+                                            <span>$<?= number_format($iva_monto, 2) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <hr style="border: 1px solid #4CAF50; margin: 10px 0;">
+
+                                    <div style="display: flex; justify-content: space-between; font-weight: 600; font-size: 1.1em; color: #4CAF50;">
+                                        <span>Total<?= $iva_monto > 0 ? ' (con IVA)' : '' ?>:</span>
+                                        <span>$<?= number_format($total_con_iva, 2) ?></span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <!-- Comparación de Opciones Integrada -->
+                            <div class="progreso-container">
+                                <div class="progreso-header">
+                                    <?php if ($cotizacion['estado'] == 'aceptada'): ?>
+                                        <h3 class="progreso-title">Opción Aceptada</h3>
+                                    <?php else: ?>
+                                        <h3 class="progreso-title">Comparación de Opciones</h3>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="materiales-lista">
+                                    <?php
+                                    // Agrupar productos por opción
+                                    $productos_opcion_a = [];
+                                    $productos_opcion_b = [];
+
+                                    foreach ($productos_cotizacion as $index => $producto) {
+                                        // Verificar diferentes formatos de opcion_comparativa
+                                        $opcion = $producto['opcion_comparativa'];
+
+                                        // Normalizar opciones: 1/A = Opción A, 2/B = Opción B
+                                        if ($opcion == 'A' || $opcion == '1' || $opcion == 1) {
+                                            $productos_opcion_a[] = $producto;
+                                        } elseif ($opcion == 'B' || $opcion == '2' || $opcion == 2) {
+                                            $productos_opcion_b[] = $producto;
+                                        } else {
+                                            // Si no tiene opción asignada, intentar agrupar por posición
+                                            $index_fallback = count($productos_opcion_a) + count($productos_opcion_b);
+                                            if ($index_fallback % 2 == 0) {
+                                                $productos_opcion_a[] = $producto;
+                                            } else {
+                                                $productos_opcion_b[] = $producto;
+                                            }
+                                        }
+                                    }
+
+                                    // Recalcular correctamente las opciones comparativas
+                                    $area_total = $cotizacion['area_total'];
+
+                                    // Calcular rollos con descuentos para cada opción
+                                    $subtotal_productos_a_sin_descuento = 0;
+                                    $subtotal_productos_b_sin_descuento = 0;
+
+                                    $subtotal_productos_sin_descuento = 0;
+                                    foreach ($productos_opcion_a as $producto) {
+                                        if ($producto['tipo_inventario'] === 'rollo') {
+                                            // Use costo_base directly from query results
+                                            $subtotal_productos_a_sin_descuento += $area_total * $producto['costo_base'];
+                                        } else {
+                                            $subtotal_productos_a_sin_descuento += $producto['subtotal'];
+                                        }
+                                    }
+
+                                    foreach ($productos_opcion_b as $producto) {
+                                        if ($producto['tipo_inventario'] === 'rollo') {
+                                            // Use costo_base directly from query results
+                                            $subtotal_productos_b_sin_descuento += $area_total * $producto['costo_base'];
+                                        } else {
+                                            $subtotal_productos_b_sin_descuento += $producto['subtotal'];
+                                        }
+                                    }
+
+                                    // Aplicar descuento por volumen
+                                    $descuento_porcentaje = obtenerDescuentoVolumenPorcentaje($conn, $area_total);
+                                    $descuento_monto_a = $subtotal_productos_a_sin_descuento * ($descuento_porcentaje / 100);
+                                    $descuento_monto_b = $subtotal_productos_b_sin_descuento * ($descuento_porcentaje / 100);
+
+                                    $subtotal_productos_a = $subtotal_productos_a_sin_descuento - $descuento_monto_a;
+                                    $subtotal_productos_b = $subtotal_productos_b_sin_descuento - $descuento_monto_b;
+
+                                    // Costos compartidos
+                                    $subtotal_extras = array_sum(array_column($extras_cotizacion, 'precio_aplicado'));
+                                    $precio_instalacion_m2 = obtenerPrecioInstalacionM2($conn, $area_total);
+                                    $costo_instalacion = $area_total * $precio_instalacion_m2;
+                                    $precio_mano_obra_m2 = obtenerPrecioManoObraM2($conn, $area_total);
+                                    $costo_mano_obra = $area_total * $precio_mano_obra_m2;
+
+                                    // Subtotales antes de IVA
+                                    $subtotal_sin_iva_a = $subtotal_productos_a + $subtotal_extras + $costo_instalacion + $costo_mano_obra;
+                                    $subtotal_sin_iva_b = $subtotal_productos_b + $subtotal_extras + $costo_instalacion + $costo_mano_obra;
+
+                                    // Verificar si la cotización original tenía IVA
+                                    $aplicaba_iva_original = ($cotizacion['iva'] > 0);
+                                    
+                                    // IVA y totales finales
+                                    if ($aplicaba_iva_original) {
+                                        $iva_monto_a = obtenerIVA($conn, $subtotal_sin_iva_a);
+                                        $iva_monto_b = obtenerIVA($conn, $subtotal_sin_iva_b);
+                                    } else {
+                                        $iva_monto_a = 0;
+                                        $iva_monto_b = 0;
+                                    }
+
+                                    $total_opcion_a = $subtotal_sin_iva_a + $iva_monto_a;
+                                    $total_opcion_b = $subtotal_sin_iva_b + $iva_monto_b;
+
+                                    // Determinar cuál es la mejor opción (más económica)
+                                    $mejor_opcion = ($total_opcion_a <= $total_opcion_b) ? 'A' : 'B';
+                                    ?>
+
+                                    <div class="materiales-lista">
+                                        <?php if ($cotizacion['estado'] === 'aceptada'): ?>
+                                            <!-- Mostrar solo la opción aceptada -->
+                                            <?php
+                                            $opcion_aceptada = $cotizacion['opcion_seleccionada'];
+                                            
+                                            // Normalizar opción aceptada: 1/A = Opción A, 2/B = Opción B
+                                            $es_opcion_a = ($opcion_aceptada === 'A' || $opcion_aceptada === '1' || $opcion_aceptada === 1);
+                                            
+                                            $productos_aceptada = $es_opcion_a ? $productos_opcion_a : $productos_opcion_b;
+                                            $total_aceptada = $es_opcion_a ? $total_opcion_a : $total_opcion_b;
+                                            $subtotal_aceptada = $es_opcion_a ? $subtotal_productos_a : $subtotal_productos_b;
+                                            
+                                            // Determinar etiqueta para mostrar (siempre mostrar A/B en interfaz)
+                                            $etiqueta_opcion = $es_opcion_a ? 'A' : 'B';
+                                            ?>
+
+                                            <div class="opcion-card opcion-aceptada" id="opcion-aceptada">
+                                                <div class="opcion-header">
+                                                    <h4 class="opcion-titulo titulo-aceptada">
+                                                        <i class="fa-solid fa-check-circle text-success"></i>
+                                                        Opción <?= strtoupper($etiqueta_opcion) ?> - Aceptada
+                                                    </h4>
+                                                    <div class="precio-badge badge-aceptada">
+                                                        $<?= number_format($total_aceptada, 2) ?>
+                                                    </div>
+                                                </div>
+
+                                                <div class="productos-lista">
+                                                    <h5 class="productos-titulo">
+                                                        <i class="fa-solid fa-boxes-stacked"></i>
+                                                        Rollo :
+                                                    </h5>
+                                                    <?php foreach ($productos_aceptada as $producto): ?>
+                                                        <div class="producto-item">
+                                                            <span class="producto-nombre">
+                                                                <?= htmlspecialchars($producto['nombre']) ?>
+                                                                <?php if ($producto['color']): ?>
+                                                                    <small style="color: #666;">- <?= htmlspecialchars($producto['color']) ?></small>
+                                                                <?php endif; ?>
+                                                            </span>
+                                                            <span class="producto-precio">$<?= number_format($producto['subtotal'], 2) ?></span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+
+                                                    <hr class="subtotal-divider">
+                                                    <div class="subtotal-row subtotal-aceptada">
+                                                        <span>Subtotal productos:</span>
+                                                        <span>$<?= number_format($subtotal_aceptada, 2) ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php else: ?>
+                                            <!-- Mostrar ambas opciones para comparación -->
+                                            <!-- Opción A -->
+                                            <div class="opcion-card opcion-a" id="opcion-a">
+                                                <div class="opcion-header">
+                                                    <h4 class="opcion-titulo titulo-a">
+                                                        <i class="fa-solid fa-circle-1"></i>
+                                                        Opción A
+                                                    </h4>
+                                                    <div class="precio-badge badge-a">
+                                                        $<?= number_format($total_opcion_a, 2) ?>
+                                                    </div>
+                                                </div>
+
+                                                <div class="productos-lista">
+                                                    <h5 class="productos-titulo">
+                                                        <i class="fa-solid fa-boxes-stacked"></i>
+                                                        Rollo :
+                                                    </h5>
+                                                    <?php foreach ($productos_opcion_a as $producto): ?>
+                                                        <div class="producto-item">
+                                                            <span class="producto-nombre">
+                                                                <?= htmlspecialchars($producto['nombre']) ?>
+                                                                <?php if ($producto['color']): ?>
+                                                                    <small style="color: #666;">- <?= htmlspecialchars($producto['color']) ?></small>
+                                                                <?php endif; ?>
+                                                            </span>
+                                                            <span class="producto-precio">$<?= number_format($producto['subtotal'], 2) ?></span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+
+                                                    <hr class="subtotal-divider">
+                                                    <div class="subtotal-row subtotal-a">
+                                                        <span>Subtotal productos:</span>
+                                                        <span>$<?= number_format($subtotal_productos_a, 2) ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Opción B -->
+                                            <div class="opcion-card opcion-b" id="opcion-b">
+                                                <div class="opcion-header">
+                                                    <h4 class="opcion-titulo titulo-b">
+                                                        <i class="fa-solid fa-circle-2"></i>
+                                                        Opción B
+                                                    </h4>
+                                                    <div class="precio-badge badge-b">
+                                                        $<?= number_format($total_opcion_b, 2) ?>
+                                                    </div>
+                                                </div>
+
+                                                <div class="productos-lista">
+                                                    <h5 class="productos-titulo">
+                                                        <i class="fa-solid fa-boxes-stacked"></i>
+                                                        Rollo :
+                                                    </h5>
+                                                    <?php foreach ($productos_opcion_b as $producto): ?>
+                                                        <div class="producto-item">
+                                                            <span class="producto-nombre">
+                                                                <?= htmlspecialchars($producto['nombre']) ?>
+                                                                <?php if ($producto['color']): ?>
+                                                                    <small style="color: #666;">- <?= htmlspecialchars($producto['color']) ?></small>
+                                                                <?php endif; ?>
+                                                            </span>
+                                                            <span class="producto-precio">$<?= number_format($producto['subtotal'], 2) ?></span>
+                                                        </div>
+                                                    <?php endforeach; ?>
+
+                                                    <hr class="subtotal-divider">
+                                                    <div class="subtotal-row subtotal-b">
+                                                        <span>Subtotal productos:</span>
+                                                        <span>$<?= number_format($subtotal_productos_b, 2) ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Costos compartidos -->
+                                    <div class="costos-compartidos">
+                                        <h5 class="costos-titulo">
+                                            <i class="fa-solid fa-plus-circle"></i>
+                                            Costos adicionales (aplicados a ambas opciones):
+                                        </h5>
+
+                                        <?php if ($subtotal_extras > 0): ?>
+                                            <div class="costo-item">
+                                                <span>Extras:</span>
+                                                <span>$<?= number_format($subtotal_extras, 2) ?></span>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <div class="costo-item">
+                                            <span>Instalación:</span>
+                                            <span>$<?= number_format($costo_instalacion, 2) ?></span>
+                                        </div>
+
+                                        <div class="costo-item">
+                                            <span>Mano de obra:</span>
+                                            <span>$<?= number_format($costo_mano_obra, 2) ?></span>
+                                        </div>
+
+                                        <?php if ($iva_monto_a > 0 || $iva_monto_b > 0): ?>
+                                            <div class="costo-item">
+                                                <span>IVA:</span>
+                                                <span>Opción A: $<?= number_format($iva_monto_a, 2) ?> | Opción B: $<?= number_format($iva_monto_b, 2) ?></span>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <hr class="subtotal-divider">
+
+                                        <div class="resumen-comparacion">
+                                            <div class="resumen-opcion">
+                                                <strong>Opción A<?= $iva_monto_a > 0 ? ' (con IVA)' : '' ?>: $<?= number_format($total_opcion_a, 2) ?></strong>
+                                            </div>
+
+                                            <div class="resumen-opcion" style="margin-top: 15px;">
+                                                <strong>Opción B<?= $iva_monto_b > 0 ? ' (con IVA)' : '' ?>: $<?= number_format($total_opcion_b, 2) ?></strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Selección de opción -->
+                                    <div class="seleccion-container">
+                                        <?php if ($cotizacion['estado'] === 'aceptada'): ?>
+                                            <h3 class="seleccion-titulo" style="margin-top:-5px;">
+                                                <i class="fa-solid fa-check-circle text-success"></i>
+                                                Opción <?= (($cotizacion['opcion_seleccionada'] === 'A' || $cotizacion['opcion_seleccionada'] === '1' || $cotizacion['opcion_seleccionada'] === 1) ? 'A' : 'B') ?> Aceptada
+                                            </h3>
+
+                                            <div class="opcion-aceptada-info">
+                                                <p class="text-success">
+                                                    <i class="fa-solid fa-calendar-check"></i>
+                                                    Total aceptado: $<?= number_format(($cotizacion['opcion_seleccionada'] === 'A' || $cotizacion['opcion_seleccionada'] === '1' || $cotizacion['opcion_seleccionada'] === 1) ? $total_opcion_a : $total_opcion_b, 2) ?>
+                                                </p>
+                                            </div>
+                                        <?php else: ?>
+                                            <h3 class="seleccion-titulo" style="margin-top:-5px;">
+                                                <i class="fa-solid fa-hand-pointer"></i>
+                                                Seleccione una opción
+                                            </h3>
+
+                                            <div class="botones-seleccion">
+                                                <button class="btn-seleccionar btn-opcion-a" onclick="seleccionarOpcion('A', <?= $total_opcion_a ?>)">
+                                                    <i class="fa-solid fa-check-circle"></i>
+                                                    Aceptar Opción A - $<?= number_format($total_opcion_a, 2) ?>
+                                                </button>
+
+                                                <button class="btn-seleccionar btn-opcion-b" onclick="seleccionarOpcion('B', <?= $total_opcion_b ?>)">
+                                                    <i class="fa-solid fa-check-circle"></i>
+                                                    Aceptar Opción B - $<?= number_format($total_opcion_b, 2) ?>
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="btn-group">
-            <a href="lista.php" class="btn btn-secondary">
-                <i class="fa-solid fa-arrow-left"></i> Volver a Lista
-            </a>
-
+        <!-- Acciones -->
+        <div class="actions-container">
             <?php if ($cotizacion['estado'] == 'pendiente'): ?>
-                <a href="editar_cotizacion.php?id=<?= $cotizacion['id'] ?>" class="btn btn-primary">
-                    <i class="fa-solid fa-edit"></i> Editar
+                <?php if ($cotizacion['es_comparativa'] != 1 && $cotizacion['es_comparativa'] != 'S'): ?>
+                    <button class="btn-accion btn-completar" onclick="cambiarEstadoCotizacion(<?= $cotizacion['id'] ?>, 'aceptada')">
+                        <i class="fa-solid fa-check"></i> Aceptar Cotización
+                    </button>
+                <?php endif; ?>
+
+                <button class="btn-accion btn-cancelar" onclick="cambiarEstadoCotizacion(<?= $cotizacion['id'] ?>, 'rechazada')">
+                    <i class="fa-solid fa-times"></i> Rechazar Cotización
+                </button>
+
+                <a href="editar_cotizacion.php?id=<?= $cotizacion['id'] ?>" class="btn-accion btn-actualizar">
+                    <i class="fa-solid fa-edit"></i> Editar Cotización
                 </a>
-
-                <button class="btn btn-success" onclick="cambiarEstado(<?= $cotizacion['id'] ?>, 'aceptada')">
-                    <i class="fa-solid fa-check"></i> Aceptar
-                </button>
-
-                <button class="btn btn-danger" onclick="cambiarEstado(<?= $cotizacion['id'] ?>, 'rechazada')">
-                    <i class="fa-solid fa-times"></i> Rechazar
-                </button>
             <?php endif; ?>
+
+            <?php if ($cotizacion['estado'] == 'aceptada' && !$instalacion_asociada): ?>
+                <a href="../instalacion/crear_instalacion.php?id_cotizacion=<?= $cotizacion['id'] ?>" class="btn-accion btn-completar">
+                    <i class="fa-solid fa-hammer"></i> Crear Instalación
+                </a>
+            <?php endif; ?>
+
+            <button class="btn-accion btn-actualizar" onclick="location.href='lista.php'">
+                <i class="fa-solid fa-list"></i> Volver a Lista
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Modal solo para ver dibujo (sin edición) -->
+    <div id="modalVerDibujo" class="modal-edicion" style="display: none;">
+        <div class="modal-content-edicion" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Dibujo del Terreno</h3>
+                <span class="modal-close" onclick="cerrarModalVerDibujo()">&times;</span>
+            </div>
+
+            <div style="padding: 20px; text-align: center;">
+                <canvas id="canvasVisualizacion" width="600" height="400"
+                    style="border: 2px solid #ddd; border-radius: 8px; background: white;"></canvas>
+            </div>
         </div>
     </div>
 
+    <?php include_once '../../includes/popup.php'; ?>
+
+    <script src="../../scripts/cotizaciones/detalle/comparacion.js"></script>
+
+    <script src="../../scripts/cotizaciones/detalle/dibujo.js"></script>
+    <script src="../../scripts/cotizaciones/detalle/estado.js"></script>
+    <script src="../../scripts/cotizaciones/detalle/eventos.js"></script>
+
     <script>
-        function cambiarEstado(id, estado) {
-            const mensajes = {
-                'aceptada': '¿Está seguro de que desea aceptar esta cotización?',
-                'rechazada': '¿Está seguro de que desea rechazar esta cotización?',
-                'cancelada': '¿Está seguro de que desea cancelar esta cotización?'
-            };
 
-            if (confirm(mensajes[estado])) {
-                window.location.href = `../../php/cotizaciones/cambiar_estado.php?id=${id}&estado=${estado}`;
+        window.cotizacionData = <?= json_encode($cotizacion) ?>;
+        window.productosData = <?= json_encode($productos_cotizacion) ?>;
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                cerrarModalVerDibujo();
             }
-        }
+        });
 
-        function ampliarImagen(img) {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.8);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 9999;
-                cursor: pointer;
-            `;
-            
-            const modalImg = document.createElement('img');
-            modalImg.src = img.src;
-            modalImg.style.cssText = `
-                max-width: 90%;
-                max-height: 90%;
-                border-radius: 10px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                transition: transform 0.3s ease;
-            `;
-            
-            modal.appendChild(modalImg);
-            document.body.appendChild(modal);
-            
-            modal.addEventListener('click', function() {
-                document.body.removeChild(modal);
-            });
-            
-            const handleEscape = function(e) {
-                if (e.key === 'Escape') {
-                    document.body.removeChild(modal);
-                    document.removeEventListener('keydown', handleEscape);
-                }
-            };
-            document.addEventListener('keydown', handleEscape);
-        }
+        window.onclick = function(event) {
+            const modalVerDibujo = document.getElementById('modalVerDibujo');
+
+            if (event.target === modalVerDibujo) {
+                cerrarModalVerDibujo();
+            }
+        };
     </script>
 </body>
 

@@ -69,6 +69,11 @@
                     <div class="texto-btn-ajustes">Cotizaciones</div>
                 </li>
 
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../instalacion/lista'">
+                    <div class="icono-btn-ajustes"><i class="fa-light fa-tools"></i></div>
+                    <div class="texto-btn-ajustes">Instalaciones</div>
+                </li>
+
                 <?php if (esAdmin()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../usuarios/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-user-shield"></i></div>

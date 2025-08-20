@@ -1,4 +1,4 @@
-import { actualizarTotales } from '../core/totales.js';
+import { actualizarTotales, actualizarTotalesComparativo } from '../core/totales.js';
 
 function actualizarRollos(element) {
     console.log('actualizarRollos ejecutado');
@@ -6,13 +6,20 @@ function actualizarRollos(element) {
     if (!item) return;
 
     const select = item.querySelector('.rollo-select');
-    const cantidad = item.querySelector('input[type="number"]');
+    const areaSpan = item.querySelector('.area-automatica');
     const subtotal = item.querySelector('.product-price');
     const detalles = item.querySelector('.rollo-details');
 
-    if (!select || !cantidad || !detalles) return;
+    if (!select || !areaSpan || !detalles) return;
 
-    if (select.value) {
+    // Obtener área total del terreno
+    const areaTotalInput = document.getElementById('area_total');
+    const areaTotal = areaTotalInput ? parseFloat(areaTotalInput.value) || 0 : 0;
+
+    // Actualizar el área automáticamente
+    areaSpan.textContent = `${areaTotal} m²`;
+
+    if (select.value && areaTotal > 0) {
         detalles.style.display = 'block';
         
         const modeloText = detalles.querySelector('.modelo-text');
@@ -21,7 +28,7 @@ function actualizarRollos(element) {
         
         if (modeloText) modeloText.textContent = select.selectedOptions[0].dataset.modelo || '';
         if (coloresText) coloresText.textContent = select.selectedOptions[0].dataset.colores || '';
-        if (areaText) areaText.textContent = `${cantidad.value || 0} m²`;
+        if (areaText) areaText.textContent = `${areaTotal} m²`;
 
         let colorSelectContainer = detalles.querySelector('.color-select-container');
         if (!colorSelectContainer) {
@@ -47,45 +54,50 @@ function actualizarRollos(element) {
         cargarColoresRollos(select);
     } else {
         detalles.style.display = 'none';
+        areaSpan.textContent = '0 m²';
     }
 
     calcularCostoCompleto(item);
+    verificarModoComparativo();
 }
 
 function calcularCostoCompleto(item) {
     const select = item.querySelector('.rollo-select');
-    const cantidadInput = item.querySelector('input[type="number"]');
+    const areaSpan = item.querySelector('.area-automatica');
     const colorSelect = item.querySelector('.color-select');
     const subtotal = item.querySelector('.product-price');
     
+    // Obtener área total del terreno
+    const areaTotalInput = document.getElementById('area_total');
+    const areaTotal = areaTotalInput ? parseFloat(areaTotalInput.value) || 0 : 0;
+    
     const tieneModelo = select && select.value;
-    const tieneCantidad = cantidadInput && cantidadInput.value && parseFloat(cantidadInput.value) > 0;
+    const tieneArea = areaTotal > 0;
     const tieneColor = colorSelect && colorSelect.value;
     
-    if (tieneModelo && tieneCantidad && tieneColor) {
-        obtenerPrecioInventario(select.value, colorSelect.value, parseFloat(cantidadInput.value))
+    if (tieneModelo && tieneArea && tieneColor) {
+        obtenerPrecioInventario(select.value, colorSelect.value, areaTotal)
             .then(costoTotal => {
                 // costoTotal ya viene calculado como proporción total
                 if (subtotal) {
                     subtotal.textContent = `$${costoTotal.toFixed(2)}`;
                 }
-                actualizarTotales();
+                verificarModoComparativo();
             })
             .catch(error => {
                 console.error('Error al obtener precio:', error);
                 const precioBase = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
-                const cantidad = parseFloat(cantidadInput.value);
-                const costoTotal = precioBase * cantidad;
+                const costoTotal = precioBase * areaTotal;
                 if (subtotal) {
                     subtotal.textContent = `$${costoTotal.toFixed(2)} (sin inventario)`;
                 }
-                actualizarTotales();
+                verificarModoComparativo();
             });
     } else {
         if (subtotal) {
             subtotal.textContent = '$0.00 (pendiente)';
         }
-        actualizarTotales();
+        verificarModoComparativo();
     }
 }
 
@@ -179,12 +191,12 @@ function agregarRollo() {
     const item = template.cloneNode(true);
 
     const select = item.querySelector('.rollo-select');
-    const input = item.querySelector('input[type="number"]');
+    const areaSpan = item.querySelector('.area-automatica');
     const price = item.querySelector('.product-price');
     const details = item.querySelector('.rollo-details');
     
     select.value = '';
-    input.value = '';
+    areaSpan.textContent = '0 m²';
     if (price) price.textContent = '$0.00';
     if (details) {
         details.style.display = 'none';
@@ -196,22 +208,89 @@ function agregarRollo() {
     select.addEventListener('change', function() {
         actualizarRollos(this);
     });
-    
-    input.addEventListener('input', function() {
-        actualizarRollos(this);
-    });
 
     container.appendChild(item);
+    
+    // Actualizar áreas automáticamente para todos los rollos
+    actualizarAreasAutomaticas();
+    
+    // Verificar modo comparativo después de agregar el elemento al DOM
+    setTimeout(() => {
+        verificarModoComparativo();
+    }, 50);
 }
 
 function removerRollo(btn) {
     const container = document.getElementById('rollos_container');
     if (container.querySelectorAll('.product-item').length > 1) {
         btn.closest('.product-item').remove();
-        actualizarTotales();
+        // Llamar verificarModoComparativo después de un pequeño delay para que el DOM se actualice
+        setTimeout(() => {
+            verificarModoComparativo();
+        }, 50);
     } else {
         alert('Debe haber al menos un rollo en la cotización.');
     }
 }
 
-export { actualizarRollos, agregarRollo, removerRollo, cargarColoresRollos };
+function actualizarAreasAutomaticas() {
+    const areaTotalInput = document.getElementById('area_total');
+    const areaTotal = areaTotalInput ? parseFloat(areaTotalInput.value) || 0 : 0;
+    
+    const container = document.getElementById('rollos_container');
+    if (container) {
+        const areaSpans = container.querySelectorAll('.area-automatica');
+        areaSpans.forEach(span => {
+            span.textContent = `${areaTotal} m²`;
+        });
+    }
+}
+
+function verificarModoComparativo() {
+    const container = document.getElementById('rollos_container');
+    if (!container) return;
+    
+    const rollosCompletos = Array.from(container.querySelectorAll('.product-item')).filter(item => {
+        const select = item.querySelector('.rollo-select');
+        const colorSelect = item.querySelector('.color-select');
+        const areaTotalInput = document.getElementById('area_total');
+        const areaTotal = areaTotalInput ? parseFloat(areaTotalInput.value) || 0 : 0;
+        
+        return select?.value && colorSelect?.value && areaTotal > 0;
+    });
+    
+    const totalRollos = container.querySelectorAll('.product-item').length;
+    const resumenNormal = document.getElementById('resumen-normal');
+    const resumenComparativo = document.getElementById('resumen-comparativo');
+    const btnAgregarRollo = document.getElementById('btn-agregar-rollo');
+    const limiteRollosMensaje = document.getElementById('limite-rollos-mensaje');
+    
+    // Controlar visibilidad del botón agregar rollo y mensaje
+    if (btnAgregarRollo) {
+        if (totalRollos >= 2) {
+            btnAgregarRollo.style.display = 'none';
+            if (limiteRollosMensaje) {
+                limiteRollosMensaje.classList.add('visible');
+            }
+        } else {
+            btnAgregarRollo.style.display = 'inline-block';
+            if (limiteRollosMensaje) {
+                limiteRollosMensaje.classList.remove('visible');
+            }
+        }
+    }
+    
+    if (rollosCompletos.length === 2) {
+        // Modo comparativo
+        resumenNormal.style.display = 'none';
+        resumenComparativo.style.display = 'block';
+        actualizarTotalesComparativo();
+    } else {
+        // Modo normal
+        resumenNormal.style.display = 'block';
+        resumenComparativo.style.display = 'none';
+        actualizarTotales();
+    }
+}
+
+export { actualizarRollos, agregarRollo, removerRollo, cargarColoresRollos, actualizarAreasAutomaticas, verificarModoComparativo };

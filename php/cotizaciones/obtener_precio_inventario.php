@@ -80,12 +80,13 @@ try {
             $base = $resultBase->fetch_assoc();
             
             $costoBasePorM2 = $base ? floatval($base['costo_base']) : 1000.00;
-            $costoTotal = $costoBasePorM2 * $cantidad; // Multiplicar por la cantidad solicitada
-            
+            // No multiplicar por cantidad aquí - devolver solo el costo base
+            $costoTotal = $costoBasePorM2; 
+
             echo json_encode([
                 'success' => true,
-                'costo_total_rollo' => $costoTotal, // Costo total basado en cantidad solicitada
-                'area_total_rollo' => $cantidad, // Área solicitada
+                'costo_total_rollo' => $costoTotal, // Costo base por m²
+                'area_total_rollo' => 1, // Siempre 1 m² para costo base
                 'area_disponible' => 0,
                 'inventario_id' => null,
                 'tiene_inventario' => false,
@@ -95,7 +96,7 @@ try {
         }
     }
     */
-    
+
     // Siempre usar costo base del producto
     $sqlBase = "SELECT costo_base FROM productos WHERE id = ?";
     $stmtBase = $conn->prepare($sqlBase);

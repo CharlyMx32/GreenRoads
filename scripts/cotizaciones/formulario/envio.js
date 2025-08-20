@@ -1,10 +1,29 @@
 import { parametrosSistema, obtenerPrecioPorM2 } from '../core/parametros.js';
 import { actualizarTotales } from '../core/totales.js';
 
+// Función de validación que detecta el modo automáticamente
 function validarFormulario() {
-    const cliente = document.getElementById('cliente');
-    if (!cliente || !cliente.value) {
+    const modoEdicion = window.modoEdicion || false;
+    
+    if (modoEdicion) {
+        // Usar validación específica para edición si está disponible
+        if (typeof window.validarFormularioEdicion === 'function') {
+            return window.validarFormularioEdicion();
+        }
+    }
+    
+    // Validación estándar
+    return validarFormularioEstandar();
+}
+
+function validarFormularioEstandar() {
+    // Validar cliente - ahora usamos el campo oculto
+    const clienteId = document.getElementById('cliente');
+    if (!clienteId || !clienteId.value) {
         alert('Seleccione un cliente');
+        if (window.selectorClientes) {
+            document.getElementById('cliente-search').focus();
+        }
         return false;
     }
 
@@ -45,48 +64,26 @@ function validarFormulario() {
         return false;
     }
 
+    // Validar rollos - ahora sin input de cantidad manual
     let rollosValidos = false;
-    let areaRollosTotal = 0;
+    const rollosContainer = document.getElementById('rollos_container');
+    
+    if (rollosContainer) {
+        const rollosItems = rollosContainer.querySelectorAll('.product-item');
+        
+        rollosItems.forEach(item => {
+            const select = item.querySelector('.rollo-select');
+            const colorSelect = item.querySelector('.color-select');
 
-    document.querySelectorAll('#rollos_container .product-item').forEach(item => {
-        const select = item.querySelector('.rollo-select');
-        const input = item.querySelector('input[type="number"]');
-        const colorSelect = item.querySelector('.color-select');
-
-        if (select.value && input.value && colorSelect?.value) {
-            rollosValidos = true;
-            areaRollosTotal += parseFloat(input.value) || 0;
-        }
-    });
+            if (select?.value && colorSelect?.value) {
+                rollosValidos = true;
+            }
+        });
+    }
 
     if (!rollosValidos) {
         alert('Agregue al menos un rollo de pasto válido con color seleccionado');
         return false;
-    }
-
-    if (areaRollosTotal > areaTerreno * 1.1) {
-        if (!confirm(`El área de pasto (${areaRollosTotal.toFixed(2)} m²) es mayor que el área del terreno (${areaTerreno.toFixed(2)} m²). ¿Desea continuar?`)) {
-            return false;
-        }
-    }
-
-    const rollos = document.querySelectorAll('#rollos_container .product-item');
-    if (rollos.length === 0) {
-        alert('Agregue al menos un rollo de pasto');
-        return false;
-    }
-
-    rollos.forEach(item => {
-        const cantidadInput = item.querySelector('input[name*="[cantidad]"]');
-        if (cantidadInput && cantidadInput.value) {
-            areaRollosTotal += parseFloat(cantidadInput.value);
-        }
-    });
-
-    if (areaRollosTotal > areaTerreno * 1.1) {
-        if (!confirm(`El área de pasto (${areaRollosTotal.toFixed(2)} m²) es mayor que el área del terreno (${areaTerreno.toFixed(2)} m²). ¿Desea continuar?`)) {
-            return false;
-        }
     }
 
     return true;
@@ -98,12 +95,39 @@ async function guardarCotizacion() {
         return;
     }
 
+    // Verificar si está en modo comparativo y confirmar
+    const modoComparativo = document.getElementById('resumen-comparativo');
+    const esComparativa = modoComparativo && modoComparativo.style.display !== 'none';
+    
+    if (esComparativa) {
+        const totalA = document.getElementById('total-a')?.textContent || '$0.00';
+        const totalB = document.getElementById('total-b')?.textContent || '$0.00';
+        const nombreA = document.querySelector('.nombre-rollo-a')?.textContent || 'Opción A';
+        const nombreB = document.querySelector('.nombre-rollo-b')?.textContent || 'Opción B';
+        
+        const confirmar = confirm(
+            `COTIZACIÓN COMPARATIVA DETECTADA\n\n` +
+            `Opción A: ${nombreA} - ${totalA}\n` +
+            `Opción B: ${nombreB} - ${totalB}\n\n` +
+            `Al aceptar la cotización se preguntará cuál opción escogió el cliente.\n\n` +
+            `¿Desea continuar?`
+        );
+        
+        if (!confirmar) {
+            return;
+        }
+    }
+
     // Verificar si es modo edición
     const modoEdicion = window.modoEdicion || false;
     const idCotizacion = window.idCotizacion || null;
 
     // Obtener parámetros del sistema
-    const garantia = document.getElementById('garantia')?.value || parametrosSistema.garantiaDefault;
+    const garantiaElement = document.getElementById('garantia');
+    const garantia = modoEdicion ? 
+        (garantiaElement ? parseInt(garantiaElement.value) : parametrosSistema.garantiaDefault) : 
+        (garantiaElement?.value || parametrosSistema.garantiaDefault);
+    
     const areaTerreno = parseFloat(document.getElementById('area_total').value) || 0;
     const tipoInstalacion = document.getElementById('tipo_instalacion').value;
     const precioInstalacion = obtenerPrecioPorM2(areaTerreno, tipoInstalacion);
@@ -113,42 +137,29 @@ async function guardarCotizacion() {
     $('#mensajeAccion').html(modoEdicion ? 'Actualizando cotización...' : 'Guardando cotización...');
     $('#btnAccion').css('display', 'none');
 
-    // Recolectar datos de rollos
     const rollos = [];
-    document.querySelectorAll('#rollos_container .product-item').forEach(item => {
+    const rollosContainer = modoEdicion ? '#rollos-container' : '#rollos_container';
+    const rollosItems = document.querySelectorAll(`${rollosContainer} .product-item`);
+    
+    rollosItems.forEach((item, index) => {
         const select = item.querySelector('.rollo-select');
-        const input = item.querySelector('input[type="number"]');
         const colorSelect = item.querySelector('.color-select');
 
-        if (select.value && input.value && colorSelect?.value) {
-            const cantidad = parseFloat(input.value);
-            const precioUnitario = parseFloat(select.selectedOptions[0].dataset.precio);
+        if (select?.value && colorSelect?.value && areaTerreno > 0) {
+            // Usar el área total del terreno como cantidad
+            const cantidad = areaTerreno;
+            const precioUnitario = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
+            
+            // En modo comparativo, marcar las opciones como A y B
+            const opcionComparativa = esComparativa ? (index === 0 ? 'A' : 'B') : null;
             
             rollos.push({
                 id_producto: parseInt(select.value),
                 cantidad: cantidad,
                 precio_unitario: precioUnitario,
                 id_color: parseInt(colorSelect.value),
-                subtotal: cantidad * precioUnitario
-            });
-        }
-    });
-
-    // Recolectar datos de productos
-    const productos = [];
-    document.querySelectorAll('#productos_container .product-item').forEach(item => {
-        const select = item.querySelector('.product-select');
-        const input = item.querySelector('input[type="number"]');
-
-        if (select.value && input.value) {
-            const cantidad = parseFloat(input.value);
-            const precioUnitario = parseFloat(select.selectedOptions[0].dataset.precio);
-            
-            productos.push({
-                id_producto: parseInt(select.value),
-                cantidad: cantidad,
-                precio_unitario: precioUnitario,
-                subtotal: cantidad * precioUnitario
+                subtotal: cantidad * precioUnitario,
+                opcion_comparativa: opcionComparativa
             });
         }
     });
@@ -162,9 +173,24 @@ async function guardarCotizacion() {
         });
     });
 
-    // Obtener total actual del DOM
-    const totalDisplay = document.getElementById('total').textContent;
-    const total = parseFloat(totalDisplay.replace('$', '').replace(',', '')) || 0;
+    // Obtener total actual del DOM - manejar modo comparativo
+    let total = 0;
+    const resumenComparativo = document.getElementById('resumen-comparativo');
+    const resumenNormal = document.getElementById('resumen-normal');
+    
+    if (esComparativa) {
+        // Modo comparativo - usar el promedio de ambas opciones o la opción A como referencia
+        const totalA = document.getElementById('total-a');
+        if (totalA) {
+            total = parseFloat(totalA.textContent.replace('$', '').replace(',', '')) || 0;
+        }
+    } else if (resumenNormal && resumenNormal.style.display !== 'none') {
+        // Modo normal
+        const totalDisplay = document.getElementById('total');
+        if (totalDisplay) {
+            total = parseFloat(totalDisplay.textContent.replace('$', '').replace(',', '')) || 0;
+        }
+    }
 
     // Preparar datos para enviar
     const datos = {
@@ -178,8 +204,8 @@ async function guardarCotizacion() {
         area_total: areaTerreno,
         total: total,
         aplicar_iva: document.getElementById('aplicar_iva')?.checked || false,
+        es_comparativa: esComparativa ? 1 : 0, // Nuevo campo
         rollos: rollos,
-        materiales: productos, 
         extras: extras,
         dibujo_terreno: null
     };

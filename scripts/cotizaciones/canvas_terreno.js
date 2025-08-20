@@ -66,20 +66,59 @@ class CanvasTerreno {
         // Hacer el canvas responsivo
         const resizeCanvas = () => {
             const container = this.canvas.parentElement;
-            const containerWidth = container.clientWidth - 20; // padding
+            if (!container) return;
+            
+            const containerWidth = container.clientWidth - 40; // padding
+            const containerHeight = container.clientHeight - 40;
             const aspectRatio = this.canvas.height / this.canvas.width;
             
-            if (containerWidth < 300) {
-                this.canvas.style.width = containerWidth + 'px';
-                this.canvas.style.height = (containerWidth * aspectRatio) + 'px';
-            } else {
-                this.canvas.style.width = '300px';
-                this.canvas.style.height = '200px';
+            // Calcular tamaño manteniendo aspecto ratio
+            let newWidth = containerWidth;
+            let newHeight = newWidth * aspectRatio;
+            
+            // Si la altura calculada es mayor al contenedor, ajustar por altura
+            if (newHeight > containerHeight) {
+                newHeight = containerHeight;
+                newWidth = newHeight / aspectRatio;
             }
+            
+            // Tamaños mínimos
+            newWidth = Math.max(newWidth, 300);
+            newHeight = Math.max(newHeight, 200);
+            
+            this.canvas.style.width = newWidth + 'px';
+            this.canvas.style.height = newHeight + 'px';
         };
         
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
+    }
+
+    // Método público para redimensionar el canvas
+    resize() {
+        const container = this.canvas.parentElement;
+        if (!container) return;
+        
+        const containerWidth = container.clientWidth - 40; // padding
+        const containerHeight = container.clientHeight - 40;
+        const aspectRatio = this.canvas.height / this.canvas.width;
+        
+        // Calcular tamaño manteniendo aspecto ratio
+        let newWidth = containerWidth;
+        let newHeight = newWidth * aspectRatio;
+        
+        // Si la altura calculada es mayor al contenedor, ajustar por altura
+        if (newHeight > containerHeight) {
+            newHeight = containerHeight;
+            newWidth = newHeight / aspectRatio;
+        }
+        
+        // Tamaños mínimos
+        newWidth = Math.max(newWidth, 300);
+        newHeight = Math.max(newHeight, 200);
+        
+        this.canvas.style.width = newWidth + 'px';
+        this.canvas.style.height = newHeight + 'px';
     }
 
     bindEvents() {
@@ -104,17 +143,22 @@ class CanvasTerreno {
 
     getMousePos(e) {
         const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
         };
     }
 
     getTouchPos(e) {
         const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
         return {
-            x: e.touches[0].clientX - rect.left,
-            y: e.touches[0].clientY - rect.top
+            x: (e.touches[0].clientX - rect.left) * scaleX,
+            y: (e.touches[0].clientY - rect.top) * scaleY
         };
     }
 

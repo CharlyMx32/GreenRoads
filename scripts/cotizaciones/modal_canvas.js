@@ -17,12 +17,18 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.style.display = 'block';
             // Si hay datos guardados, cargarlos
             if (canvasDataGuardado) {
-                cargarDatosCanvas(canvasTerreno, canvasDataGuardado);
+                cargarDatosCanvas(document.getElementById('canvas_terreno'), canvasDataGuardado);
             }
-            // Reinicializar el canvas si es necesario
-            if (window.canvasTerreno) {
-                window.canvasTerreno.resize();
-            }
+            // Redimensionar el canvas después de que el modal esté visible
+            setTimeout(() => {
+                if (window.canvasTerreno) {
+                    window.canvasTerreno.resize();
+                    // Redimensionar nuevamente después de un momento para asegurar
+                    setTimeout(() => {
+                        window.canvasTerreno.resize();
+                    }, 100);
+                }
+            }, 100);
         });
     }
 
