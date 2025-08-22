@@ -64,6 +64,7 @@ if (!$cotizacion = mysqli_fetch_assoc($result)) {
 $productos_cotizacion = [];
 $sql_productos = "
     SELECT 
+        p.id as id_producto,
         p.nombre,
         p.costo_base,
         p.tipo_inventario, 
