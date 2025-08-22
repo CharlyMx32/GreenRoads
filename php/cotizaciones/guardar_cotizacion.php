@@ -253,19 +253,31 @@ try {
         foreach ($datos['extras'] as $extra) {
             if (empty($extra['id_extra'])) continue;
 
+            // Si se envía cantidad y precio_aplicado (nueva estructura)
+            if (isset($extra['cantidad']) && isset($extra['precio_aplicado'])) {
+                $cantidad = intval($extra['cantidad']);
+                $precio_aplicado = floatval($extra['precio_aplicado']);
+            } else {
+                // Fallback para compatibilidad con estructura anterior
+                $cantidad = 1;
+                $precio_aplicado = floatval($extra['precio'] ?? 0);
+            }
+
             $query = "INSERT INTO cotizacion_extras (
                 id_cotizacion, 
                 id_extra, 
+                cantidad,
                 precio_aplicado
-            ) VALUES (?, ?, ?)";
+            ) VALUES (?, ?, ?, ?)";
 
             $stmt = mysqli_prepare($conn, $query);
             mysqli_stmt_bind_param(
                 $stmt,
-                "iid",
+                "iiid",
                 $id_cotizacion,
                 $extra['id_extra'],
-                $extra['precio']
+                $cantidad,
+                $precio_aplicado
             );
             mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);

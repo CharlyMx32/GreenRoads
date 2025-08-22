@@ -83,7 +83,18 @@ function configurarEventos() {
 
     // Eventos para extras
     document.querySelectorAll('.extra-check').forEach(ck => {
-        ck.addEventListener('change', verificarModoComparativo);
+        ck.addEventListener('change', function() {
+            toggleExtraQuantity(this);
+            verificarModoComparativo();
+        });
+    });
+
+    // Eventos para cantidades de extras
+    document.querySelectorAll('.extra-cantidad').forEach(input => {
+        input.addEventListener('input', function() {
+            updateExtraTotal(this);
+            verificarModoComparativo();
+        });
     });
 
     // Evento para IVA opcional
@@ -120,6 +131,39 @@ function configurarEventos() {
         }
     });
 }
+
+// Función para mostrar/ocultar campo de cantidad del extra
+function toggleExtraQuantity(checkbox) {
+    const extraItem = checkbox.closest('.extra-item');
+    const cantidadContainer = extraItem.querySelector('.extra-cantidad-container');
+    const cantidadInput = extraItem.querySelector('.extra-cantidad');
+    
+    if (checkbox.checked) {
+        cantidadContainer.style.display = 'flex';
+        extraItem.classList.add('selected');
+        // Asegurar que la cantidad sea al menos 1
+        if (!cantidadInput.value || cantidadInput.value < 1) {
+            cantidadInput.value = 1;
+        }
+    } else {
+        cantidadContainer.style.display = 'none';
+        extraItem.classList.remove('selected');
+    }
+}
+
+// Función para validar cantidad mínima del extra
+function updateExtraTotal(cantidadInput) {
+    const cantidad = parseInt(cantidadInput.value) || 1;
+    
+    // Asegurar que la cantidad sea al menos 1
+    if (cantidad < 1) {
+        cantidadInput.value = 1;
+    }
+}
+
+// Hacer las funciones disponibles globalmente
+window.toggleExtraQuantity = toggleExtraQuantity;
+window.updateExtraTotal = updateExtraTotal;
 
 async function inicializarAplicacion() {
     try {

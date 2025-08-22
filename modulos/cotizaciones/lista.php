@@ -110,10 +110,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                                             </div>
                                         <?php else: ?>
                                             <!-- Mostrar "Pendiente" para comparativas no aceptadas -->
-                                            <div style="font-size: 12px; text-align: center;">
-                                                <span style="color: #ffc107; font-weight: 600;">
-                                                    <i class="fa-solid fa-clock"></i> Pendiente
-                                                </span><br>
+                                            <div style="font-size: 14px; text-align: center;">
                                                 <small style="color: #666;">Esperando selección</small>
                                             </div>
                                         <?php endif; ?>

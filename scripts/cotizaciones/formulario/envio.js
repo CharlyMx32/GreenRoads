@@ -167,9 +167,15 @@ async function guardarCotizacion() {
     // Recolectar extras seleccionados
     const extras = [];
     document.querySelectorAll('.extra-check:checked').forEach(ck => {
+        const idExtra = parseInt(ck.dataset.id);
+        const precioUnitario = parseFloat(ck.dataset.precio);
+        const cantidadInput = document.querySelector(`.extra-cantidad[data-extra-id="${idExtra}"]`);
+        const cantidad = cantidadInput ? parseInt(cantidadInput.value) || 1 : 1;
+        
         extras.push({
-            id_extra: parseInt(ck.dataset.id),
-            precio: parseFloat(ck.dataset.precio)
+            id_extra: idExtra,
+            cantidad: cantidad,
+            precio_aplicado: precioUnitario * cantidad
         });
     });
 

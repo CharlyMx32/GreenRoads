@@ -224,12 +224,25 @@ while ($row = mysqli_fetch_assoc($result)) {
                         $sql_extras = "SELECT id, nombre, precio FROM extras WHERE activo = 1";
                         $res_extras = mysqli_query($conn, $sql_extras);
                         while ($extra = mysqli_fetch_assoc($res_extras)) : ?>
-                            <label class="checkbox-text">
-                                <input type="checkbox" class="extra-check"
-                                    data-id="<?= $extra['id'] ?>"
-                                    data-precio="<?= $extra['precio'] ?>">
-                                <?= htmlspecialchars($extra['nombre']) ?>
-                            </label>
+                            <div class="extra-item" style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 5px; transition: background-color 0.3s;">
+                                <label class="checkbox-text" style="flex: 1; margin: 0; display: flex; align-items: center;">
+                                    <input type="checkbox" class="extra-check"
+                                        data-id="<?= $extra['id'] ?>"
+                                        data-precio="<?= $extra['precio'] ?>"
+                                        style="margin-right: 8px;">
+                                    <span style="flex: 1;"><?= htmlspecialchars($extra['nombre']) ?></span>
+                                </label>
+                                <div class="extra-cantidad-container" style="display: none; margin-left: 15px; align-items: center;">
+                                    <label for="extra_cantidad_<?= $extra['id'] ?>" style="margin-right: 5px; font-size: 12px; color: #666;">Cantidad:</label>
+                                    <input type="number" 
+                                        id="extra_cantidad_<?= $extra['id'] ?>"
+                                        class="extra-cantidad" 
+                                        data-extra-id="<?= $extra['id'] ?>"
+                                        min="1" 
+                                        value="1" 
+                                        style="width: 60px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 3px; text-align: center; font-size: 12px;">
+                                </div>
+                            </div>
                         <?php endwhile; ?>
                     </div>
                 </div>

@@ -1500,3 +1500,63 @@ label {
     font-weight: bold;
     vertical-align: super;
 }
+
+/* Estilos para la sección de extras con cantidad */
+.extra-item {
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.extra-item:hover {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6;
+}
+
+.extra-item.selected {
+    background-color: #e8f5e8 !important;
+    border-color: #7dc042;
+    box-shadow: 0 0 0 2px rgba(125, 192, 66, 0.1);
+}
+
+.extra-cantidad-container {
+    display: flex !important;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    background: rgba(125, 192, 66, 0.05);
+    border-radius: 5px;
+    border: 1px solid rgba(125, 192, 66, 0.2);
+    min-width: 100px;
+}
+
+.extra-cantidad {
+    border: 1px solid #ccc !important;
+    border-radius: 3px !important;
+    text-align: center !important;
+    font-size: 12px !important;
+    padding: 3px 5px !important;
+    width: 50px !important;
+    min-width: 50px !important;
+    background: white !important;
+}
+
+.extra-cantidad:focus {
+    border-color: var(--color-primario) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(125, 192, 66, 0.2) !important;
+}
+
+/* Responsive para extras */
+@media (max-width: 768px) {
+    .extra-item {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px;
+    }
+    
+    .extra-cantidad-container {
+        justify-content: space-between;
+        width: 100%;
+        min-width: auto;
+    }
+}

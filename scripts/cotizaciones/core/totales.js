@@ -153,10 +153,18 @@ async function actualizarTotales() {
         let detalleExtras = [];
         document.querySelectorAll('.extra-check:checked').forEach(ck => {
             const precio = parseFloat(ck.dataset.precio) || 0;
-            extras += precio;
+            const idExtra = ck.dataset.id;
+            const cantidadInput = document.querySelector(`.extra-cantidad[data-extra-id="${idExtra}"]`);
+            const cantidad = cantidadInput ? parseInt(cantidadInput.value) || 1 : 1;
+            const precioTotal = precio * cantidad;
+            
+            extras += precioTotal;
             detalleExtras.push({
+                id: idExtra,
                 nombre: ck.nextSibling.textContent.trim(),
-                precio: precio
+                precio_unitario: precio,
+                cantidad: cantidad,
+                precio_total: precioTotal
             });
         });
 
@@ -259,7 +267,11 @@ async function actualizarTotalesComparativo() {
         
         let extras = 0;
         document.querySelectorAll('.extra-check:checked').forEach(ck => {
-            extras += parseFloat(ck.dataset.precio) || 0;
+            const precio = parseFloat(ck.dataset.precio) || 0;
+            const idExtra = ck.dataset.id;
+            const cantidadInput = document.querySelector(`.extra-cantidad[data-extra-id="${idExtra}"]`);
+            const cantidad = cantidadInput ? parseInt(cantidadInput.value) || 1 : 1;
+            extras += precio * cantidad;
         });
 
         const precioInstalacion = obtenerValorTabulador('precio_instalacion', area);
