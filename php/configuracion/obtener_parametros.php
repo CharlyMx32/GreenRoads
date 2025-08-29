@@ -5,7 +5,7 @@ require_once '../../db/conexion.php';
 try {
     $parametros = [];
     $sql = "SELECT clave, valor FROM parametros_sistema 
-            WHERE clave IN ('garantia_default', 'iva_porcentaje')";
+            WHERE clave IN ('garantia_default', 'iva_porcentaje', 'numero_telefono')";
     
     $result = mysqli_query($conn, $sql);
     
@@ -22,6 +22,11 @@ try {
         if (!isset($parametros[$key])) {
             throw new Exception("Falta el parámetro requerido: $key");
         }
+    }
+    
+    // Si no existe numero_telefono, usar valor por defecto
+    if (!isset($parametros['numero_telefono'])) {
+        $parametros['numero_telefono'] = '449-123-4567';
     }
     
     echo json_encode([

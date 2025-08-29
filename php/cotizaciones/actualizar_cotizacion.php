@@ -11,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once '../../db/conexion.php';
 require_once '../../includes/sesion.php';
-require_once '../../includes/funciones_corte_rollos.php';
 require_once '../../includes/funciones_tabuladores.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -86,10 +85,8 @@ try {
         $iva = null;
     }
 
-    // 1. Liberar rollos actuales de la cotización
-    if (!liberarRollosCortados($conn, $id_cotizacion)) {
-        throw new Exception("Error al liberar rollos actuales");
-    }
+    // 1. Ya no liberamos rollos aquí porque no se cortan en cotizaciones
+    // Los rollos se cortarán cuando se inicie la instalación
 
     // 2. Eliminar detalles existentes
     $query_eliminar = "DELETE FROM detalle_cotizacion WHERE id_cotizacion = ?";
@@ -160,19 +157,10 @@ try {
                 throw new Exception("Error al insertar rollo");
             }
 
-            // Procesar reserva con corte para el rollo actualizado
+            // Ya no procesamos corte de rollos en cotizaciones
+            // Los rollos se cortarán cuando se inicie la instalación
             if (!empty($rollo['id_color'])) {
-                $resultado_corte = procesarReservaConCorte(
-                    $conn, 
-                    $id_cotizacion, 
-                    $rollo['id_producto'], 
-                    $rollo['id_color'], 
-                    $rollo['cantidad']
-                );
-                
-                if (!$resultado_corte['exito'] && $resultado_corte['area_faltante'] > 0) {
-                    error_log("Cotización actualizada {$id_cotizacion}: Inventario insuficiente para rollo. " . $resultado_corte['mensaje']);
-                }
+                error_log("Cotización actualizada {$id_cotizacion}: Rollo agregado, se cortará en la instalación");
             }
         }
         mysqli_stmt_close($stmt_detalle);

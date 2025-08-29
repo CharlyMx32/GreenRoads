@@ -3,7 +3,8 @@ const parametrosSistema = {
     ivaPorcentaje: null,
     tabuladorPrecios: [],
     tabuladorDescuentos: [],
-    tabuladorManoObra: []
+    tabuladorManoObra: [],
+    tabuladorTiempoInstalacion: []
 };
 
 async function cargarParametrosSistema() {
@@ -44,6 +45,14 @@ async function cargarParametrosSistema() {
             parametrosSistema.tabuladorManoObra = dataTabuladorManoObra.tabuladores;
         }
 
+        // Cargar tabulador de tiempo de instalacion
+        const responseTabuladorTiempoInstalacion = await fetch('../../php/configuracion/obtener_tabulador.php?tipo=tiempo_instalacion');
+        const dataTabuladorTiempoInstalacion = await responseTabuladorTiempoInstalacion.json();
+        
+        if (dataTabuladorTiempoInstalacion.status === 1) {
+            parametrosSistema.tabuladorTiempoInstalacion = dataTabuladorTiempoInstalacion.tabuladores;
+        }
+
     } catch (error) {
         console.error('Error al cargar parámetros:', error);
         throw error;
@@ -68,7 +77,8 @@ function obtenerValorTabulador(tipo, area) {
     const propertyMap = {
         'descuento_volumen': 'tabuladorDescuentos',
         'precio_instalacion': 'tabuladorPrecios',
-        'mano_obra': 'tabuladorManoObra'
+        'mano_obra': 'tabuladorManoObra',
+        'tiempo_instalacion': 'tabuladorTiempoInstalacion'
     };
     
     const propertyName = propertyMap[tipo];

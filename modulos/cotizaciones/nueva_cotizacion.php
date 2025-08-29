@@ -29,6 +29,17 @@ while ($row = mysqli_fetch_assoc($result)) {
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
     <link rel="stylesheet" href="../../css/cotizaciones/cotizaciones.css">
+    <style>
+        .estado-vacio {
+            text-align: center;
+            color: #666;
+            padding: 30px 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+            grid-column: 1 / -1;
+        }
+    </style>
 </head>
 
 <body>
@@ -43,6 +54,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         <div class="form-container-grid">
             <!-- Columna 1 -->
             <div class="grid-col">
+
                 <!-- SECCIÓN CLIENTE -->
                 <div class="form-section" role="region" aria-labelledby="seccion-cliente">
                     <div class="titulo-formulario" style="margin-top: -7px;" id="seccion-cliente">Cliente</div>
@@ -86,6 +98,14 @@ while ($row = mysqli_fetch_assoc($result)) {
 
                             <button onclick="window.location.href='../clientes/agregar.php'" class="btnadd" style="width: 165px; height: 43px;">+ Nuevo cliente</button>
                         </div>
+                    </div>
+                    <!-- NUEVO CAMPO DIRECCIÓN DE LA COTIZACIÓN -->
+                    <div class="form-group">
+                        <label for="direccion_cotizacion">
+                            <span class="sr-only">Dirección de la cotización</span>
+                            <span aria-hidden="true">Dirección *</span>
+                        </label>
+                        <input type="text" id="direccion_cotizacion" name="direccion_cotizacion" class="textfield" placeholder="Dirección donde se realizará la instalación" required style="width: 100%;">
                     </div>
                 </div>
 
@@ -223,27 +243,36 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <?php
                         $sql_extras = "SELECT id, nombre, precio FROM extras WHERE activo = 1";
                         $res_extras = mysqli_query($conn, $sql_extras);
-                        while ($extra = mysqli_fetch_assoc($res_extras)) : ?>
-                            <div class="extra-item" style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 5px; transition: background-color 0.3s;">
-                                <label class="checkbox-text" style="flex: 1; margin: 0; display: flex; align-items: center;">
-                                    <input type="checkbox" class="extra-check"
-                                        data-id="<?= $extra['id'] ?>"
-                                        data-precio="<?= $extra['precio'] ?>"
-                                        style="margin-right: 8px;">
-                                    <span style="flex: 1;"><?= htmlspecialchars($extra['nombre']) ?></span>
-                                </label>
-                                <div class="extra-cantidad-container" style="display: none; margin-left: 15px; align-items: center;">
-                                    <label for="extra_cantidad_<?= $extra['id'] ?>" style="margin-right: 5px; font-size: 12px; color: #666;">Cantidad:</label>
-                                    <input type="number" 
-                                        id="extra_cantidad_<?= $extra['id'] ?>"
-                                        class="extra-cantidad" 
-                                        data-extra-id="<?= $extra['id'] ?>"
-                                        min="1" 
-                                        value="1" 
-                                        style="width: 60px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 3px; text-align: center; font-size: 12px;">
-                                </div>
+                        $hay_extras = mysqli_num_rows($res_extras) > 0;
+                        
+                        if (!$hay_extras): ?>
+                            <div class="estado-vacio">
+                                <p>No hay extras disponibles</p>
                             </div>
-                        <?php endwhile; ?>
+                        <?php else: ?>
+                            <?php while ($extra = mysqli_fetch_assoc($res_extras)) : ?>
+                                <div class="extra-item" style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 5px; transition: background-color 0.3s;">
+                                    <label class="checkbox-text" style="flex: 1; margin: 0; display: flex; align-items: center;">
+                                        <input type="checkbox" class="extra-check"
+                                            data-id="<?= $extra['id'] ?>"
+                                            data-precio="<?= $extra['precio'] ?>"
+                                            style="margin-right: 8px;">
+                                        <span style="flex: 1;"><?= htmlspecialchars($extra['nombre']) ?></span>
+                                    </label>
+                                    <div class="extra-cantidad-container" style="display: none; margin-left: 15px; align-items: center;">
+                                        <label for="extra_cantidad_<?= $extra['id'] ?>" style="margin-right: 5px; font-size: 12px; color: #666;">Cantidad:</label>
+                                        <input type="number"
+                                            id="extra_cantidad_<?= $extra['id'] ?>"
+                                            class="extra-cantidad"
+                                            data-extra-id="<?= $extra['id'] ?>"
+                                            min="1"
+                                            value="1"
+                                            style="width: 60px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 3px; text-align: center; font-size: 12px;">
+                                    </div>
+                                </div>
+                            <?php endwhile; ?>
+                        <?php endif; ?>
+
                     </div>
                 </div>
             </div>
@@ -310,17 +339,17 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <div class="cotizacion-opcion" style="border: 2px solid #6c757d; border-radius: 8px; margin-bottom: 15px; padding: 15px; background: #f8f9fa;">
                                 <h4 style="margin: 0 0 10px 0; color: #6c757d; font-size: 16px;">Opción B</h4>
                                 <div class="nombre-rollo-b" style="font-weight: bold; margin-bottom: 8px; color: #495057;"></div>
-                                <div class="summary-item">
-                                    <span>Subtotal:</span>
-                                    <span id="subtotal-b">$0.00</span>
+                                <div class="summary-item" style="display: flex; justify-content: space-between; gap: 16px;">
+                                    <span style="margin-right: 10px;">Subtotal:</span>
+                                    <span id="subtotal-b" style="margin-left: 10px;">$0.00</span>
                                 </div>
-                                <div class="summary-item iva-container-b">
-                                    <span>IVA (<span class="iva-percent-b">0</span>%):</span>
-                                    <span id="iva-b">$0.00</span>
+                                <div class="summary-item iva-container-b" style="display: flex; justify-content: space-between; gap: 16px;">
+                                    <span style="margin-right: 10px;">IVA (<span class="iva-percent-b">0</span>%):</span>
+                                    <span id="iva-b" style="margin-left: 10px;">$0.00</span>
                                 </div>
-                                <div class="summary-item" style="font-weight: bold; font-size: 16px;">
-                                    <span>Total:</span>
-                                    <span id="total-b">$0.00</span>
+                                <div class="summary-item" style="font-weight: bold; font-size: 16px; display: flex; justify-content: space-between; gap: 16px;">
+                                    <span style="margin-right: 10px;">Total:</span>
+                                    <span id="total-b" style="margin-left: 10px;">$0.00</span>
                                 </div>
                             </div>
 

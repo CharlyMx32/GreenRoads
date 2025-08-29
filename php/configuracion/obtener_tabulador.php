@@ -14,7 +14,7 @@ try {
     $id = isset($_GET['id']) ? intval($_GET['id']) : null;
     $tipo = $_GET['tipo'] ?? null;
 
-    $tiposPermitidos = ['precio_instalacion', 'clavos', 'pegamento', 'descuento_volumen', 'polvillo', 'mano_obra'];
+    $tiposPermitidos = ['precio_instalacion', 'clavos', 'pegamento', 'descuento_volumen', 'polvillo', 'mano_obra','tiempo_instalacion'];
 
     // Buscar por ID
     if ($id) {

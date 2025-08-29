@@ -28,19 +28,19 @@ $sql = "
         c.total as precio_total,
         c.tipo_terreno,
         c.tipo_instalacion,
-        c.largo,
-        c.ancho,
         c.fecha as fecha_cotizacion,
         cli.nombre AS nombre_cliente,
         cli.telefono,
         cli.email,
-        cli.direccion,
+        c.direccion as direccion_instalacion,
         COALESCE(a.nombre, 'Sin asignar') AS nombre_admin,
-        COALESCE(a.apellido, '') AS apellido_admin
+        COALESCE(a.apellido, '') AS apellido_admin,
+        tecnico.id as id_tecnico_responsable
     FROM instalaciones i
     INNER JOIN cotizaciones c ON i.id_cotizacion = c.id
     LEFT JOIN clientes cli ON c.id_cliente = cli.id
     LEFT JOIN admins a ON c.id_admin = a.id 
+    LEFT JOIN admins tecnico ON tecnico.id = CAST(i.tecnico_responsable AS UNSIGNED) AND tecnico.id_rol = 3
     WHERE i.id = ?
 ";
 

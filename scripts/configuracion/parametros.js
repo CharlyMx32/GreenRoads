@@ -14,8 +14,9 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+    
     // Manejar subtabs de parámetros
-    const subtabsParametros = document.querySelectorAll('.subtabs .subtab');
+    const subtabsParametros = document.querySelectorAll('#parametros .subtabs .subtab');
     subtabsParametros.forEach(tab => {
         tab.addEventListener('click', () => {
             const subtabsContainer = tab.closest('.subtabs');
@@ -26,7 +27,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const subtabContent = tab.closest('.subtabs-container').nextElementSibling;
             subtabContent.querySelectorAll('.subtab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(subtabId).classList.add('active');
+            const targetContent = document.getElementById(subtabId);
+            if (targetContent) targetContent.classList.add('active');
         });
     });
 
@@ -62,6 +64,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Inicializar formularios de parámetros
+    initParametrosForms();
+
     // Cargar tabuladores por defecto al inicializar
     if (document.getElementById('tabuladores')) {
         setTimeout(() => {
@@ -71,3 +76,97 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 100);
     }
 });
+
+function initParametrosForms() {
+    // Solo manejar formularios de parámetros (no de tabuladores)
+    const forms = document.querySelectorAll('#parametros .parametro-card form');
+    
+    forms.forEach((form, index) => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            handleParametroFormSubmit(this);
+        });
+    });
+}
+
+function handleParametroFormSubmit(form) {
+    const btnSubmit = form.querySelector('button[type="submit"]');
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    }
+
+    const formData = new FormData(form);
+
+    fetch('../../php/configuracion/parametros.php?t=' + Date.now(), {
+        method: 'POST',
+        body: formData
+    })
+        .then(handleParametroResponse)
+        .then(data => handleParametroSuccess(data, form))
+        .catch(error => handleParametroError(error))
+        .finally(() => {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fas fa-save"></i> Guardar';
+            }
+        });
+}
+
+function handleParametroResponse(response) {
+    if (!response.ok) {
+        // Intentar obtener el mensaje de error del servidor
+        return response.text().then(text => {
+            try {
+                const errorData = JSON.parse(text);
+                throw new Error(errorData.mensaje || `Error ${response.status}: ${response.statusText}`);
+            } catch (parseError) {
+                throw new Error(`Error ${response.status}: ${response.statusText}. Respuesta del servidor: ${text}`);
+            }
+        });
+    }
+    return response.json().catch(error => {
+        throw new Error('El servidor devolvió una respuesta inválida');
+    });
+}
+
+function handleParametroSuccess(data, form) {
+    if (data.status == 0) {
+        throw new Error(data.mensaje || "Error al actualizar el parámetro");
+    }
+
+    // Mostrar popup si existe la función global
+    if (typeof displayPopUp === 'function') {
+        displayPopUp();
+        displayMensajeExitoso(data.mensaje, 'hidePopup()');
+    } else {
+        // Fallback si no hay popup
+        alert(data.mensaje);
+    }
+    
+    updateParametroLastModified(form);
+}
+
+function handleParametroError(error) {
+    // Mostrar popup si existe la función global
+    if (typeof displayPopUp === 'function') {
+        displayPopUp();
+        displayMensajeError(error.message, 'hidePopup()');
+    } else {
+        // Fallback si no hay popup
+        alert('Error: ' + error.message);
+    }
+}
+
+function updateParametroLastModified(form) {
+    const fechaElement = form.querySelector('.parametro-info');
+    if (fechaElement) {
+        fechaElement.textContent = 'Últ. actualización: ' + new Date().toLocaleDateString('es-MX', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+}

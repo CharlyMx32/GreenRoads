@@ -83,12 +83,6 @@ try {
         throw new Exception("Error al actualizar el parámetro: " . $stmt->error);
     }
 
-    if (isset($_SESSION['usuario_id'])) {
-        $accion = "Actualización de parámetro: $clave";
-        $conn->query("INSERT INTO bitacora (id_admin, accion, fecha) 
-                    VALUES ('{$_SESSION['usuario_id']}', '$accion', NOW())");
-    }
-
     echo json_encode([
         'status' => 1,
         'mensaje' => 'Parámetro actualizado correctamente.',

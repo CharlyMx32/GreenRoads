@@ -1,50 +1,129 @@
 import { parametrosSistema, cargarParametrosSistema } from './core/parametros.js';
 import { toggleTerreno } from './componentes/terreno.js';
 import { calcularArea } from './core/calculos.js';
-import { actualizarRollos, agregarRollo, removerRollo, cargarColoresRollos } from './componentes/rollos.js';
-import { actualizarTotales } from './core/totales.js';
+import { actualizarRollos, agregarRollo, removerRollo, cargarColoresRollos, actualizarAreasAutomaticas, verificarModoComparativo } from './componentes/rollos.js';
+import { actualizarTotales, actualizarTotalesComparativo } from './core/totales.js';
 import { guardarCotizacion } from './formulario/envio.js';
+
+// Función para calcular materiales automáticos (extraída de totales.js para evitar ciclos)
+async function calcularMaterialesAutomaticos() {
+    try {
+        const tipoInstalacion = document.getElementById('tipo_instalacion')?.value;
+        const area = parseFloat(document.getElementById('area_total')?.value || 0);
+
+        if (!tipoInstalacion || area <= 0) {
+            return 0; 
+        }
+
+        const response = await fetch('/greenroads/php/cotizaciones/calcular_materiales.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                tipo_terreno: tipoInstalacion,
+                area: area
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.costo_total;
+        } else {
+            console.error('Error al calcular materiales:', data.error);
+            return 0;
+        }
+
+    } catch (error) {
+        console.error('Error en calcular materiales automáticos:', error);
+        return 0;
+    }
+}
+
+// Hacer funciones disponibles globalmente
+window.calcularMaterialesAutomaticos = calcularMaterialesAutomaticos;
+window.actualizarTotalesComparativo = actualizarTotalesComparativo;
+window.verificarModoComparativo = verificarModoComparativo;
 
 function configurarEventosEdicion() {
     // Eventos para terreno
     document.getElementById('tipo_terreno')?.addEventListener('change', toggleTerreno);
-    document.getElementById('forma_terreno')?.addEventListener('change', calcularArea);
-    document.getElementById('dimension1')?.addEventListener('change', calcularArea);
-    document.getElementById('dimension2')?.addEventListener('change', calcularArea);
-    document.getElementById('area_irregular')?.addEventListener('change', calcularArea);
+    document.getElementById('forma_terreno')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
+    document.getElementById('dimension1')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
+    document.getElementById('dimension2')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
+    document.getElementById('area_irregular')?.addEventListener('change', function() {
+        calcularArea();
+        actualizarAreasAutomaticas();
+    });
 
     // Eventos para instalación
-    document.getElementById('area_total')?.addEventListener('change', actualizarTotales);
+    document.getElementById('area_total')?.addEventListener('change', function() {
+        actualizarAreasAutomaticas();
+        setTimeout(() => verificarModoComparativo(), 100);
+    });
     
     // Eventos para tipo de instalación (materiales automáticos)
     document.getElementById('tipo_instalacion')?.addEventListener('change', function() {
-        actualizarTotales();
+        calcularMaterialesAutomaticos();
+        setTimeout(() => verificarModoComparativo(), 100);
     });
 
     // Eventos para extras
     document.querySelectorAll('.extra-check').forEach(ck => {
-        ck.addEventListener('change', actualizarTotales);
+        ck.addEventListener('change', function() {
+            toggleExtraQuantity(this);
+            setTimeout(() => verificarModoComparativo(), 100);
+        });
+    });
+
+    // Eventos para cantidades de extras
+    document.querySelectorAll('.extra-cantidad').forEach(input => {
+        input.addEventListener('input', function() {
+            updateExtraTotal(this);
+            setTimeout(() => verificarModoComparativo(), 100);
+        });
     });
 
     // Evento para IVA opcional
-    document.getElementById('aplicar_iva')?.addEventListener('change', actualizarTotales);
-
-    // Eventos para rollos existentes
-    document.querySelectorAll('#rollos-container .rollo-select').forEach(select => {
-        select.addEventListener('change', function () {
-            cargarColoresRollos(this);
-            actualizarRollos(this);
-        });
+    document.getElementById('aplicar_iva')?.addEventListener('change', function() {
+        setTimeout(() => verificarModoComparativo(), 100);
     });
 
-    document.querySelectorAll('#rollos-container input[type="number"]').forEach(input => {
-        input.addEventListener('input', function () {
-            actualizarRollos(this);
-        });
+    // Event delegation para selects de rollo (dinámicos)
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('rollo-select') && e.target.closest('#rollos_container')) {
+            cargarColoresRollos(e.target);
+            actualizarRollos(e.target);
+            setTimeout(() => verificarModoComparativo(), 100);
+        }
+    });
+
+    // Event delegation para selects de color (dinámicos)
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('color-select') && e.target.closest('#rollos_container')) {
+            setTimeout(() => verificarModoComparativo(), 100);
+        }
     });
 
     // Botón agregar rollo
-    document.getElementById('btn-agregar-rollo')?.addEventListener('click', agregarRollo);
+    document.getElementById('btn-agregar-rollo')?.addEventListener('click', function() {
+        agregarRollo();
+        setTimeout(() => verificarModoComparativo(), 100);
+    });
 
     // Botón guardar
     const btnGuardar = document.getElementById('btn-guardar-cotizacion');
@@ -63,9 +142,10 @@ function configurarEventosEdicion() {
     // Event delegation para botones de eliminar
     document.addEventListener('click', function (e) {
         if (e.target.closest('.fa-trash')) {
-            const parentContainer = e.target.closest('#rollos-container');
-            if (parentContainer && parentContainer.id === 'rollos-container') {
+            const parentContainer = e.target.closest('#rollos_container');
+            if (parentContainer && parentContainer.id === 'rollos_container') {
                 removerRollo(e.target);
+                setTimeout(() => verificarModoComparativo(), 100);
             }
         }
     });
@@ -100,10 +180,9 @@ function validarFormularioEdicion() {
     let rollosValidos = false;
     document.querySelectorAll('#rollos-container .product-item').forEach(item => {
         const select = item.querySelector('.rollo-select');
-        const input = item.querySelector('input[type="number"]');
         const colorSelect = item.querySelector('.color-select');
 
-        if (select.value && input.value && colorSelect?.value) {
+        if (select.value && colorSelect?.value) {
             rollosValidos = true;
         }
     });
@@ -119,16 +198,16 @@ function validarFormularioEdicion() {
 // Función para cargar datos existentes
 function cargarDatosExistentes() {
     // Cargar colores para rollos existentes
-    document.querySelectorAll('#rollos-container .rollo-select').forEach(select => {
+    document.querySelectorAll('#rollos_container .rollo-select').forEach(select => {
         if (select.value) {
             cargarColoresRollos(select);
         }
     });
     
-    // Actualizar totales iniciales
+    // Verificar modo comparativo inicialmente
     setTimeout(() => {
-        actualizarTotales();
-    }, 500);
+        verificarModoComparativo();
+    }, 1500); // Dar tiempo extra para que se carguen los colores
 }
 
 async function inicializarEdicion() {

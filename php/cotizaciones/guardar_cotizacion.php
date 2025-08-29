@@ -11,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_once '../../db/conexion.php';
 require_once '../../includes/sesion.php';
-require_once '../../includes/funciones_corte_rollos.php';
 require_once '../../includes/funciones_tabuladores.php';
 
 // Iniciar sesión si no está iniciada
@@ -37,9 +36,9 @@ if (!$datos || json_last_error() !== JSON_ERROR_NONE) {
 }
 
 // Validar campos obligatorios
-$camposRequeridos = ['id_cliente', 'tipo_terreno', 'tipo_instalacion', 'garantia', 'total', 'precio_instalacion', 'area_total'];
+$camposRequeridos = ['id_cliente', 'tipo_terreno', 'tipo_instalacion', 'garantia', 'total', 'precio_instalacion', 'area_total', 'direccion_cotizacion'];
 foreach ($camposRequeridos as $campo) {
-    if (!isset($datos[$campo])) {
+    if (!isset($datos[$campo]) || trim($datos[$campo]) === '') {
         echo json_encode(['status' => 0, 'mensaje' => "Falta el campo requerido: $campo"]);
         exit();
     }
@@ -48,6 +47,14 @@ foreach ($camposRequeridos as $campo) {
 mysqli_begin_transaction($conn);
 
 try {
+    // Obtener parámetro de vigencia de cotizaciones
+    $dias_vigencia = 30; // Default por si no existe el parámetro
+    $query_vigencia = "SELECT valor FROM parametros_sistema WHERE clave = 'vigencia_cotizacion_dias'";
+    $result_vigencia = mysqli_query($conn, $query_vigencia);
+    if ($result_vigencia && $row_vigencia = mysqli_fetch_assoc($result_vigencia)) {
+        $dias_vigencia = intval($row_vigencia['valor']);
+    }
+    
     // Obtener valores actuales de los tabuladores
     $area_total = floatval($datos['area_total']);
     
@@ -85,8 +92,10 @@ try {
     }
 
     // Incluir dibujo_terreno y los nuevos campos de tabuladores en la consulta
+
     $query = "INSERT INTO cotizaciones (
         id_cliente, 
+        direccion,
         id_admin, 
         estado, 
         total, 
@@ -101,8 +110,9 @@ try {
         iva,
         es_comparativa,
         dibujo_terreno,
-        fecha
-    ) VALUES (?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        fecha,
+        fecha_vencimiento
+    ) VALUES (?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL ? DAY))";
 
     $stmt = mysqli_prepare($conn, $query);
     if (!$stmt) {
@@ -110,11 +120,12 @@ try {
     }
 
     $id_admin = isset($_SESSION['usuario_id']) ? $_SESSION['usuario_id'] : 1;
-    
+
     mysqli_stmt_bind_param(
         $stmt,
-        "iiddssiddddsds",
+        "issddssiddddsdsi",
         $datos['id_cliente'],
+        $datos['direccion_cotizacion'],
         $id_admin,
         $total_con_iva,
         $datos['area_total'],
@@ -127,7 +138,8 @@ try {
         $tabuladores['precio_base_pasto_m2'],
         $iva,
         $datos['es_comparativa'],
-        $datos['dibujo_terreno']
+        $datos['dibujo_terreno'],
+        $dias_vigencia
     );
 
     if (!mysqli_stmt_execute($stmt)) {
@@ -220,22 +232,10 @@ try {
             $id_detalle = mysqli_insert_id($conn);
             mysqli_stmt_close($stmt);
 
-            // Solo procesar reserva si hay inventario disponible
+            // Ya no procesamos corte de rollos en cotizaciones
+            // Los rollos se cortarán cuando se inicie la instalación
             if ($disponibilidad['area_disponible'] > 0) {
-                // Procesamiento con corte de rollos habilitado
-                $resultado_corte = procesarReservaConCorte(
-                    $conn, 
-                    $id_cotizacion, 
-                    $rollo['id_producto'], 
-                    $rollo['id_color'], 
-                    min($rollo['cantidad'], $disponibilidad['area_disponible'])
-                );
-                
-                if (!$resultado_corte['exito'] && $resultado_corte['area_faltante'] > 0) {
-                    error_log("Cotización {$id_cotizacion}: Inventario insuficiente. " . $resultado_corte['mensaje']);
-                } else {
-                    error_log("Cotización {$id_cotizacion}: Rollos reservados con corte automático: " . implode(', ', $resultado_corte['rollos_reservados']));
-                }
+                error_log("Cotización {$id_cotizacion}: Rollo agregado con inventario disponible: {$disponibilidad['area_disponible']} m²");
             } else {
                 error_log("Cotización {$id_cotizacion}: Rollo agregado sin inventario - usando precio base");
             }

@@ -116,3 +116,11 @@ function obtenerIVA($conn, $subtotal) {
     // IVA por defecto del 16% si no está configurado
     return $subtotal * 0.16;
 }
+
+/**
+ * Obtiene los días de instalación según el área
+ */
+function obtenerDiasInstalacionPorMetros($conn, $area) {
+    $dias = obtenerValorTabulador($conn, 'tiempo_instalacion', $area);
+    return $dias > 0 ? $dias : 2; 
+}

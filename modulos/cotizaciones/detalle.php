@@ -235,7 +235,7 @@ $instalacion_asociada = mysqli_fetch_assoc($result_instalacion);
                                     <span><?= htmlspecialchars($cotizacion['email'] ?: 'No especificado') ?></span>
                                 </div>
                                 <div class="info-item">
-                                    <label>Dirección:</label>
+                                    <label>Dirección de Instalación:</label>
                                     <span><?= htmlspecialchars($cotizacion['direccion'] ?: 'No especificada') ?></span>
                                 </div>
                             </div>

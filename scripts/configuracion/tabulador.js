@@ -3,6 +3,42 @@ document.addEventListener('DOMContentLoaded', function () {
     initParamForms();
 });
 
+// --- NUEVAS FUNCIONES AUXILIARES ---
+function obtenerUnidadYFormato(tipo, valor) {
+    const valorNum = parseFloat(valor || 0);
+    switch (tipo) {
+        case 'descuento_volumen':
+            return `${valorNum.toFixed(2)}%`;
+        case 'tiempo_instalacion':
+            return `${valorNum.toFixed(0)} Días`;
+        case 'clavos':
+        case 'pegamento':
+        case 'polvillo':
+            return `${valorNum.toFixed(0)} Uds.`;
+        case 'precio_instalacion':
+        case 'mano_obra':
+        default:
+            return `$${valorNum.toFixed(2)}`;
+    }
+}
+
+function obtenerInfoTipo(tipo) {
+    switch (tipo) {
+        case 'descuento_volumen':
+            return { titulo: 'Nuevo Rango de Descuento', label: 'Valor (%)' };
+        case 'tiempo_instalacion':
+            return { titulo: 'Nuevo Rango de Tiempo', label: 'Valor (Días)' };
+        case 'clavos':
+        case 'pegamento':
+        case 'polvillo':
+            return { titulo: 'Nuevo Rango de Unidades', label: 'Valor (Uds.)' };
+        case 'precio_instalacion':
+        case 'mano_obra':
+        default:
+            return { titulo: 'Nuevo Rango de Precio', label: 'Valor ($)' };
+    }
+}
+
 function initTabs() {
     const tabs = document.querySelectorAll('.tab');
     tabs.forEach(tab => {
@@ -44,7 +80,8 @@ function initTabs() {
 }
 
 function initParamForms() {
-    document.querySelectorAll('.parametro-card form').forEach(form => {
+    // Solo manejar formularios de tabuladores, no de parámetros
+    document.querySelectorAll('#tabuladores .parametro-card form').forEach(form => {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             handleFormSubmit(this);
@@ -190,18 +227,9 @@ function actualizarTablaTabuladores(tabuladores, tipoActual = null) {
         : tabuladoresFiltrados.map(createTableRow).join('');
 }
 
+// --- FUNCIÓN MODIFICADA ---
 function createTableRow(tabulador) {
-    let simbolo = '$';
-    if (tabulador.tipo === 'descuento_volumen') {
-        simbolo = ''; 
-    }
-    
-    let valorFormateado = parseFloat(tabulador.valor || 0).toFixed(2);
-    if (tabulador.tipo === 'descuento_volumen') {
-        valorFormateado += '%';  
-    } else {
-        valorFormateado = simbolo + valorFormateado;
-    }
+    const valorFormateado = obtenerUnidadYFormato(tabulador.tipo, tabulador.valor);
 
     return `
         <tr data-id="${tabulador.id}" data-tipo="${tabulador.tipo}">
@@ -339,9 +367,11 @@ function createErrorContainer() {
     return errorContainer;
 }
 
+// --- FUNCIÓN MODIFICADA ---
 async function mostrarModalTabulador(id, tipo = null) {
     const modal = document.getElementById('modalTabulador');
     const titulo = document.getElementById('tituloModalTabulador');
+    const labelValor = document.getElementById('labelModalValor');
     const form = document.getElementById('formTabulador');
 
     const errorContainer = document.getElementById('error-container');
@@ -355,8 +385,11 @@ async function mostrarModalTabulador(id, tipo = null) {
         tipo = pestanaActiva ? pestanaActiva.getAttribute('data-subtab') : 'precio_instalacion';
     }
 
+    const infoTipo = obtenerInfoTipo(tipo);
+    labelValor.textContent = infoTipo.label;
+
     if (id) {
-        titulo.textContent = 'Editar Tabulador';
+        titulo.textContent = infoTipo.titulo.replace('Nuevo', 'Editar');
         document.getElementById('tabulador_id').value = id;
 
         try {
@@ -390,7 +423,7 @@ async function mostrarModalTabulador(id, tipo = null) {
             if (loader) loader.remove();
         }
     } else {
-        titulo.textContent = 'Nuevo Tabulador';
+        titulo.textContent = infoTipo.titulo;
         document.getElementById('tabulador_id').value = '';
         document.getElementById('tipo').value = tipo;
     }

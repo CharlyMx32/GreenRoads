@@ -14,7 +14,6 @@ header('Content-Type: application/json');
 try {
     require_once '../../db/conexion.php';
     require_once '../../includes/sesion.php';
-    require_once '../../includes/funciones_corte_rollos.php';
     require_once '../../includes/funciones_tabuladores.php';
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Error al cargar archivos: ' . $e->getMessage()]);
@@ -237,17 +236,8 @@ try {
 
     // Gestionar inventario según el nuevo estado
     if ($estado == 'aceptada') {
-        // Cambiar rollos reservados a instalado
-        $query_rollos = "UPDATE inventario_rollos 
-                        SET estado = 'instalado' 
-                        WHERE id_cotizacion_reserva = ? AND estado = 'reservado'";
-        
-        $stmt_rollos = mysqli_prepare($conn, $query_rollos);
-        mysqli_stmt_bind_param($stmt_rollos, "i", $id);
-        
-        if (!mysqli_stmt_execute($stmt_rollos)) {
-            throw new Exception("Error al actualizar estado de rollos");
-        }
+        // Al aceptar una cotización, ya no cortamos rollos aquí
+        // Los rollos se cortarán cuando se inicie la instalación
         
         // Crear instalación automáticamente cuando se acepta la cotización
         // Verificar si ya existe una instalación para esta cotización
@@ -275,9 +265,8 @@ try {
         }
         
     } elseif ($estado == 'rechazada' || $estado == 'cancelada') {
-        if (!liberarRollosCortados($conn, $id)) {
-            throw new Exception("Error al liberar rollos cortados");
-        }
+        // Para cotizaciones rechazadas o canceladas, no hay rollos que liberar
+        // ya que no se cortan hasta la instalación
     }
 
     mysqli_commit($conn);

@@ -15,6 +15,24 @@ function sanitizar($data, $conn)
     return htmlspecialchars(mysqli_real_escape_string($conn, trim($data)));
 }
 
+function obtenerUnidadTabulador($tipo) {
+    switch ($tipo) {
+        case 'precio_instalacion':
+        case 'mano_obra':
+            return '$';
+        case 'descuento_volumen':
+            return '%';
+        case 'tiempo_instalacion':
+            return 'Días';
+        case 'clavos':
+        case 'pegamento':
+        case 'polvillo':
+            return 'Uds.';
+        default:
+            return '$';
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['clave'], $_POST['valor'])) {
         $clave = sanitizar($_POST['clave'], $conn);
@@ -182,6 +200,7 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
                         <div class="subtab" data-subtab="clavos">Clavos</div>
                         <div class="subtab" data-subtab="pegamento">Pegamento</div>
                         <div class="subtab" data-subtab="polvillo">Polvillo</div>
+                        <div class="subtab" data-subtab="tiempo_instalacion">Tiempo de Instalación</div>
                     </div>
                 </div>
             </div>
@@ -209,7 +228,19 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
                                 <tr data-id="<?= $tabulador['id'] ?>" data-tipo="<?= $tabulador['tipo'] ?>" class="<?= $tabulador['tipo'] === 'precio_instalacion' ? '' : 'hidden' ?>">
                                     <td><?= number_format($tabulador['rango_min'], 2) ?></td>
                                     <td><?= number_format($tabulador['rango_max'], 2) ?></td>
-                                    <td>$<?= number_format($tabulador['valor'], 2) ?></td>
+                                    <td>
+                                        <?php
+                                            $unidad = obtenerUnidadTabulador($tabulador['tipo']);
+                                            $valor = number_format($tabulador['valor'], 2);
+                                            if ($unidad === '$') {
+                                                echo $unidad . $valor;
+                                            } else if ($unidad === '%') {
+                                                echo $valor . $unidad;
+                                            } else {
+                                                echo $valor . ' ' . $unidad;
+                                            }
+                                        ?>
+                                    </td>
                                     <td><?= htmlspecialchars($tabulador['descripcion'] ?? '') ?></td>
                                     <td><span class="estado <?= $tabulador['activo'] ? 'activo' : 'inactivo' ?>"><?= $tabulador['activo'] ? 'Activo' : 'Inactivo' ?></span></td>
                                     <td><?= date('d/m/Y H:i', strtotime($tabulador['fecha_actualizacion'])) ?></td>
@@ -233,7 +264,7 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
     <div id="modalTabulador" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="tituloModalTabulador">Nuevo Rango de Precio</h2>
+                <h2 id="tituloModalTabulador">Nuevo Tabulador</h2>
                 <span class="close" onclick="cerrarModalTabulador()">&times;</span>
             </div>
             <div class="modal-body">
@@ -248,6 +279,7 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
                             <option value="clavos">Clavos</option>
                             <option value="pegamento">Pegamento</option>
                             <option value="polvillo">Polvillo</option>
+                            <option value="tiempo_instalacion">Tiempo de Instalación</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -259,7 +291,7 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
                         <input type="number" step="0.01" id="rango_max" name="rango_max" class="textfield" required>
                     </div>
                     <div class="form-group">
-                        <label for="valor">Valor</label>
+                        <label for="valor" id="labelModalValor">Valor</label>
                         <input type="number" step="0.01" id="valor" name="valor" class="textfield" required>
                     </div>
                     <div class="form-group">

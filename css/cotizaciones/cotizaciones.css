@@ -1560,3 +1560,25 @@ label {
         min-width: auto;
     }
 }
+
+/* Estilos para columna de vigencia */
+.vigencia-vencida {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.vigencia-hoy {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.vigencia-vigente {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.vigencia-fecha {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
+}

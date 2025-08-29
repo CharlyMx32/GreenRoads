@@ -201,6 +201,7 @@ async function guardarCotizacion() {
     // Preparar datos para enviar
     const datos = {
         id_cliente: parseInt(document.getElementById('cliente').value),
+        direccion_cotizacion: document.getElementById('direccion_cotizacion')?.value || '',
         tipo_terreno: document.getElementById('tipo_terreno').value,
         tipo_instalacion: tipoInstalacion,
         garantia_anios: parseInt(garantia),

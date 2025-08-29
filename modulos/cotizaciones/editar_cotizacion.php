@@ -41,10 +41,11 @@ if (!$cotizacion) {
 
 // Obtener detalles de rollos
 $rollos_detalles = [];
-$sql_rollos = "SELECT dc.*, p.nombre as nombre_producto, c.nombre as nombre_color, c.codigo_hex
+$sql_rollos = "SELECT dc.*, p.nombre as nombre_producto, c.nombre as nombre_color, c.codigo_hex, m.nombre as modelo
                FROM detalle_cotizacion dc
                LEFT JOIN productos p ON dc.id_producto = p.id
                LEFT JOIN colores c ON dc.id_color = c.id
+               LEFT JOIN modelos m ON p.id_modelo = m.id
                WHERE dc.id_cotizacion = ? AND dc.id_color IS NOT NULL
                ORDER BY dc.id";
 $stmt_rollos = mysqli_prepare($conn, $sql_rollos);
@@ -84,7 +85,15 @@ $sql_rollos_disponibles = "SELECT p.id, p.nombre, p.costo_base, m.nombre AS mode
                            (SELECT GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') 
                             FROM producto_colores pc
                             JOIN colores c ON pc.id_color = c.id 
-                            WHERE pc.id_producto = p.id) AS colores_asignados
+                            WHERE pc.id_producto = p.id) AS colores_asignados,
+                           
+                           (SELECT SUM(ir.area_m2)
+                            FROM inventario_rollos ir
+                            WHERE ir.id_producto = p.id AND ir.estado = 'disponible') AS area_disponible_total,
+                            
+                           (SELECT MIN(ir.costo_unitario)
+                            FROM inventario_rollos ir
+                            WHERE ir.id_producto = p.id) AS precio_unitario_rollo_completo
     FROM productos p
     LEFT JOIN modelos m ON p.id_modelo = m.id
     WHERE p.tipo_inventario = 'rollo' AND p.estado = 'activo'
@@ -109,9 +118,11 @@ while ($row = mysqli_fetch_assoc($result)) {
 <head>
     <?php include_once $ROOT . '/includes/head.php'; ?>
     <link rel="stylesheet" href="../../css/cotizaciones/cotizaciones.css">
+
 </head>
 
 <body>
+    <div class="main-wrapper" id="main-content">
     <?php
     $headerParams = [
         "titulo" => $TITULO . " #" . $id_cotizacion,
@@ -133,12 +144,39 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <span aria-hidden="true">Cliente *</span>
                         </label>
                         <div style="display: flex; gap: 10px;">
-                            <select id="cliente" class="textfield" style="width: 100%;" required>
-                                <option value="">-- Selecciona --</option>
-                                <?php foreach ($clientes as $cliente) : ?>
-                                    <option value="<?= $cliente['id'] ?>" <?= $cliente['id'] == $cotizacion['id_cliente'] ? 'selected' : '' ?>><?= htmlspecialchars($cliente['nombre']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <!-- Nuevo selector de clientes con búsqueda -->
+                            <div class="cliente-selector-container" style="width: 100%; position: relative;">
+                                <input type="text"
+                                    id="cliente-search"
+                                    class="textfield cliente-search-input"
+                                    placeholder="Buscar cliente por nombre..."
+                                    autocomplete="off"
+                                    value="<?= htmlspecialchars($cotizacion['nombre_cliente']) ?>"
+                                    style="display: none;">
+                                <input type="hidden" id="cliente" name="cliente" value="<?= $cotizacion['id_cliente'] ?>" required>
+
+                                <!-- Lista desplegable de resultados -->
+                                <div class="cliente-dropdown" id="cliente-dropdown">
+                                    <div class="cliente-dropdown-list" id="cliente-dropdown-list">
+                                        <!-- Los clientes se cargarán aquí dinámicamente -->
+                                    </div>
+                                    <div class="cliente-dropdown-empty" style="display: none;">
+                                        <i class="fas fa-search"></i> No se encontraron clientes
+                                    </div>
+                                </div>
+
+                                <!-- Cliente seleccionado -->
+                                <div class="cliente-selected" id="cliente-selected" style="display: flex;">
+                                    <div class="cliente-selected-info">
+                                        <i class="fas fa-user"></i>
+                                        <span class="cliente-selected-name"><?= htmlspecialchars($cotizacion['nombre_cliente']) ?></span>
+                                    </div>
+                                    <button type="button" class="cliente-clear-btn" id="cliente-clear">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+
                             <button onclick="window.location.href='../clientes/agregar.php'" class="btnadd" style="width: 165px; height: 50px;">+ Nuevo cliente</button>
                         </div>
                     </div>
@@ -213,16 +251,18 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <!-- Canvas para dibujar el terreno -->
                     <div class="form-group">
                         <label>Diseño del Terreno (Ilustrativo)</label>
-                        <button type="button" class="btn-canvas" style="width: 100%; padding: 15px; margin: 10px 0;" onclick="abrirDisenadorTerreno()">
+                        <button type="button" id="btn_abrir_canvas" class="btn-secondary" style="width: 100%; padding: 15px; margin: 10px 0;" onclick="abrirDisenadorTerreno()">
                             📐 Abrir Diseñador de Terreno
                         </button>
-                        <div id="canvas-preview" style="margin-top: 10px;">
-                            <?php if (!empty($cotizacion['dibujo_terreno'])): ?>
-                                <p style="color: #4CAF50; font-size: 14px;">✅ Diseño guardado</p>
-                            <?php else: ?>
-                                <p style="color: #999; font-size: 14px;">Sin diseño</p>
-                            <?php endif; ?>
+                        <div id="canvas_preview" style="<?= !empty($cotizacion['dibujo_terreno']) ? 'display: block;' : 'display: none;' ?> border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9; margin-top: 10px;">
+                            <small>Vista previa del diseño guardado</small>
+                            <canvas id="canvas_preview_small" width="250" height="150" style="border: 1px solid #ccc; width: 100%;"></canvas>
                         </div>
+                        <?php if (empty($cotizacion['dibujo_terreno'])): ?>
+                            <div id="canvas-no-preview" style="margin-top: 10px;">
+                                <p style="color: #999; font-size: 14px;">Sin diseño</p>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -232,7 +272,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <!-- SECCIÓN ROLLOS -->
                 <div class="form-section" role="region" aria-labelledby="seccion-rollos">
                     <div class="titulo-formulario" style="margin-top: -7px;">Rollos de Pasto</div>
-                    <div id="rollos-container">
+                    <div id="rollos_container">
                         <?php if (!empty($rollos_detalles)): ?>
                             <?php foreach ($rollos_detalles as $index => $rollo): ?>
                                 <div class="product-item" data-index="<?= $index ?>">
@@ -241,20 +281,22 @@ while ($row = mysqli_fetch_assoc($result)) {
                                             <option value="">-- Selecciona Rollo --</option>
                                             <?php foreach ($rollos as $rollo_opt): ?>
                                                 <option value="<?= $rollo_opt['id'] ?>"
-                                                    data-precio="<?= $rollo_opt['costo_base'] ?>"
+                                                    data-precio="<?= $rollo_opt['precio_unitario_rollo_completo'] ?? $rollo_opt['costo_base'] ?>"
                                                     data-modelo="<?= htmlspecialchars($rollo_opt['modelo'] ?? '') ?>"
                                                     data-colores="<?= htmlspecialchars($rollo_opt['colores_asignados'] ?? '') ?>"
+                                                    data-area-disponible="<?= $rollo_opt['area_disponible_total'] ?? 0 ?>"
                                                     <?= $rollo_opt['id'] == $rollo['id_producto'] ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars($rollo_opt['nombre']) ?>
+                                                    <?= htmlspecialchars($rollo_opt['nombre']) ?> (<?= htmlspecialchars($rollo_opt['modelo'] ?? '') ?>)
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <input type="number" class="textfield" placeholder="m²" min="0.01" step="0.01" value="<?= $rollo['cantidad'] ?>">
+
+                                        <span class="area-automatica" style="font-weight: bold; color: #4a7c59; width: 80px; text-align: center; font-size: 14px;"><?= $rollo['cantidad'] ?> m²</span>
                                         <span class="product-price" style="font-weight: bold; color: #7dc042; width: 100px; text-align: right;">
                                             $<?= number_format($rollo['precio_unitario'] * $rollo['cantidad'], 2) ?>
                                         </span>
                                         <div class="eliminar">
-                                            <i class="fa-solid fa-trash" type="button" onclick="removerRollo(this)"></i>
+                                            <i class="fa-solid fa-trash" type="button"></i>
                                         </div>
                                     </div>
                                     <div class="rollo-details" style="display: block; margin-top: 10px;">
@@ -262,18 +304,52 @@ while ($row = mysqli_fetch_assoc($result)) {
                                         <div><strong>Color:</strong>
                                             <select class="color-select textfield" data-color-actual="<?= $rollo['id_color'] ?>">
                                                 <option value="">-- Selecciona Color --</option>
-                                                <option value="<?= $rollo['id_color'] ?>" selected>
-                                                    <?= htmlspecialchars($rollo['nombre_color'] ?? 'Color no disponible') ?>
-                                                </option>
+                                                <?php if ($rollo['id_color']): ?>
+                                                    <option value="<?= $rollo['id_color'] ?>" selected>
+                                                        <?= htmlspecialchars($rollo['nombre_color'] ?? 'Color no disponible') ?>
+                                                    </option>
+                                                <?php endif; ?>
                                             </select>
                                         </div>
                                         <div><strong>Área seleccionada:</strong> <span class="area-text"><?= $rollo['cantidad'] ?> m²</span></div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="product-item">
+                                <div class="product-header">
+                                    <select class="rollo-select textfield">
+                                        <option value="">-- Selecciona Rollo --</option>
+                                        <?php foreach ($rollos as $rollo_opt): ?>
+                                            <option value="<?= $rollo_opt['id'] ?>"
+                                                data-precio="<?= $rollo_opt['precio_unitario_rollo_completo'] ?? $rollo_opt['costo_base'] ?>"
+                                                data-modelo="<?= htmlspecialchars($rollo_opt['modelo'] ?? '') ?>"
+                                                data-colores="<?= htmlspecialchars($rollo_opt['colores_asignados'] ?? '') ?>"
+                                                data-area-disponible="<?= $rollo_opt['area_disponible_total'] ?? 0 ?>">
+                                                <?= htmlspecialchars($rollo_opt['nombre']) ?> (<?= htmlspecialchars($rollo_opt['modelo'] ?? '') ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+
+                                    <span class="area-automatica" style="font-weight: bold; color: #4a7c59; width: 80px; text-align: center; font-size: 14px;">0 m²</span>
+                                    <span class="product-price" style="font-weight: bold; color: #7dc042; width: 100px; text-align: right;">$0.00</span>
+                                    <div class="eliminar">
+                                        <i class="fa-solid fa-trash" type="button"></i>
+                                    </div>
+                                </div>
+
+                                <div class="rollo-details" style="display: none; margin-top: 10px;">
+                                    <div><strong>Modelo:</strong> <span class="modelo-text"></span></div>
+                                    <div><strong>Colores:</strong> <span class="colores-text"></span></div>
+                                    <div><strong>Área seleccionada:</strong> <span class="area-text"></span></div>
+                                </div>
+                            </div>
                         <?php endif; ?>
                     </div>
                     <button type="button" id="btn-agregar-rollo" class="btnadd">+ Agregar rollo</button>
+                    <div id="limite-rollos-mensaje" class="limite-mensaje" style="display: none; margin-top: 10px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404; font-size: 13px;">
+                        <i class="fas fa-info-circle"></i> Máximo 2 rollos para cotización comparativa
+                    </div>
                 </div>
 
                 <!-- SECCIÓN EXTRAS -->
@@ -281,13 +357,37 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <div class="titulo-formulario" style="margin-top: -7px;">Extras</div>
                     <div class="form-group">
                         <?php foreach ($extras as $extra): ?>
-                            <label class="checkbox-text">
-                                <input type="checkbox" class="extra-check"
-                                    data-id="<?= $extra['id'] ?>"
-                                    data-precio="<?= $extra['precio'] ?>"
-                                    <?= in_array($extra['id'], array_column($extras_cotizacion, 'id_extra')) ? 'checked' : '' ?>>
-                                <?= htmlspecialchars($extra['nombre']) ?> ($<?= number_format($extra['precio'], 2) ?>)
-                            </label>
+                            <?php
+                            $isChecked = in_array($extra['id'], array_column($extras_cotizacion, 'id_extra'));
+                            $precioAplicado = 0;
+                            foreach ($extras_cotizacion as $extra_cot) {
+                                if ($extra_cot['id_extra'] == $extra['id']) {
+                                    $precioAplicado = $extra_cot['precio_aplicado'];
+                                    break;
+                                }
+                            }
+                            $cantidad = $isChecked ? max(1, intval($precioAplicado / $extra['precio'])) : 1;
+                            ?>
+                            <div class="extra-item <?= $isChecked ? 'selected' : '' ?>" style="display: flex; align-items: center; margin-bottom: 12px; padding: 8px; border-radius: 5px; transition: background-color 0.3s;">
+                                <label class="checkbox-text" style="flex: 1; margin: 0; display: flex; align-items: center;">
+                                    <input type="checkbox" class="extra-check"
+                                        data-id="<?= $extra['id'] ?>"
+                                        data-precio="<?= $extra['precio'] ?>"
+                                        style="margin-right: 8px;"
+                                        <?= $isChecked ? 'checked' : '' ?>>
+                                    <span style="flex: 1;"><?= htmlspecialchars($extra['nombre']) ?> ($<?= number_format($extra['precio'], 2) ?>)</span>
+                                </label>
+                                <div class="extra-cantidad-container" style="<?= $isChecked ? 'display: flex;' : 'display: none;' ?> margin-left: 15px; align-items: center;">
+                                    <label for="extra_cantidad_<?= $extra['id'] ?>" style="margin-right: 5px; font-size: 12px; color: #666;">Cantidad:</label>
+                                    <input type="number" 
+                                        id="extra_cantidad_<?= $extra['id'] ?>"
+                                        class="extra-cantidad" 
+                                        data-extra-id="<?= $extra['id'] ?>"
+                                        min="1" 
+                                        value="<?= $cantidad ?>" 
+                                        style="width: 60px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 3px; text-align: center; font-size: 12px;">
+                                </div>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -317,17 +417,62 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <label class="checkbox-text">
                             <input type="checkbox" id="aplicar_iva" <?= !empty($cotizacion['iva']) ? 'checked' : '' ?>> Aplicar IVA
                         </label>
-                        <div class="summary-item">
-                            <span>Subtotal:</span>
-                            <span id="subtotal">$0.00</span>
+
+                        <!-- Resumen normal (1 rollo) -->
+                        <div id="resumen-normal">
+                            <div class="summary-item">
+                                <span>Subtotal:</span>
+                                <span id="subtotal">$0.00</span>
+                            </div>
+                            <div class="summary-item" id="iva-container">
+                                <span>IVA (<span id="iva-percent">16</span>%):</span>
+                                <span id="iva">$0.00</span>
+                            </div>
+                            <div class="summary-item" style="font-weight: bold;">
+                                <span>Total:</span>
+                                <span id="total">$<?= number_format($cotizacion['total'], 2) ?></span>
+                            </div>
                         </div>
-                        <div class="summary-item" id="iva-container">
-                            <span>IVA (<span id="iva-percent">16</span>%):</span>
-                            <span id="iva">$0.00</span>
-                        </div>
-                        <div class="summary-item" style="font-weight: bold;">
-                            <span>Total:</span>
-                            <span id="total">$<?= number_format($cotizacion['total'], 2) ?></span>
+
+                        <!-- Resumen comparativo (2 rollos) -->
+                        <div id="resumen-comparativo" style="display: none;">
+                            <div class="cotizacion-opcion" style="border: 2px solid #7dc042; border-radius: 8px; margin-bottom: 15px; padding: 15px; background: #f8fff8;">
+                                <h4 style="margin: 0 0 10px 0; color: #7dc042; font-size: 16px;">Opción A</h4>
+                                <div class="nombre-rollo-a" style="font-weight: bold; margin-bottom: 8px; color: #4a7c59;"></div>
+                                <div class="summary-item">
+                                    <span>Subtotal:</span>
+                                    <span id="subtotal-a">$0.00</span>
+                                </div>
+                                <div class="summary-item iva-container-a">
+                                    <span>IVA (<span class="iva-percent-a">16</span>%):</span>
+                                    <span id="iva-a">$0.00</span>
+                                </div>
+                                <div class="summary-item" style="font-weight: bold; font-size: 16px;">
+                                    <span>Total:</span>
+                                    <span id="total-a">$0.00</span>
+                                </div>
+                            </div>
+
+                            <div class="cotizacion-opcion" style="border: 2px solid #6c757d; border-radius: 8px; margin-bottom: 15px; padding: 15px; background: #f8f9fa;">
+                                <h4 style="margin: 0 0 10px 0; color: #6c757d; font-size: 16px;">Opción B</h4>
+                                <div class="nombre-rollo-b" style="font-weight: bold; margin-bottom: 8px; color: #495057;"></div>
+                                <div class="summary-item">
+                                    <span>Subtotal:</span>
+                                    <span id="subtotal-b">$0.00</span>
+                                </div>
+                                <div class="summary-item iva-container-b">
+                                    <span>IVA (<span class="iva-percent-b">16</span>%):</span>
+                                    <span id="iva-b">$0.00</span>
+                                </div>
+                                <div class="summary-item" style="font-weight: bold; font-size: 16px;">
+                                    <span>Total:</span>
+                                    <span id="total-b">$0.00</span>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 5px; text-align: center;">
+                                <strong style="color: #7dc042;">Diferencia: <span id="diferencia-precio">$0.00</span></strong>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -347,29 +492,41 @@ while ($row = mysqli_fetch_assoc($result)) {
 
     <!-- Modal para Canvas -->
     <div id="canvasModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">
-        <div class="modal-content" style="background-color: #fefefe; margin: 2% auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 900px; height: 85%; display: flex; flex-direction: column;">
+        <div class="modal-content" style="background-color: #fefefe; margin: 1% auto; padding: 20px; border-radius: 10px; width: 95%; max-width: 1000px; height: 90%; display: flex; flex-direction: column; min-height: 600px;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #7dc042; padding-bottom: 15px;">
                 <h2 style="color: #7dc042; margin: 0;">Diseñador de Terreno</h2>
                 <button type="button" id="btn_cerrar_canvas" style="background: #dc3545; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 18px;">✕</button>
             </div>
 
-            <div class="canvas-container" style="flex: 1; display: flex; flex-direction: column;">
-                <div class="canvas-controls" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center;">
-                    <button type="button" id="btn_limpiar_canvas" class="canvas-btn">🗑️ Limpiar</button>
-                    <button type="button" id="btn_rectangulo" class="canvas-btn">⬜ Rectángulo</button>
-                    <button type="button" id="btn_triangulo" class="canvas-btn">🔺 Triángulo</button>
-                    <button type="button" id="btn_circulo" class="canvas-btn">⭕ Círculo</button>
-                    <button type="button" id="btn_dibujo_libre" class="canvas-btn active">✏️ Dibujo Libre</button>
-                </div>
+            <div class="canvas-controls" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center;">
+                <button type="button" id="btn_limpiar_canvas" class="canvas-btn">
+                    <i class="fas fa-trash"></i> Limpiar
+                </button>
+                <button type="button" id="btn_rectangulo" class="canvas-btn">
+                    <i class="far fa-square"></i> Rectángulo
+                </button>
+                <button type="button" id="btn_triangulo" class="canvas-btn">
+                    <i class="fas fa-draw-polygon"></i> Triángulo
+                </button>
+                <button type="button" id="btn_circulo" class="canvas-btn">
+                    <i class="far fa-circle"></i> Círculo
+                </button>
+                <button type="button" id="btn_dibujo_libre" class="canvas-btn active">
+                    <i class="fas fa-pencil-alt"></i> Dibujo Libre
+                </button>
+            </div>
 
-                <div style="flex: 1; display: flex; justify-content: center; align-items: center; border: 2px solid #7dc042; border-radius: 10px; background: white;">
-                    <canvas id="canvas_terreno" width="800" height="500" style="border: 1px solid #ccc; max-width: 100%; max-height: 100%;"></canvas>
-                </div>
+            <div style="flex: 1; display: flex; justify-content: center; align-items: center; border: 2px solid #7dc042; border-radius: 10px; background: white; padding: 20px; min-height: 450px;">
+                <canvas id="canvas_terreno" width="800" height="400" style="border: 1px solid #ccc; max-width: 100%; max-height: 100%;"></canvas>
+            </div>
 
-                <div class="modal-footer" style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">
-                    <button type="button" id="btn_guardar_canvas" class="btnadd">💾 Guardar Diseño</button>
-                    <button type="button" id="btn_cancelar_canvas" class="btncancel">❌ Cancelar</button>
-                </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end;">
+                <button type="button" id="btn_guardar_canvas" class="btnadd">
+                    <i class="fas fa-save"></i> Guardar Diseño
+                </button>
+                <button type="button" id="btn_cancelar_canvas" class="btncancel">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
             </div>
         </div>
     </div>
@@ -380,6 +537,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <script src="../../scripts/cotizaciones/formas_irregulares.js"></script>
     <script src="../../scripts/cotizaciones/canvas_terreno.js"></script>
     <script src="../../scripts/cotizaciones/modal_canvas.js"></script>
+    <script src="../../scripts/cotizaciones/componentes/selector_clientes.js"></script>
     <script>
         // Inicializar canvas después de cargar la página
         document.addEventListener('DOMContentLoaded', function() {
@@ -536,6 +694,112 @@ while ($row = mysqli_fetch_assoc($result)) {
             margin-bottom: 10px;
         }
 
+        .extra-item.selected {
+            background-color: #f8fff8;
+            border: 1px solid #7dc042;
+            border-radius: 5px;
+        }
+
+        .cliente-selector-container {
+            position: relative;
+        }
+
+        .cliente-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .cliente-dropdown.visible {
+            display: block;
+        }
+
+        .cliente-dropdown-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cliente-dropdown-item:hover,
+        .cliente-dropdown-item.highlighted {
+            background-color: #f8f9fa;
+        }
+
+        .cliente-selected {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+
+        .cliente-selected-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cliente-clear-btn {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .canvas-btn,
+        .btn-canvas,
+        .btn-secondary {
+            background: #7dc042;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .canvas-btn:hover,
+        .btn-canvas:hover,
+        .btn-secondary:hover {
+            background: #6bb032;
+        }
+
+        .canvas-btn.active {
+            background: #5a9427;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .cotizacion-opcion {
+            margin-bottom: 15px;
+        }
+
+        .limite-mensaje {
+            transition: all 0.3s ease;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .limite-mensaje.visible {
+            opacity: 1;
+            max-height: 100px;
+        }
+
         @media (max-width: 768px) {
             .form-container-grid {
                 grid-template-columns: 1fr;
@@ -550,6 +814,332 @@ while ($row = mysqli_fetch_assoc($result)) {
             }
         }
     </style>
+
+    <script>
+        // Inicializar canvas después de cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('canvas_terreno')) {
+                window.canvasTerreno = new CanvasTerreno();
+                
+                // Cargar dibujo existente si hay uno
+                if (window.dibujoTerreno) {
+                    setTimeout(() => {
+                        try {
+                            const img = new Image();
+                            img.onload = function() {
+                                const canvas = document.getElementById('canvas_terreno');
+                                if (canvas) {
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                }
+                                
+                                // También mostrar en el preview pequeño
+                                const previewCanvas = document.getElementById('canvas_preview_small');
+                                if (previewCanvas) {
+                                    const previewCtx = previewCanvas.getContext('2d');
+                                    previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+                                    previewCtx.drawImage(img, 0, 0, previewCanvas.width, previewCanvas.height);
+                                    document.getElementById('canvas_preview').style.display = 'block';
+                                    const noPreview = document.getElementById('canvas-no-preview');
+                                    if (noPreview) noPreview.style.display = 'none';
+                                }
+                            };
+                            img.src = window.dibujoTerreno;
+                        } catch (error) {
+                            console.error('Error al cargar el dibujo:', error);
+                        }
+                    }, 100);
+                }
+            }
+
+            // Inicializar selector de clientes en modo edición
+            if (window.selectorClientes && window.idCotizacion) {
+                // Establecer el cliente actual
+                const clienteActual = <?= $cotizacion['id_cliente'] ?>;
+                if (clienteActual) {
+                    setTimeout(() => {
+                        if (window.selectorClientes) {
+                            window.selectorClientes.establecerCliente(clienteActual);
+                        }
+                    }, 500);
+                }
+            }
+        });
+        
+        // Variables globales para modo edición
+        window.modoEdicion = true;
+        window.idCotizacion = <?= $id_cotizacion ?>;
+        window.dibujoTerreno = <?= json_encode($cotizacion['dibujo_terreno']) ?>;
+
+        // Debug: mostrar datos de la cotización
+        console.log('Datos de cotización:', <?= json_encode($cotizacion) ?>);
+
+        // Cargar formas irregulares si existen
+        <?php if (!empty($cotizacion['formas_irregulares'])): ?>
+            window.formasIrregulares = <?= json_encode($cotizacion['formas_irregulares']) ?>;
+        <?php endif; ?>
+
+        // Función para mostrar/ocultar campo de cantidad del extra
+        function toggleExtraQuantity(checkbox) {
+            const extraItem = checkbox.closest('.extra-item');
+            const cantidadContainer = extraItem.querySelector('.extra-cantidad-container');
+            const cantidadInput = extraItem.querySelector('.extra-cantidad');
+            
+            if (checkbox.checked) {
+                cantidadContainer.style.display = 'flex';
+                extraItem.classList.add('selected');
+                // Asegurar que la cantidad sea al menos 1
+                if (!cantidadInput.value || cantidadInput.value < 1) {
+                    cantidadInput.value = 1;
+                }
+            } else {
+                cantidadContainer.style.display = 'none';
+                extraItem.classList.remove('selected');
+            }
+        }
+
+        // Función para validar cantidad mínima del extra
+        function updateExtraTotal(cantidadInput) {
+            const cantidad = parseInt(cantidadInput.value) || 1;
+            
+            // Asegurar que la cantidad sea al menos 1
+            if (cantidad < 1) {
+                cantidadInput.value = 1;
+            }
+        }
+
+        // Hacer las funciones disponibles globalmente
+        window.toggleExtraQuantity = toggleExtraQuantity;
+        window.updateExtraTotal = updateExtraTotal;
+
+        // Función para abrir el diseñador de terreno
+        window.abrirDisenadorTerreno = function() {
+            document.getElementById('canvasModal').style.display = 'block';
+        };
+
+        // Función de debugging para verificar el estado
+        window.debugModoComparativo = function() {
+            const container = document.getElementById('rollos_container');
+            const items = container ? container.querySelectorAll('.product-item') : [];
+            const resumenNormal = document.getElementById('resumen-normal');
+            const resumenComparativo = document.getElementById('resumen-comparativo');
+            
+            console.log('=== DEBUG MODO COMPARATIVO ===');
+            console.log('Container encontrado:', !!container);
+            console.log('Número de items:', items.length);
+            console.log('Resumen normal visible:', resumenNormal ? resumenNormal.style.display !== 'none' : 'No encontrado');
+            console.log('Resumen comparativo visible:', resumenComparativo ? resumenComparativo.style.display !== 'none' : 'No encontrado');
+            
+            items.forEach((item, index) => {
+                const select = item.querySelector('.rollo-select');
+                const colorSelect = item.querySelector('.color-select');
+                console.log(`Item ${index + 1}:`, {
+                    rollo: select ? select.value : 'No select',
+                    color: colorSelect ? colorSelect.value : 'No color select'
+                });
+            });
+        };
+
+        // Configurar eventos para extras mejorados
+        document.addEventListener('DOMContentLoaded', function() {
+            // Eventos para extras
+            document.querySelectorAll('.extra-check').forEach(ck => {
+                ck.addEventListener('change', function() {
+                    toggleExtraQuantity(this);
+                });
+            });
+
+            // Eventos para cantidades de extras
+            document.querySelectorAll('.extra-cantidad').forEach(input => {
+                input.addEventListener('input', function() {
+                    updateExtraTotal(this);
+                });
+            });
+
+            // Cargar colores para rollos existentes después de que la página esté lista
+            setTimeout(() => {
+                // Asegurar que el área total esté disponible desde el inicio
+                const areaTotalInput = document.getElementById('area_total');
+                const areaOriginal = <?= $cotizacion['area_total'] ?>;
+                if (areaTotalInput && areaOriginal > 0) {
+                    areaTotalInput.value = areaOriginal;
+                    console.log('Área total inicializada:', areaOriginal);
+                }
+                
+                document.querySelectorAll('#rollos_container .rollo-select').forEach((select, index) => {
+                    if (select.value) {
+                        console.log(`Rollo ${index + 1}:`, {
+                            productoId: select.value,
+                            colorActual: select.closest('.product-item').querySelector('.color-select').dataset.colorActual
+                        });
+                        cargarColoresRolloEdicion(select);
+                        
+                        // Actualizar el área automática para este rollo
+                        const item = select.closest('.product-item');
+                        const areaSpan = item.querySelector('.area-automatica');
+                        if (areaSpan && areaOriginal > 0) {
+                            areaSpan.textContent = areaOriginal + ' m²';
+                        }
+                    }
+                });
+                
+                // Verificar modo comparativo después de cargar los datos
+                setTimeout(() => {
+                    console.log('Verificando modo comparativo...');
+                    if (typeof verificarModoComparativo === 'function') {
+                        verificarModoComparativo();
+                    } else {
+                        console.error('verificarModoComparativo no está disponible');
+                    }
+                    
+                    // Asegurar actualización continua de áreas en modo edición
+                    // Listener para cuando cambie el area_total
+                    const areaTotalInput = document.getElementById('area_total');
+                    if (areaTotalInput) {
+                        areaTotalInput.addEventListener('input', function() {
+                            setTimeout(() => {
+                                actualizarAreasAutomaticasEdicion();
+                                if (typeof calcularTotales === 'function') {
+                                    calcularTotales();
+                                }
+                            }, 100);
+                        });
+                    }
+                    
+                    // Actualizar áreas cada vez que se agregue o remueva un rollo
+                    const observer = new MutationObserver(function(mutations) {
+                        mutations.forEach(function(mutation) {
+                            if (mutation.type === 'childList') {
+                                setTimeout(() => {
+                                    actualizarAreasAutomaticasEdicion();
+                                }, 200);
+                            }
+                        });
+                    });
+                    
+                    const rollosContainer = document.getElementById('rollos_container');
+                    if (rollosContainer) {
+                        observer.observe(rollosContainer, { childList: true, subtree: true });
+                    }
+                }, 500);
+            }, 1000);
+        });
+
+        // Función específica para cargar colores en modo edición
+        async function cargarColoresRolloEdicion(selectRollo) {
+            const productId = selectRollo.value;
+            if (!productId) return;
+
+            const item = selectRollo.closest('.product-item');
+            const colorSelect = item.querySelector('.color-select');
+            const colorActual = colorSelect.dataset.colorActual;
+            
+            console.log('Cargando colores para producto:', productId, 'Color actual:', colorActual);
+            
+            try {
+                const response = await fetch('../../php/cotizaciones/obtener_colores.php?id_producto=' + productId);
+                const colores = await response.json();
+                
+                if (Array.isArray(colores)) {
+                    colorSelect.innerHTML = '<option value="">-- Selecciona Color --</option>';
+                    
+                    colores.forEach(color => {
+                        const option = document.createElement('option');
+                        option.value = color.id;
+                        option.textContent = color.nombre;
+                        option.style.backgroundColor = color.codigo_hex;
+                        option.style.color = getContrastColor(color.codigo_hex);
+                        
+                        // Seleccionar el color actual si coincide
+                        if (color.id == colorActual) {
+                            option.selected = true;
+                            console.log('Color preseleccionado:', color.nombre);
+                        }
+                        
+                        colorSelect.appendChild(option);
+                    });
+                    
+                    // Forzar la actualización del select si no se preseleccionó ningún color
+                    if (colorActual && colorSelect.value === '') {
+                        setTimeout(() => {
+                            colorSelect.value = colorActual;
+                        }, 100);
+                    }
+                    
+                    // Actualizar información del modelo y colores disponibles
+                    const modeloText = item.querySelector('.modelo-text');
+                    const selectedOption = selectRollo.selectedOptions[0];
+                    if (modeloText && selectedOption) {
+                        modeloText.textContent = selectedOption.dataset.modelo || 'No especificado';
+                    }
+                }
+            } catch (error) {
+                console.error('Error al cargar colores:', error);
+            }
+        }
+
+        // Función auxiliar para determinar color de contraste
+        function getContrastColor(hexColor) {
+            if (!hexColor) return '#000000';
+            
+            // Remover el # si está presente
+            hexColor = hexColor.replace('#', '');
+            
+            // Convertir a RGB
+            const r = parseInt(hexColor.substr(0, 2), 16);
+            const g = parseInt(hexColor.substr(2, 2), 16);
+            const b = parseInt(hexColor.substr(4, 2), 16);
+            
+            // Calcular luminancia
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            
+            return luminance > 0.5 ? '#000000' : '#ffffff';
+        }
+
+        // Función para actualizar áreas automáticamente en modo edición
+        function actualizarAreasAutomaticasEdicion() {
+            const areaTotalInput = document.getElementById('area_total');
+            const areaTotal = areaTotalInput ? parseFloat(areaTotalInput.value) || 0 : 0;
+            
+            // Si no hay área en el input, usar el área original de la cotización
+            const areaAUsar = areaTotal > 0 ? areaTotal : <?= $cotizacion['area_total'] ?>;
+            
+            console.log('Actualizando áreas automáticas en edición:', areaAUsar);
+            
+            const container = document.getElementById('rollos_container');
+            if (!container || areaAUsar <= 0) return;
+            
+            container.querySelectorAll('.product-item').forEach(item => {
+                const areaSpan = item.querySelector('.area-automatica');
+                const areaTextSpan = item.querySelector('.area-text');
+                const priceSpan = item.querySelector('.product-price');
+                const select = item.querySelector('.rollo-select');
+                
+                if (areaSpan) {
+                    areaSpan.textContent = areaAUsar + ' m²';
+                }
+                
+                if (areaTextSpan) {
+                    areaTextSpan.textContent = areaAUsar + ' m²';
+                }
+                
+                // Actualizar precio si hay un producto seleccionado
+                if (select && select.value && priceSpan) {
+                    const selectedOption = select.selectedOptions[0];
+                    if (selectedOption) {
+                        const precioUnitario = parseFloat(selectedOption.dataset.precio) || 0;
+                        const subtotal = areaAUsar * precioUnitario;
+                        priceSpan.textContent = '$' + subtotal.toFixed(2);
+                    }
+                }
+            });
+        }
+
+        // Hacer la función disponible globalmente
+        window.actualizarAreasAutomaticasEdicion = actualizarAreasAutomaticasEdicion;
+    </script>
+    <script type="module" src="../../scripts/cotizaciones/editar_cotizacion.js"></script>
 </body>
 
 </html>

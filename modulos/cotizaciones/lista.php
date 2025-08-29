@@ -21,7 +21,10 @@ $sql = "
     SELECT 
         c.id,
         cli.nombre AS nombre_cliente,
+        cli.telefono,
+        c.direccion,
         c.fecha,
+        c.fecha_vencimiento,
         c.estado,
         c.total,
         c.tipo_terreno,
@@ -71,7 +74,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <tr>
                         <th>ID</th>
                         <th>Cliente</th>
+                        <th>Dirección</th>
                         <th>Fecha</th>
+                        <th>Vigencia</th>
                         <th>Estado</th>
                         <th>Total</th>
                         <th>Admin</th>
@@ -81,7 +86,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <tbody>
                     <?php if (empty($cotizaciones)): ?>
                         <tr>
-                            <td colspan="11">No hay cotizaciones registradas.</td>
+                            <td colspan="12">No hay cotizaciones registradas.</td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($cotizaciones as $cotizacion):
@@ -89,8 +94,34 @@ while ($row = mysqli_fetch_assoc($result)) {
                         ?>
                             <tr>
                                 <td>#<?= $cotizacion['id'] ?></td>
-                                <td><?= htmlspecialchars($cotizacion['nombre_cliente'] ?? '') ?></td>
+                                <td>
+                                    <div style="font-weight: 600;"><?= htmlspecialchars($cotizacion['nombre_cliente'] ?? '') ?></div>
+                                    <div style="font-size: 0.8rem; color: #666;"><?= htmlspecialchars($cotizacion['telefono'] ?? '') ?></div>
+                                </td>
+                                <td>
+                                    <?= htmlspecialchars($cotizacion['direccion'] ?? '') ?>
+                                </td>
                                 <td><?= date('Y-m-d', strtotime($cotizacion['fecha'])) ?></td>
+                                <td>
+                                    <?php 
+                                    if ($cotizacion['fecha_vencimiento']) {
+                                        $fecha_vencimiento = date('Y-m-d', strtotime($cotizacion['fecha_vencimiento']));
+                                        $hoy = date('Y-m-d');
+                                        if ($fecha_vencimiento < $hoy) {
+                                            echo '<span style="color: #dc3545; font-weight: bold;">Vencida</span><br>';
+                                            echo '<small>' . $fecha_vencimiento . '</small>';
+                                        } elseif ($fecha_vencimiento == $hoy) {
+                                            echo '<span style="color: #ffc107; font-weight: bold;">Vence hoy</span><br>';
+                                            echo '<small>' . $fecha_vencimiento . '</small>';
+                                        } else {
+                                            echo '<span style="color: #28a745;">Vigente</span><br>';
+                                            echo '<small>' . $fecha_vencimiento . '</small>';
+                                        }
+                                    } else {
+                                        echo '<small>Sin fecha</small>';
+                                    }
+                                    ?>
+                                </td>
                                 <td><?= ucfirst($cotizacion['estado']) ?></td>
                                 <td>
                                     <?php if ($cotizacion['es_comparativa'] === 'S' || $cotizacion['es_comparativa'] === '1' || $cotizacion['es_comparativa'] == 1): ?>

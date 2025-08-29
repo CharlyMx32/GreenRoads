@@ -29,7 +29,7 @@ try {
     $activo = isset($input['activo']) ? (int)$input['activo'] : 0;
     $tipo = trim($input['tipo'] ?? 'precio_instalacion');
 
-    $tiposPermitidos = ['precio_instalacion', 'clavos', 'pegamento', 'descuento_volumen','mano_obra', 'polvillo'];
+    $tiposPermitidos = ['precio_instalacion', 'clavos', 'pegamento', 'descuento_volumen','mano_obra', 'polvillo', 'tiempo_instalacion'];
 
     if (!in_array($tipo, $tiposPermitidos)) {
         throw new Exception('Tipo de tabulador no válido', 400);

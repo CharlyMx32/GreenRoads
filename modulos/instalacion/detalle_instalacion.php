@@ -33,10 +33,11 @@ $sql = "
         c.area_total as area_cotizacion,
         c.dibujo_terreno as dibujo_cotizacion,
         c.fecha as fecha_cotizacion,
+        c.direccion as direccion_cotizacion,
         cli.nombre AS nombre_cliente,
         cli.telefono,
         cli.email,
-        cli.direccion,
+        cli.direccion as direccion_cliente,
         COALESCE(a.nombre, 'Sin asignar') AS nombre_admin,
         COALESCE(a.apellido, '') AS apellido_admin
     FROM instalaciones i
@@ -95,6 +96,33 @@ mysqli_stmt_execute($stmt_extras_cotizacion);
 $result_extras_cotizacion = mysqli_stmt_get_result($stmt_extras_cotizacion);
 while ($row = mysqli_fetch_assoc($result_extras_cotizacion)) {
     $extras_cotizacion[] = $row;
+}
+
+// Obtener rollos utilizados en la instalación
+$rollos_utilizados = [];
+$sql_rollos_utilizados = "
+    SELECT 
+        ri.*,
+        p.nombre as producto_nombre,
+        col.nombre as color_nombre,
+        col.codigo_hex as color_hex,
+        ir.largo_metros as largo_original,
+        ir.ancho_metros as ancho_original,
+        ir.costo_unitario,
+        ir.id_lote
+    FROM rollos_instalacion ri
+    INNER JOIN productos p ON ri.id_producto = p.id
+    INNER JOIN colores col ON ri.id_color = col.id
+    INNER JOIN inventario_rollos ir ON ri.id_rollo = ir.id
+    WHERE ri.id_instalacion = ?
+    ORDER BY ri.fecha_asignacion ASC
+";
+$stmt_rollos = mysqli_prepare($conn, $sql_rollos_utilizados);
+mysqli_stmt_bind_param($stmt_rollos, "i", $id_instalacion);
+mysqli_stmt_execute($stmt_rollos);
+$result_rollos = mysqli_stmt_get_result($stmt_rollos);
+while ($row = mysqli_fetch_assoc($result_rollos)) {
+    $rollos_utilizados[] = $row;
 }
 
 $extras_adicionales = json_decode($instalacion['extras_adicionales'] ?? '[]', true);
@@ -205,8 +233,8 @@ $extras_adicionales = json_decode($instalacion['extras_adicionales'] ?? '[]', tr
                                     <span><?= htmlspecialchars($instalacion['email'] ?: 'No especificado') ?></span>
                                 </div>
                                 <div class="info-item">
-                                    <label>Dirección:</label>
-                                    <span><?= htmlspecialchars($instalacion['direccion'] ?: 'No especificada') ?></span>
+                                    <label>Dirección de Instalación:</label>
+                                    <span><?= htmlspecialchars($instalacion['direccion_cotizacion'] ?: 'No especificada') ?></span>
                                 </div>
                             </div>
                         </div>
@@ -293,6 +321,91 @@ $extras_adicionales = json_decode($instalacion['extras_adicionales'] ?? '[]', tr
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <!-- Rollos Utilizados en la Instalación -->
+                        <div class="progreso-container" style="margin-top: 20px;">
+                            <div class="progreso-header">
+                                <h3 class="progreso-title">Rollos Utilizados en la Instalación</h3>
+                                <span class="badge-info"><?= count($rollos_utilizados) ?> rollos</span>
+                            </div>
+
+                            <div class="materiales-lista">
+                                <?php if (empty($rollos_utilizados)): ?>
+                                    <div class="estado-vacio">
+                                        <i class="fa-solid fa-tape"></i>
+                                        <p>No se han asignado rollos a esta instalación</p>
+                                        <?php if ($instalacion['estado'] == 'planificada'): ?>
+                                            <small style="color: #666;">Los rollos se asignarán al iniciar la instalación</small>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <?php foreach ($rollos_utilizados as $rollo): ?>
+                                        <div class="material-card rollo-utilizado">
+                                            <div class="rollo-header">
+                                                <div class="rollo-info-principal">
+                                                    <span class="rollo-id">#<?= $rollo['id_rollo'] ?></span>
+                                                    <span class="producto-nombre"><?= htmlspecialchars($rollo['producto_nombre']) ?></span>
+                                                </div>
+                                                <div class="color-info">
+                                                    <span class="color-muestra" style="background-color: <?= $rollo['color_hex'] ?>"></span>
+                                                    <span class="color-nombre"><?= htmlspecialchars($rollo['color_nombre']) ?></span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="rollo-detalles">
+                                                <div class="detalle-grupo">
+                                                    <label>Área Utilizada:</label>
+                                                    <span class="valor-destacado"><?= number_format($rollo['area_usada'], 2) ?> m²</span>
+                                                </div>
+                                                <div class="detalle-grupo">
+                                                    <label>Metros Utilizados:</label>
+                                                    <span class="valor-destacado"><?= number_format($rollo['metros_usados'], 2) ?> m</span>
+                                                </div>
+                                                <div class="detalle-grupo">
+                                                    <label>Dimensiones Originales:</label>
+                                                    <span><?= number_format($rollo['largo_original'], 2) ?> × <?= number_format($rollo['ancho_original'], 2) ?> m</span>
+                                                </div>
+                                                <div class="detalle-grupo">
+                                                    <label>Lote:</label>
+                                                    <span><?= $rollo['id_lote'] ? '#' . $rollo['id_lote'] : 'Sin lote' ?></span>
+                                                </div>
+                                                <div class="detalle-grupo">
+                                                    <label>Estado:</label>
+                                                    <span class="estado-rollo estado-<?= $rollo['estado_uso'] ?>"><?= ucfirst($rollo['estado_uso']) ?></span>
+                                                </div>
+                                                <div class="detalle-grupo">
+                                                    <label>Fecha Asignación:</label>
+                                                    <span><?= date('d/m/Y H:i', strtotime($rollo['fecha_asignacion'])) ?></span>
+                                                </div>
+                                            </div>
+                                            
+                                            <?php if ($rollo['observaciones']): ?>
+                                                <div class="rollo-observaciones">
+                                                    <label>Observaciones:</label>
+                                                    <p><?= htmlspecialchars($rollo['observaciones']) ?></p>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    
+                                    <!-- Resumen de rollos utilizados -->
+                                    <div class="resumen-rollos">
+                                        <?php
+                                        $total_area = array_sum(array_column($rollos_utilizados, 'area_usada'));
+                                        $total_metros = array_sum(array_column($rollos_utilizados, 'metros_usados'));
+                                        ?>
+                                        <div class="resumen-item">
+                                            <label>Total Área Utilizada:</label>
+                                            <span class="valor-total"><?= number_format($total_area, 2) ?> m²</span>
+                                        </div>
+                                        <div class="resumen-item">
+                                            <label>Total Metros Utilizados:</label>
+                                            <span class="valor-total"><?= number_format($total_metros, 2) ?> m</span>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Columna 3 -->
@@ -331,34 +444,14 @@ $extras_adicionales = json_decode($instalacion['extras_adicionales'] ?? '[]', tr
             </div>
         </div>
 
-        <?php if ($instalacion['observaciones'] || $instalacion['notas_instalacion']): ?>
-            <div class="progreso-container">
-                <div class="progreso-header">
-                    <h3 class="progreso-title">Observaciones y Notas</h3>
-                </div>
-
-                <?php if ($instalacion['observaciones']): ?>
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="color: #333; margin-bottom: 10px;">Observaciones Generales:</h4>
-                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #4CAF50;">
-                            <?= nl2br(htmlspecialchars($instalacion['observaciones'])) ?>
-                        </div>
-                    </div>
-                <?php endif; ?>
-
-                <?php if ($instalacion['notas_instalacion']): ?>
-                    <div>
-                        <h4 style="color: #333; margin-bottom: 10px;">Notas de Progreso:</h4>
-                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;">
-                            <?= nl2br(htmlspecialchars($instalacion['notas_instalacion'])) ?>
-                        </div>
-                    </div>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-
         <!-- Acciones -->
         <div class="actions-container">
+            <?php if ($instalacion['observaciones'] || $instalacion['notas_instalacion']): ?>
+                <button class="btn-accion btn-ver" onclick="abrirModalNotas()">
+                    <i class="fa-solid fa-clipboard-list"></i> Ver Notas y Observaciones
+                </button>
+            <?php endif; ?>
+
             <?php if ($instalacion['estado'] == 'planificada'): ?>
                 <button class="btn-accion btn-actualizar" onclick="cambiarEstadoInstalacion(<?= $instalacion['id'] ?>, 'en_progreso')">
                     <i class="fa-solid fa-play"></i> Iniciar Instalación
@@ -383,6 +476,77 @@ $extras_adicionales = json_decode($instalacion['extras_adicionales'] ?? '[]', tr
         </div>
 
     </div>
+    </div>
+
+    <!-- Modal para ver notas y observaciones -->
+    <div id="modalNotas" class="modal-edicion">
+        <div class="modal-content-edicion" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    Notas y Observaciones - Instalación #<?= $instalacion['id'] ?>
+                </h3>
+                <span class="modal-close" onclick="cerrarModalNotas()">&times;</span>
+            </div>
+            
+            <div class="modal-body-notas">
+                <?php if ($instalacion['observaciones'] || $instalacion['notas_instalacion']): ?>
+                    
+                    <?php if ($instalacion['observaciones']): ?>
+                        <div class="nota-seccion">
+                            <div class="nota-header">
+                                <i class="fa-solid fa-comment-dots"></i>
+                                <h4>Observaciones Generales</h4>
+                                <span class="nota-badge observaciones">General</span>
+                            </div>
+                            <div class="nota-contenido">
+                                <?= nl2br(htmlspecialchars($instalacion['observaciones'])) ?>
+                            </div>
+                            <div class="nota-footer">
+                                <small>
+                                    <i class="fa-solid fa-calendar"></i>
+                                    Creado: <?= date('d/m/Y H:i', strtotime($instalacion['fecha_creacion'])) ?>
+                                </small>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($instalacion['notas_instalacion']): ?>
+                        <div class="nota-seccion">
+                            <div class="nota-header">
+                                <i class="fa-solid fa-sticky-note"></i>
+                                <h4>Notas de Progreso</h4>
+                                <span class="nota-badge progreso">Progreso</span>
+                            </div>
+                            <div class="nota-contenido">
+                                <?= nl2br(htmlspecialchars($instalacion['notas_instalacion'])) ?>
+                            </div>
+                            <div class="nota-footer">
+                                <small>
+                                    <i class="fa-solid fa-clock"></i>
+                                    Última actualización: <?= date('d/m/Y H:i') ?>
+                                </small>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    
+                <?php else: ?>
+                    <div class="sin-notas">
+                        <i class="fa-solid fa-clipboard"></i>
+                        <p>No hay notas u observaciones registradas para esta instalación.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+            
+            <div class="modal-footer-notas">
+                <button type="button" class="btn-accion btn-actualizar" onclick="abrirModalProgreso()">
+                    <i class="fa-solid fa-plus"></i> Añadir Nota de Progreso
+                </button>
+                <button type="button" class="btn-accion btn-cancelar" onclick="cerrarModalNotas()">
+                    <i class="fa-solid fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal para actualizar progreso -->
@@ -527,6 +691,24 @@ $extras_adicionales = json_decode($instalacion['extras_adicionales'] ?? '[]', tr
             }
         }
 
+        function abrirModalNotas() {
+            const modal = document.getElementById('modalNotas');
+            if (modal) {
+                modal.style.display = 'block';
+                modal.style.animation = 'fadeIn 0.3s ease';
+            }
+        }
+
+        function cerrarModalNotas() {
+            const modal = document.getElementById('modalNotas');
+            if (modal) {
+                modal.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 250);
+            }
+        }
+
         function guardarProgreso() {
             const progreso = document.getElementById('progreso_porcentaje').value;
             const notas = document.getElementById('notas_progreso').value;
@@ -645,18 +827,23 @@ $extras_adicionales = json_decode($instalacion['extras_adicionales'] ?? '[]', tr
             if (e.key === 'Escape') {
                 cerrarModalProgreso();
                 cerrarModalVerDibujo();
+                cerrarModalNotas();
             }
         });
 
         window.onclick = function(event) {
             const modalProgreso = document.getElementById('modalProgreso');
             const modalVerDibujo = document.getElementById('modalVerDibujo');
+            const modalNotas = document.getElementById('modalNotas');
 
             if (event.target === modalProgreso) {
                 cerrarModalProgreso();
             }
             if (event.target === modalVerDibujo) {
                 cerrarModalVerDibujo();
+            }
+            if (event.target === modalNotas) {
+                cerrarModalNotas();
             }
         };
 

@@ -8,6 +8,9 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 header('Cache-Control: no-cache, must-revalidate');
 
+// Incluir funciones de corte de rollos
+require_once '../../includes/funciones_corte_rollos.php';
+
 // Buffer de salida para capturar errores
 ob_start();
 
@@ -26,6 +29,9 @@ try {
     switch ($action) {
         case 'cambiar_estado':
             cambiarEstadoInstalacion();
+            break;
+        case 'iniciar_instalacion':
+            iniciarInstalacion();
             break;
         case 'actualizar_instalacion':
             actualizarInstalacion();
@@ -146,20 +152,8 @@ function actualizarInstalacion() {
     if ($progreso_porcentaje < 0) $progreso_porcentaje = 0;
     if ($progreso_porcentaje > 100) $progreso_porcentaje = 100;
     
-    // Si tecnico_responsable es un ID, obtener el nombre completo
-    $nombre_tecnico = '';
-    if (!empty($tecnico_responsable) && is_numeric($tecnico_responsable)) {
-        $sql_tecnico = "SELECT CONCAT(nombre, ' ', apellido) as nombre_completo FROM admins WHERE id = ? AND id_rol = 3";
-        $stmt_tecnico = mysqli_prepare($conn, $sql_tecnico);
-        mysqli_stmt_bind_param($stmt_tecnico, "i", $tecnico_responsable);
-        mysqli_stmt_execute($stmt_tecnico);
-        $result_tecnico = mysqli_stmt_get_result($stmt_tecnico);
-        if ($row = mysqli_fetch_assoc($result_tecnico)) {
-            $nombre_tecnico = $row['nombre_completo'];
-        }
-    } else {
-        $nombre_tecnico = $tecnico_responsable;
-    }
+    // Guardar el valor del técnico tal como viene - puede ser ID o nombre
+    $tecnico_final = $tecnico_responsable;
     
     $sql = "UPDATE instalaciones SET 
                 tecnico_responsable = ?, 
@@ -171,7 +165,7 @@ function actualizarInstalacion() {
     
     $stmt = mysqli_prepare($conn, $sql);
     mysqli_stmt_bind_param($stmt, "sssdsi", 
-        $nombre_tecnico, 
+        $tecnico_final, 
         $fecha_inicio, 
         $fecha_fin_estimada, 
         $progreso_porcentaje, 
@@ -668,6 +662,204 @@ function eliminarProductoAdicional() {
         echo json_encode(['success' => true, 'message' => 'Producto eliminado correctamente']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Error al eliminar producto: ' . mysqli_error($conn)]);
+    }
+}
+
+/**
+ * Función para cortar un rollo específicamente para instalaciones
+ * Retorna el ID del rollo cortado creado
+ */
+function cortarRolloParaInstalacion($conn, $rollo_original, $metros_necesarios) {
+    try {
+        $metros_sobrantes = $rollo_original['largo_metros'] - $metros_necesarios;
+        
+        // 1. Crear el rollo cortado (el que se va a usar en la instalación)
+        $query_cortado = "
+            INSERT INTO inventario_rollos 
+            (id_producto, id_lote, id_color, largo_metros, ancho_metros, 
+             costo_unitario, costo_total, estado, id_rollo_padre, tipo_rollo)
+            SELECT id_producto, id_lote, id_color, ?, ?, 
+                   costo_unitario, costo_total, 'disponible', ?, 'cortado'
+            FROM inventario_rollos WHERE id = ?
+        ";
+        
+        $stmt_cortado = mysqli_prepare($conn, $query_cortado);
+        mysqli_stmt_bind_param($stmt_cortado, "ddii", 
+            $metros_necesarios, 
+            $rollo_original['ancho_metros'], 
+            $rollo_original['id'],
+            $rollo_original['id']
+        );
+        
+        if (!mysqli_stmt_execute($stmt_cortado)) {
+            return false;
+        }
+        
+        $id_rollo_cortado = mysqli_insert_id($conn);
+        mysqli_stmt_close($stmt_cortado);
+        
+        // 2. Actualizar el rollo original con las dimensiones del sobrante
+        if ($metros_sobrantes > 0.1) {
+            $query_actualizar = "
+                UPDATE inventario_rollos 
+                SET largo_metros = ?
+                WHERE id = ?
+            ";
+            
+            $stmt_act = mysqli_prepare($conn, $query_actualizar);
+            mysqli_stmt_bind_param($stmt_act, "di", 
+                $metros_sobrantes, 
+                $rollo_original['id']
+            );
+            
+            if (!mysqli_stmt_execute($stmt_act)) {
+                return false;
+            }
+            mysqli_stmt_close($stmt_act);
+        } else {
+            // El sobrante es muy pequeño, marcarlo como instalado
+            $query_usar = "UPDATE inventario_rollos SET estado = 'instalado' WHERE id = ?";
+            $stmt_usar = mysqli_prepare($conn, $query_usar);
+            mysqli_stmt_bind_param($stmt_usar, "i", $rollo_original['id']);
+            
+            if (!mysqli_stmt_execute($stmt_usar)) {
+                return false;
+            }
+            mysqli_stmt_close($stmt_usar);
+        }
+        
+        return $id_rollo_cortado;
+        
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function iniciarInstalacion() {
+    global $conn;
+    
+    $id_instalacion = $_POST['id_instalacion'] ?? 0;
+    $rollos_seleccionados = $_POST['rollos_seleccionados'] ?? '';
+    $tecnico_responsable = $_POST['tecnico_responsable'] ?? 0;
+    $fecha_inicio = $_POST['fecha_inicio'] ?? '';
+    $fecha_fin_estimada = $_POST['fecha_fin_estimada'] ?? '';
+    
+    if (!$id_instalacion) {
+        echo json_encode(['success' => false, 'message' => 'ID de instalación requerido']);
+        return;
+    }
+    
+    if (!$tecnico_responsable) {
+        echo json_encode(['success' => false, 'message' => 'Técnico responsable requerido']);
+        return;
+    }
+    
+    if (!$fecha_inicio || !$fecha_fin_estimada) {
+        echo json_encode(['success' => false, 'message' => 'Fechas de inicio y finalización requeridas']);
+        return;
+    }
+    
+    if (empty($rollos_seleccionados)) {
+        echo json_encode(['success' => false, 'message' => 'Debe seleccionar al menos un rollo']);
+        return;
+    }
+    
+    // Decodificar JSON de rollos seleccionados
+    $rollos = json_decode($rollos_seleccionados, true);
+    if (!$rollos) {
+        echo json_encode(['success' => false, 'message' => 'Error al procesar rollos seleccionados']);
+        return;
+    }
+    
+    mysqli_begin_transaction($conn);
+    
+    try {
+        // 1. Actualizar instalación con datos completos
+        $sql_instalacion = "UPDATE instalaciones SET 
+            estado = 'en_progreso', 
+            tecnico_responsable = ?, 
+            fecha_inicio = ?, 
+            fecha_fin_estimada = ?
+            WHERE id = ?";
+        $stmt_instalacion = mysqli_prepare($conn, $sql_instalacion);
+        mysqli_stmt_bind_param($stmt_instalacion, "issi", $tecnico_responsable, $fecha_inicio, $fecha_fin_estimada, $id_instalacion);
+        
+        if (!mysqli_stmt_execute($stmt_instalacion)) {
+            throw new Exception('Error al actualizar estado de instalación');
+        }
+        mysqli_stmt_close($stmt_instalacion);
+        
+        // 2. Registrar rollos asignados a la instalación
+        foreach ($rollos as $rollo) {
+            $id_rollo = $rollo['id_rollo'] ?? 0;
+            $id_producto = $rollo['id_producto'] ?? 0;
+            $id_color = $rollo['id_color'] ?? 0;
+            $area_usar = $rollo['area_usar'] ?? 0;
+            $metros_usar = $rollo['metros_usar'] ?? 0;
+            
+            if (!$id_rollo || !$id_producto || !$area_usar) {
+                continue; // Saltar rollos inválidos
+            }
+            
+            // Obtener información completa del rollo
+            $sql_rollo_info = "SELECT * FROM inventario_rollos WHERE id = ?";
+            $stmt_info = mysqli_prepare($conn, $sql_rollo_info);
+            mysqli_stmt_bind_param($stmt_info, "i", $id_rollo);
+            mysqli_stmt_execute($stmt_info);
+            $result_info = mysqli_stmt_get_result($stmt_info);
+            $rollo_info = mysqli_fetch_assoc($result_info);
+            mysqli_stmt_close($stmt_info);
+            
+            if (!$rollo_info) {
+                throw new Exception('Rollo no encontrado: ' . $id_rollo);
+            }
+            
+            $id_rollo_final = $id_rollo; // Por defecto usar el rollo original
+            
+            // Verificar si necesita corte (si se va a usar menos del 95% del rollo)
+            $area_total_rollo = $rollo_info['largo_metros'] * $rollo_info['ancho_metros'];
+            $porcentaje_uso = $area_usar / $area_total_rollo;
+            
+            if ($porcentaje_uso < 0.95 && $metros_usar < $rollo_info['largo_metros']) {
+                // Necesita corte - crear rollo cortado para instalación
+                $id_rollo_final = cortarRolloParaInstalacion($conn, $rollo_info, $metros_usar);
+                if (!$id_rollo_final) {
+                    throw new Exception('Error al cortar rollo ' . $id_rollo);
+                }
+            }
+            
+            // Insertar registro de rollo asignado
+            $sql_asignar = "
+                INSERT INTO rollos_instalacion 
+                (id_instalacion, id_rollo, id_producto, id_color, area_usada, metros_usados, fecha_asignacion) 
+                VALUES (?, ?, ?, ?, ?, ?, NOW())
+            ";
+            $stmt_asignar = mysqli_prepare($conn, $sql_asignar);
+            mysqli_stmt_bind_param($stmt_asignar, "iiiidd", 
+                $id_instalacion, $id_rollo_final, $id_producto, $id_color, $area_usar, $metros_usar);
+            
+            if (!mysqli_stmt_execute($stmt_asignar)) {
+                throw new Exception('Error al asignar rollo ' . $id_rollo);
+            }
+            mysqli_stmt_close($stmt_asignar);
+            
+            // Actualizar estado del rollo a 'instalado'
+            $sql_rollo = "UPDATE inventario_rollos SET estado = 'instalado' WHERE id = ?";
+            $stmt_rollo = mysqli_prepare($conn, $sql_rollo);
+            mysqli_stmt_bind_param($stmt_rollo, "i", $id_rollo_final);
+            
+            if (!mysqli_stmt_execute($stmt_rollo)) {
+                throw new Exception('Error al actualizar estado del rollo ' . $id_rollo_final);
+            }
+            mysqli_stmt_close($stmt_rollo);
+        }
+        
+        mysqli_commit($conn);
+        echo json_encode(['success' => true, 'message' => 'Instalación iniciada correctamente']);
+        
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 }
 
