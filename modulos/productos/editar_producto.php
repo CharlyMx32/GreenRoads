@@ -232,7 +232,8 @@ while ($row = mysqli_fetch_assoc($res)) {
         const formData = new FormData(form);
 
         if (!formData.get("nombre")) {
-            alert("Favor de indicar el nombre del producto.");
+            displayPopUp();
+            displayMensajeError("Favor de indicar el nombre del producto.");
             return;
         }
 

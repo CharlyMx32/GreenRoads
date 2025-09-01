@@ -25,11 +25,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
+            displayPopUp();
             displayMensajeError("Por favor seleccione un archivo de imagen válido.");
             return;
         }
 
         if (file.size > maxSize) {
+            displayPopUp();
             displayMensajeError("La imagen es demasiado grande (máximo 2MB).");
             return;
         }
@@ -96,6 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const altura = parseFloat(alturaModelo.value) || 0;
 
         if (!nombre) {
+            displayPopUp();
             displayMensajeError("El nombre del modelo es requerido");
             nombreModelo.focus();
             return;
@@ -145,18 +148,28 @@ document.addEventListener('DOMContentLoaded', function () {
         const esRollo = tipoProductoValue === 1;
 
         if (!nombre) {
+            displayPopUp();
             displayMensajeError("Favor de indicar el nombre del producto.");
             form.nombre.focus();
             return;
         }
 
+        if (!formData.get("tipo_producto") || tipoProductoValue <= 0) {
+            displayPopUp();
+            displayMensajeError("Favor de seleccionar un tipo de producto.");
+            tipoProducto.focus();
+            return;
+        }
+
         if (!formData.get("id_unidad")) {
+            displayPopUp();
             displayMensajeError("Favor de seleccionar una unidad de medida.");
             return;
         }
 
         if (esRollo) {
             if (!formData.get("id_modelo")) {
+                displayPopUp();
                 displayMensajeError("Seleccione un modelo para el pasto.");
                 return;
             }
@@ -164,6 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Validar que se haya seleccionado al menos un color
             const coloresSeleccionados = document.querySelectorAll('input[name="color_rollo[]"]:checked');
             if (coloresSeleccionados.length === 0) {
+                displayPopUp();
                 displayMensajeError("Seleccione al menos un color para el rollo.");
                 return;
             }

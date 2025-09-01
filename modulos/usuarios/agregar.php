@@ -81,32 +81,46 @@ $conn->close();
         let apellido = document.querySelector('#apellido').value.trim();
         let usuario = document.querySelector('#usuario').value.trim();
         let clave = document.querySelector('#clave').value.trim();
+        let rol = document.querySelector('#rol').value;
 
         if (nombre == '') {
-            alert('Favor de indicar el nombre.');
+            displayPopUp();
+            displayMensajeError('Favor de indicar el nombre.');
+            document.querySelector('#nombre').focus();
             return false;
         }
 
         if (apellido == '') {
-            alert('Favor de indicar el apellido.');
+            displayPopUp();
+            displayMensajeError('Favor de indicar el apellido.');
+            document.querySelector('#apellido').focus();
             return false;
         }
 
         if (usuario == '') {
-            alert('Favor de indicar el usuario.');
+            displayPopUp();
+            displayMensajeError('Favor de indicar el usuario.');
+            document.querySelector('#usuario').focus();
+            return false;
+        }
+
+        if (!rol || rol == '') {
+            displayPopUp();
+            displayMensajeError('Favor de seleccionar un rol.');
+            document.querySelector('#rol').focus();
             return false;
         }
 
         if (clave == '') {
-            alert('Favor de indicar la contraseña.');
+            displayPopUp();
+            displayMensajeError('Favor de indicar la contraseña.');
+            document.querySelector('#clave').focus();
             return false;
         }
 
         if (!confirm("¿Está seguro que desea agregar la información?")) return false;
 
         displayPopUp();
-
-        let rol = document.querySelector('#rol').value;
 
         $.post('../../php/usuarios/agregar', {
                 nombre: nombre,

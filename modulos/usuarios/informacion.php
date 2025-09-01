@@ -88,22 +88,26 @@
             let clave = document.querySelector('#clave').value.trim();
 
             if(nombre == '') {
-                alert('Favor de indicar el nombre.');
+                displayPopUp();
+                displayMensajeError('Favor de indicar el nombre.');
                 return false;
             }
 
             if(apellido == '') {
-                alert('Favor de indicar el apellido.');
+                displayPopUp();
+                displayMensajeError('Favor de indicar el apellido.');
                 return false;
             }
 
             if(usuario == '') {
-                alert('Favor de indicar el usuario.');
+                displayPopUp();
+                displayMensajeError('Favor de indicar el usuario.');
                 return false;
             }
 
             if(clave == '') {
-                alert('Favor de indicar la contraseña.');
+                displayPopUp();
+                displayMensajeError('Favor de indicar la contraseña.');
                 return false;
             }
 

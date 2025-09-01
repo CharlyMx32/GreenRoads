@@ -88,7 +88,7 @@ while ($row = mysqli_fetch_assoc($result_tabuladores)) {
 
 <head>
     <?php include_once $ROOT . 'includes/head.php'; ?>
-    <link rel="stylesheet" href="<?= $URL_ROOT ?>css/parametros.css">
+    <link rel="stylesheet" href="../../css/parametros.css">
 </head>
 
 <body>

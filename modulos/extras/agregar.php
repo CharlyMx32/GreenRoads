@@ -87,15 +87,28 @@ if (!tieneSesion()) {
             const activo = document.getElementById('activo').checked ? 1 : 0;
 
             // Validaciones básicas
-            if (!nombre || isNaN(precio)) {
-                displayMensajeError('Nombre y precio son campos requeridos');
+            if (!nombre) {
+                displayPopUp();
+                displayMensajeError('Favor de indicar el nombre del extra.');
+                document.getElementById('nombre').focus();
+                return;
+            }
+
+            if (!document.getElementById('precio').value || isNaN(precio)) {
+                displayPopUp();
+                displayMensajeError('Favor de indicar un precio válido.');
+                document.getElementById('precio').focus();
                 return;
             }
 
             if (precio < 0) {
-                displayMensajeError('El precio no puede ser negativo');
+                displayPopUp();
+                displayMensajeError('El precio no puede ser negativo.');
+                document.getElementById('precio').focus();
                 return;
             }
+
+            if (!confirm("¿Está seguro que desea agregar este extra?")) return;
 
             displayPopUp();
 

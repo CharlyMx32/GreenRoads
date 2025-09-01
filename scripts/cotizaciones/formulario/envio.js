@@ -138,31 +138,34 @@ async function guardarCotizacion() {
     $('#btnAccion').css('display', 'none');
 
     const rollos = [];
-    const rollosContainer = modoEdicion ? '#rollos-container' : '#rollos_container';
-    const rollosItems = document.querySelectorAll(`${rollosContainer} .product-item`);
+    const rollosContainer = document.getElementById('rollos_container');
     
-    rollosItems.forEach((item, index) => {
-        const select = item.querySelector('.rollo-select');
-        const colorSelect = item.querySelector('.color-select');
+    if (rollosContainer) {
+        const rollosItems = rollosContainer.querySelectorAll('.product-item');
+        
+        rollosItems.forEach((item, index) => {
+            const select = item.querySelector('.rollo-select');
+            const colorSelect = item.querySelector('.color-select');
 
-        if (select?.value && colorSelect?.value && areaTerreno > 0) {
-            // Usar el área total del terreno como cantidad
-            const cantidad = areaTerreno;
-            const precioUnitario = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
-            
-            // En modo comparativo, marcar las opciones como A y B
-            const opcionComparativa = esComparativa ? (index === 0 ? 'A' : 'B') : null;
-            
-            rollos.push({
-                id_producto: parseInt(select.value),
-                cantidad: cantidad,
-                precio_unitario: precioUnitario,
-                id_color: parseInt(colorSelect.value),
-                subtotal: cantidad * precioUnitario,
-                opcion_comparativa: opcionComparativa
-            });
-        }
-    });
+            if (select?.value && colorSelect?.value && areaTerreno > 0) {
+                // Usar el área total del terreno como cantidad
+                const cantidad = areaTerreno;
+                const precioUnitario = parseFloat(select.selectedOptions[0]?.dataset.precio) || 0;
+                
+                // En modo comparativo, marcar las opciones como A y B
+                const opcionComparativa = esComparativa ? (index === 0 ? 'A' : 'B') : null;
+                
+                rollos.push({
+                    id_producto: parseInt(select.value),
+                    cantidad: cantidad,
+                    precio_unitario: precioUnitario,
+                    id_color: parseInt(colorSelect.value),
+                    subtotal: cantidad * precioUnitario,
+                    opcion_comparativa: opcionComparativa
+                });
+            }
+        });
+    }
 
     // Recolectar extras seleccionados
     const extras = [];
@@ -172,12 +175,21 @@ async function guardarCotizacion() {
         const cantidadInput = document.querySelector(`.extra-cantidad[data-extra-id="${idExtra}"]`);
         const cantidad = cantidadInput ? parseInt(cantidadInput.value) || 1 : 1;
         
+        console.log('Extra recolectado:', {
+            id_extra: idExtra,
+            cantidad: cantidad,
+            precio_unitario: precioUnitario,
+            precio_aplicado: precioUnitario * cantidad
+        });
+        
         extras.push({
             id_extra: idExtra,
             cantidad: cantidad,
             precio_aplicado: precioUnitario * cantidad
         });
     });
+    
+    console.log('Total de extras a enviar:', extras.length, extras);
 
     // Obtener total actual del DOM - manejar modo comparativo
     let total = 0;

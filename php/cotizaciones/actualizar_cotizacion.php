@@ -97,6 +97,15 @@ try {
     }
     mysqli_stmt_close($stmt_eliminar);
 
+    // 2b. Eliminar extras existentes
+    $query_eliminar_extras = "DELETE FROM cotizacion_extras WHERE id_cotizacion = ?";
+    $stmt_eliminar_extras = mysqli_prepare($conn, $query_eliminar_extras);
+    mysqli_stmt_bind_param($stmt_eliminar_extras, "i", $id_cotizacion);
+    if (!mysqli_stmt_execute($stmt_eliminar_extras)) {
+        throw new Exception("Error al eliminar extras existentes");
+    }
+    mysqli_stmt_close($stmt_eliminar_extras);
+
     // 3. Actualizar datos principales de la cotización
     $query_actualizar = "UPDATE cotizaciones SET 
                         id_cliente = ?, 
@@ -164,6 +173,44 @@ try {
             }
         }
         mysqli_stmt_close($stmt_detalle);
+    }
+
+    // 5. Insertar nuevos extras
+    if (!empty($datos['extras']) && is_array($datos['extras'])) {
+        error_log("Procesando " . count($datos['extras']) . " extras: " . json_encode($datos['extras']));
+        
+        $query_extra = "INSERT INTO cotizacion_extras (id_cotizacion, id_extra, cantidad, precio_aplicado) VALUES (?, ?, ?, ?)";
+        $stmt_extra = mysqli_prepare($conn, $query_extra);
+
+        foreach ($datos['extras'] as $extra) {
+            if (empty($extra['id_extra'])) continue;
+
+            // Si se envía cantidad y precio_aplicado (nueva estructura)
+            if (isset($extra['cantidad']) && isset($extra['precio_aplicado'])) {
+                $cantidad = intval($extra['cantidad']);
+                $precio_aplicado = floatval($extra['precio_aplicado']);
+            } else {
+                // Fallback para compatibilidad con estructura anterior
+                $cantidad = 1;
+                $precio_aplicado = floatval($extra['precio'] ?? 0);
+            }
+
+            error_log("Insertando extra: ID={$extra['id_extra']}, Cantidad={$cantidad}, Precio={$precio_aplicado}");
+
+            mysqli_stmt_bind_param($stmt_extra, "iiid", 
+                $id_cotizacion, 
+                $extra['id_extra'], 
+                $cantidad,
+                $precio_aplicado
+            );
+
+            if (!mysqli_stmt_execute($stmt_extra)) {
+                throw new Exception("Error al insertar extra");
+            }
+        }
+        mysqli_stmt_close($stmt_extra);
+    } else {
+        error_log("No se recibieron extras o el array está vacío");
     }
 
     mysqli_commit($conn);

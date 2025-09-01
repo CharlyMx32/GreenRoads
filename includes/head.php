@@ -1,7 +1,8 @@
 <?php
 $ROOT = '..';
+$titulo_pagina = isset($TITULO) ? $TITULO : 'Sistema';
 ?>
-<title>Green Roads | Log In</title>
+<title>Green Roads | <?php echo $titulo_pagina; ?></title>
         <meta charset="UTF-8">
         <meta name="description" content="Sistema administrativo para control de cotizaciones y productos." />
         <meta name="viewport" content="width=device-width, initial-scale=1.0 maximum-scale=1.0, user-scalable=no">

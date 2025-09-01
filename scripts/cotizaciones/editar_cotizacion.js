@@ -21,7 +21,7 @@ async function calcularMaterialesAutomaticos() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                tipo_terreno: tipoInstalacion,
+                tipo_instalacion: tipoInstalacion,  // Cambiado de tipo_terreno a tipo_instalacion
                 area: area
             })
         });
@@ -153,45 +153,70 @@ function configurarEventosEdicion() {
 
 // Función de validación específica para edición
 function validarFormularioEdicion() {
+    console.log('=== VALIDACIÓN EDICIÓN ===');
+    
     const cliente = document.getElementById('cliente');
+    console.log('Cliente ID:', cliente?.value);
     if (!cliente || !cliente.value) {
         alert('Seleccione un cliente');
         return false;
     }
 
     const tipoTerreno = document.getElementById('tipo_terreno').value;
+    console.log('Tipo terreno:', tipoTerreno);
     if (!tipoTerreno) {
         alert('Seleccione el tipo de terreno');
         return false;
     }
 
     const areaTerreno = parseFloat(document.getElementById('area_total').value) || 0;
+    console.log('Área terreno:', areaTerreno);
     if (areaTerreno <= 0) {
         alert('El área del terreno debe ser mayor que cero');
         return false;
     }
 
-    if (!document.getElementById('tipo_instalacion').value) {
+    const tipoInstalacion = document.getElementById('tipo_instalacion').value;
+    console.log('Tipo instalación:', tipoInstalacion);
+    if (!tipoInstalacion) {
         alert('Seleccione el tipo de instalación');
         return false;
     }
 
-    // Validar rollos
+    // Validar rollos - usar el ID correcto del contenedor
     let rollosValidos = false;
-    document.querySelectorAll('#rollos-container .product-item').forEach(item => {
-        const select = item.querySelector('.rollo-select');
-        const colorSelect = item.querySelector('.color-select');
+    const rollosContainer = document.getElementById('rollos_container');
+    console.log('Contenedor rollos encontrado:', !!rollosContainer);
+    
+    if (rollosContainer) {
+        const rollosItems = rollosContainer.querySelectorAll('.product-item');
+        console.log('Número de items de rollos encontrados:', rollosItems.length);
+        
+        rollosItems.forEach((item, index) => {
+            const select = item.querySelector('.rollo-select');
+            const colorSelect = item.querySelector('.color-select');
+            
+            console.log(`Rollo ${index + 1}:`, {
+                tieneSelect: !!select,
+                valorSelect: select?.value,
+                tieneColorSelect: !!colorSelect,
+                valorColorSelect: colorSelect?.value
+            });
 
-        if (select.value && colorSelect?.value) {
-            rollosValidos = true;
-        }
-    });
+            if (select?.value && colorSelect?.value) {
+                rollosValidos = true;
+            }
+        });
+    }
+    
+    console.log('Rollos válidos encontrados:', rollosValidos);
 
     if (!rollosValidos) {
         alert('Debe tener al menos un rollo de pasto válido con color seleccionado');
         return false;
     }
 
+    console.log('=== VALIDACIÓN EXITOSA ===');
     return true;
 }
 

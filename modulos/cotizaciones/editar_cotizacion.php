@@ -1,8 +1,4 @@
 <?php
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
-
 $ROOT = '../../';
 $TITULO = "Editar Cotización";
 
@@ -22,7 +18,6 @@ if ($id_cotizacion <= 0) {
     exit();
 }
 
-// Obtener datos de la cotización
 $sql_cotizacion = "SELECT c.*, c.area_total, cl.nombre as nombre_cliente 
                    FROM cotizaciones c 
                    JOIN clientes cl ON c.id_cliente = cl.id 
@@ -39,7 +34,6 @@ if (!$cotizacion) {
     exit();
 }
 
-// Obtener detalles de rollos
 $rollos_detalles = [];
 $sql_rollos = "SELECT dc.*, p.nombre as nombre_producto, c.nombre as nombre_color, c.codigo_hex, m.nombre as modelo
                FROM detalle_cotizacion dc
@@ -57,7 +51,6 @@ while ($row = mysqli_fetch_assoc($result_rollos)) {
 }
 mysqli_stmt_close($stmt_rollos);
 
-// Obtener extras
 $extras_cotizacion = [];
 $sql_extras = "SELECT ce.*, e.nombre, e.precio as precio_base
                FROM cotizacion_extras ce
@@ -72,7 +65,6 @@ while ($row = mysqli_fetch_assoc($result_extras)) {
 }
 mysqli_stmt_close($stmt_extras);
 
-// Obtener listas para formulario
 $clientes = [];
 $sql = "SELECT id, nombre FROM clientes WHERE estado = 'activo' ORDER BY nombre ASC";
 $result = mysqli_query($conn, $sql);
@@ -144,7 +136,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                             <span aria-hidden="true">Cliente *</span>
                         </label>
                         <div style="display: flex; gap: 10px;">
-                            <!-- Nuevo selector de clientes con búsqueda -->
                             <div class="cliente-selector-container" style="width: 100%; position: relative;">
                                 <input type="text"
                                     id="cliente-search"
@@ -155,17 +146,14 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     style="display: none;">
                                 <input type="hidden" id="cliente" name="cliente" value="<?= $cotizacion['id_cliente'] ?>" required>
 
-                                <!-- Lista desplegable de resultados -->
                                 <div class="cliente-dropdown" id="cliente-dropdown">
                                     <div class="cliente-dropdown-list" id="cliente-dropdown-list">
-                                        <!-- Los clientes se cargarán aquí dinámicamente -->
                                     </div>
                                     <div class="cliente-dropdown-empty" style="display: none;">
                                         <i class="fas fa-search"></i> No se encontraron clientes
                                     </div>
                                 </div>
 
-                                <!-- Cliente seleccionado -->
                                 <div class="cliente-selected" id="cliente-selected" style="display: flex;">
                                     <div class="cliente-selected-info">
                                         <i class="fas fa-user"></i>
@@ -248,7 +236,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                         <input type="number" id="area_total" class="textfield" readonly value="<?= $cotizacion['area_total'] ?>">
                     </div>
 
-                    <!-- Canvas para dibujar el terreno -->
                     <div class="form-group">
                         <label>Diseño del Terreno (Ilustrativo)</label>
                         <button type="button" id="btn_abrir_canvas" class="btn-secondary" style="width: 100%; padding: 15px; margin: 10px 0;" onclick="abrirDisenadorTerreno()">
@@ -491,7 +478,9 @@ while ($row = mysqli_fetch_assoc($result)) {
     </div>
 
     <!-- Modal para Canvas -->
-    <div id="canvasModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">
+        </div>
+
+    <div id="canvasModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8);">';
         <div class="modal-content" style="background-color: #fefefe; margin: 1% auto; padding: 20px; border-radius: 10px; width: 95%; max-width: 1000px; height: 90%; display: flex; flex-direction: column; min-height: 600px;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #7dc042; padding-bottom: 15px;">
                 <h2 style="color: #7dc042; margin: 0;">Diseñador de Terreno</h2>
@@ -539,12 +528,10 @@ while ($row = mysqli_fetch_assoc($result)) {
     <script src="../../scripts/cotizaciones/modal_canvas.js"></script>
     <script src="../../scripts/cotizaciones/componentes/selector_clientes.js"></script>
     <script>
-        // Inicializar canvas después de cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('canvas_terreno')) {
                 window.canvasTerreno = new CanvasTerreno();
                 
-                // Cargar dibujo existente si hay uno
                 if (window.dibujoTerreno) {
                     setTimeout(() => {
                         const img = new Image();
@@ -560,15 +547,10 @@ while ($row = mysqli_fetch_assoc($result)) {
             }
         });
         
-        // Variables globales para modo edición
         window.modoEdicion = true;
         window.idCotizacion = <?= $id_cotizacion ?>;
         window.dibujoTerreno = <?= json_encode($cotizacion['dibujo_terreno']) ?>;
-
-        // Debug: mostrar datos de la cotización
-        console.log('Datos de cotización:', <?= json_encode($cotizacion) ?>);
-
-        // Cargar formas irregulares si existen
+        
         <?php if (!empty($cotizacion['formas_irregulares'])): ?>
             window.formasIrregulares = <?= json_encode($cotizacion['formas_irregulares']) ?>;
         <?php endif; ?>
@@ -816,12 +798,10 @@ while ($row = mysqli_fetch_assoc($result)) {
     </style>
 
     <script>
-        // Inicializar canvas después de cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('canvas_terreno')) {
                 window.canvasTerreno = new CanvasTerreno();
                 
-                // Cargar dibujo existente si hay uno
                 if (window.dibujoTerreno) {
                     setTimeout(() => {
                         try {
@@ -834,7 +814,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                                 }
                                 
-                                // También mostrar en el preview pequeño
                                 const previewCanvas = document.getElementById('canvas_preview_small');
                                 if (previewCanvas) {
                                     const previewCtx = previewCanvas.getContext('2d');
@@ -847,15 +826,12 @@ while ($row = mysqli_fetch_assoc($result)) {
                             };
                             img.src = window.dibujoTerreno;
                         } catch (error) {
-                            console.error('Error al cargar el dibujo:', error);
                         }
                     }, 100);
                 }
             }
 
-            // Inicializar selector de clientes en modo edición
             if (window.selectorClientes && window.idCotizacion) {
-                // Establecer el cliente actual
                 const clienteActual = <?= $cotizacion['id_cliente'] ?>;
                 if (clienteActual) {
                     setTimeout(() => {
@@ -867,20 +843,10 @@ while ($row = mysqli_fetch_assoc($result)) {
             }
         });
         
-        // Variables globales para modo edición
-        window.modoEdicion = true;
-        window.idCotizacion = <?= $id_cotizacion ?>;
-        window.dibujoTerreno = <?= json_encode($cotizacion['dibujo_terreno']) ?>;
-
-        // Debug: mostrar datos de la cotización
-        console.log('Datos de cotización:', <?= json_encode($cotizacion) ?>);
-
-        // Cargar formas irregulares si existen
         <?php if (!empty($cotizacion['formas_irregulares'])): ?>
             window.formasIrregulares = <?= json_encode($cotizacion['formas_irregulares']) ?>;
         <?php endif; ?>
 
-        // Función para mostrar/ocultar campo de cantidad del extra
         function toggleExtraQuantity(checkbox) {
             const extraItem = checkbox.closest('.extra-item');
             const cantidadContainer = extraItem.querySelector('.extra-cantidad-container');
@@ -889,7 +855,6 @@ while ($row = mysqli_fetch_assoc($result)) {
             if (checkbox.checked) {
                 cantidadContainer.style.display = 'flex';
                 extraItem.classList.add('selected');
-                // Asegurar que la cantidad sea al menos 1
                 if (!cantidadInput.value || cantidadInput.value < 1) {
                     cantidadInput.value = 1;
                 }
@@ -899,83 +864,41 @@ while ($row = mysqli_fetch_assoc($result)) {
             }
         }
 
-        // Función para validar cantidad mínima del extra
         function updateExtraTotal(cantidadInput) {
             const cantidad = parseInt(cantidadInput.value) || 1;
-            
-            // Asegurar que la cantidad sea al menos 1
             if (cantidad < 1) {
                 cantidadInput.value = 1;
             }
         }
 
-        // Hacer las funciones disponibles globalmente
-        window.toggleExtraQuantity = toggleExtraQuantity;
-        window.updateExtraTotal = updateExtraTotal;
-
-        // Función para abrir el diseñador de terreno
         window.abrirDisenadorTerreno = function() {
             document.getElementById('canvasModal').style.display = 'block';
         };
-
-        // Función de debugging para verificar el estado
-        window.debugModoComparativo = function() {
-            const container = document.getElementById('rollos_container');
-            const items = container ? container.querySelectorAll('.product-item') : [];
-            const resumenNormal = document.getElementById('resumen-normal');
-            const resumenComparativo = document.getElementById('resumen-comparativo');
-            
-            console.log('=== DEBUG MODO COMPARATIVO ===');
-            console.log('Container encontrado:', !!container);
-            console.log('Número de items:', items.length);
-            console.log('Resumen normal visible:', resumenNormal ? resumenNormal.style.display !== 'none' : 'No encontrado');
-            console.log('Resumen comparativo visible:', resumenComparativo ? resumenComparativo.style.display !== 'none' : 'No encontrado');
-            
-            items.forEach((item, index) => {
-                const select = item.querySelector('.rollo-select');
-                const colorSelect = item.querySelector('.color-select');
-                console.log(`Item ${index + 1}:`, {
-                    rollo: select ? select.value : 'No select',
-                    color: colorSelect ? colorSelect.value : 'No color select'
-                });
-            });
-        };
-
-        // Configurar eventos para extras mejorados
+        
         document.addEventListener('DOMContentLoaded', function() {
-            // Eventos para extras
             document.querySelectorAll('.extra-check').forEach(ck => {
                 ck.addEventListener('change', function() {
                     toggleExtraQuantity(this);
                 });
             });
 
-            // Eventos para cantidades de extras
             document.querySelectorAll('.extra-cantidad').forEach(input => {
                 input.addEventListener('input', function() {
                     updateExtraTotal(this);
                 });
             });
 
-            // Cargar colores para rollos existentes después de que la página esté lista
             setTimeout(() => {
-                // Asegurar que el área total esté disponible desde el inicio
                 const areaTotalInput = document.getElementById('area_total');
                 const areaOriginal = <?= $cotizacion['area_total'] ?>;
                 if (areaTotalInput && areaOriginal > 0) {
                     areaTotalInput.value = areaOriginal;
-                    console.log('Área total inicializada:', areaOriginal);
                 }
                 
                 document.querySelectorAll('#rollos_container .rollo-select').forEach((select, index) => {
                     if (select.value) {
-                        console.log(`Rollo ${index + 1}:`, {
-                            productoId: select.value,
-                            colorActual: select.closest('.product-item').querySelector('.color-select').dataset.colorActual
-                        });
                         cargarColoresRolloEdicion(select);
                         
-                        // Actualizar el área automática para este rollo
                         const item = select.closest('.product-item');
                         const areaSpan = item.querySelector('.area-automatica');
                         if (areaSpan && areaOriginal > 0) {
@@ -984,17 +907,11 @@ while ($row = mysqli_fetch_assoc($result)) {
                     }
                 });
                 
-                // Verificar modo comparativo después de cargar los datos
                 setTimeout(() => {
-                    console.log('Verificando modo comparativo...');
                     if (typeof verificarModoComparativo === 'function') {
                         verificarModoComparativo();
-                    } else {
-                        console.error('verificarModoComparativo no está disponible');
                     }
                     
-                    // Asegurar actualización continua de áreas en modo edición
-                    // Listener para cuando cambie el area_total
                     const areaTotalInput = document.getElementById('area_total');
                     if (areaTotalInput) {
                         areaTotalInput.addEventListener('input', function() {
@@ -1007,7 +924,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                         });
                     }
                     
-                    // Actualizar áreas cada vez que se agregue o remueva un rollo
                     const observer = new MutationObserver(function(mutations) {
                         mutations.forEach(function(mutation) {
                             if (mutation.type === 'childList') {
@@ -1026,7 +942,6 @@ while ($row = mysqli_fetch_assoc($result)) {
             }, 1000);
         });
 
-        // Función específica para cargar colores en modo edición
         async function cargarColoresRolloEdicion(selectRollo) {
             const productId = selectRollo.value;
             if (!productId) return;
@@ -1034,8 +949,6 @@ while ($row = mysqli_fetch_assoc($result)) {
             const item = selectRollo.closest('.product-item');
             const colorSelect = item.querySelector('.color-select');
             const colorActual = colorSelect.dataset.colorActual;
-            
-            console.log('Cargando colores para producto:', productId, 'Color actual:', colorActual);
             
             try {
                 const response = await fetch('../../php/cotizaciones/obtener_colores.php?id_producto=' + productId);
@@ -1051,23 +964,19 @@ while ($row = mysqli_fetch_assoc($result)) {
                         option.style.backgroundColor = color.codigo_hex;
                         option.style.color = getContrastColor(color.codigo_hex);
                         
-                        // Seleccionar el color actual si coincide
                         if (color.id == colorActual) {
                             option.selected = true;
-                            console.log('Color preseleccionado:', color.nombre);
                         }
                         
                         colorSelect.appendChild(option);
                     });
                     
-                    // Forzar la actualización del select si no se preseleccionó ningún color
                     if (colorActual && colorSelect.value === '') {
                         setTimeout(() => {
                             colorSelect.value = colorActual;
                         }, 100);
                     }
                     
-                    // Actualizar información del modelo y colores disponibles
                     const modeloText = item.querySelector('.modelo-text');
                     const selectedOption = selectRollo.selectedOptions[0];
                     if (modeloText && selectedOption) {
@@ -1075,7 +984,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                     }
                 }
             } catch (error) {
-                console.error('Error al cargar colores:', error);
             }
         }
 
@@ -1097,15 +1005,11 @@ while ($row = mysqli_fetch_assoc($result)) {
             return luminance > 0.5 ? '#000000' : '#ffffff';
         }
 
-        // Función para actualizar áreas automáticamente en modo edición
         function actualizarAreasAutomaticasEdicion() {
             const areaTotalInput = document.getElementById('area_total');
             const areaTotal = areaTotalInput ? parseFloat(areaTotalInput.value) || 0 : 0;
             
-            // Si no hay área en el input, usar el área original de la cotización
             const areaAUsar = areaTotal > 0 ? areaTotal : <?= $cotizacion['area_total'] ?>;
-            
-            console.log('Actualizando áreas automáticas en edición:', areaAUsar);
             
             const container = document.getElementById('rollos_container');
             if (!container || areaAUsar <= 0) return;
@@ -1124,7 +1028,6 @@ while ($row = mysqli_fetch_assoc($result)) {
                     areaTextSpan.textContent = areaAUsar + ' m²';
                 }
                 
-                // Actualizar precio si hay un producto seleccionado
                 if (select && select.value && priceSpan) {
                     const selectedOption = select.selectedOptions[0];
                     if (selectedOption) {
@@ -1135,8 +1038,9 @@ while ($row = mysqli_fetch_assoc($result)) {
                 }
             });
         }
-
-        // Hacer la función disponible globalmente
+        
+        window.toggleExtraQuantity = toggleExtraQuantity;
+        window.updateExtraTotal = updateExtraTotal;
         window.actualizarAreasAutomaticasEdicion = actualizarAreasAutomaticasEdicion;
     </script>
     <script type="module" src="../../scripts/cotizaciones/editar_cotizacion.js"></script>

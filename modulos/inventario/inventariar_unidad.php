@@ -152,16 +152,19 @@ if ($tieneInventario) {
 
                 // Validaciones
                 if (isNaN(cantidad) || cantidad <= 0) {
+                    displayPopUp();
                     displayMensajeError("La cantidad debe ser mayor a cero");
                     return;
                 }
 
                 if (isNaN(costo) || costo <= 0) {
+                    displayPopUp();
                     displayMensajeError("El costo unitario debe ser mayor a cero");
                     return;
                 }
 
                 if (!formData.get('lote_descripcion')) {
+                    displayPopUp();
                     displayMensajeError("Debe especificar una descripción para el lote");
                     return;
                 }

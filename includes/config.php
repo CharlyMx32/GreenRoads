@@ -5,5 +5,5 @@
     mysqli_query($conn, $sql);
 
     // $URL_ROOT = "https://admin.greenroads.com.mx";
-    $URL_ROOT = "http://localhost/greenroads/";
+    $URL_ROOT = "http://localhost/greenroads";
 ?>

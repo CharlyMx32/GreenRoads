@@ -5,6 +5,7 @@
     //$ROOT = $_SERVER['DOCUMENT_ROOT'];
 
     $ROOT = '../../';
+    $TITULO = "Dashboard";
 
     include_once $ROOT.'/db/conexion.php';
     include_once $ROOT.'/includes/sesion.php';

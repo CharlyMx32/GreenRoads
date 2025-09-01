@@ -116,6 +116,7 @@ function handleFormMovimientoSubmit(form) {
     if (tipoMovimiento === 'salida') {
         const disponible = parseFloat(form.dataset.disponible || 0);
         if (cantidad > disponible) {
+            displayPopUp();
             displayMensajeError(`No hay suficiente inventario. Disponible: ${disponible}`);
             return;
         }
@@ -159,22 +160,26 @@ function handleFormMovimientoSubmit(form) {
 
 function validateFormMovimiento(cantidad, costo, tipoMovimiento) {
     if (isNaN(cantidad)) {
+        displayPopUp();
         displayMensajeError("La cantidad debe ser un número válido");
         return false;
     }
     
     if (cantidad <= 0) {
+        displayPopUp();
         displayMensajeError("La cantidad debe ser mayor a cero");
         return false;
     }
     
     if (tipoMovimiento === 'entrada') {
         if (isNaN(costo)) {
+            displayPopUp();
             displayMensajeError("El costo unitario debe ser un número válido");
             return false;
         }
         
         if (costo <= 0) {
+            displayPopUp();
             displayMensajeError("El costo unitario debe ser mayor a cero");
             return false;
         }

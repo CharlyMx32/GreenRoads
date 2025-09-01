@@ -234,6 +234,7 @@ function validarSeleccionCompleta() {
 // Procesar inicio de instalación
 function procesarInicioInstalacion() {
     if (!datosInstalacionActual.id_instalacion) {
+        displayPopUp();
         displayMensajeError('Error: No se ha seleccionado una instalación');
         return;
     }
@@ -244,16 +245,19 @@ function procesarInicioInstalacion() {
     const fechaFinEstimada = document.getElementById('inicio_fecha_fin_estimada').value;
     
     if (!tecnicoResponsable) {
+        displayPopUp();
         displayMensajeError('Debe seleccionar un técnico responsable');
         return;
     }
     
     if (!fechaInicio) {
+        displayPopUp();
         displayMensajeError('Debe especificar la fecha de inicio');
         return;
     }
     
     if (!fechaFinEstimada) {
+        displayPopUp();
         displayMensajeError('Debe especificar la fecha estimada de finalización');
         return;
     }

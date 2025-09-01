@@ -80,11 +80,13 @@ include_once '../../includes/header.php';
         const email = formData.get("email")?.trim();
 
         if (!nombre) {
+            displayPopUp();
             displayMensajeError("Favor de indicar el nombre del cliente.");
             return;
         }
 
         if (email && !email.includes('@')) {
+            displayPopUp();
             displayMensajeError("El correo electrónico no parece válido.");
             return;
         }

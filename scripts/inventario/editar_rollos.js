@@ -72,6 +72,7 @@ function handleFormRollosSubmit(form) {
     }
 
     if (idLote === 'nuevo' && !form.querySelector('[name="lote_descripcion"]').value.trim()) {
+        displayPopUp();
         displayMensajeError("Debe proporcionar una descripción para el nuevo lote");
         return;
     }
@@ -110,6 +111,7 @@ function handleFormRollosSubmit(form) {
  */
 function validateFormRollos(cantidad) {
     if (isNaN(cantidad) || cantidad <= 0) {
+        displayPopUp();
         displayMensajeError("La cantidad debe ser mayor a cero");
         return false;
     }
