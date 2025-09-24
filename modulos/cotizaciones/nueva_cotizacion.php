@@ -15,6 +15,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeCrearCotizaciones()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 $clientes = [];
 $sql = "SELECT id, nombre FROM clientes WHERE estado = 'activo' ORDER BY nombre ASC";
 $result = mysqli_query($conn, $sql);

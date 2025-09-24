@@ -16,12 +16,12 @@
         exit();
     }
 
-    $sql = "SELECT nombre FROM admins WHERE id = ".$_SESSION['usuario']."";
+    $sql = "SELECT a.nombre, r.nombre as nombre_rol FROM admins a LEFT JOIN roles r ON a.id_rol = r.id WHERE a.id = ".$_SESSION['usuario']."";
     $result = mysqli_query($conn, $sql);
     $row = mysqli_fetch_assoc($result);
     $nombreUsuario = $row['nombre'];
+    $nombreRol = $row['nombre_rol'] ?? 'Sin rol';
     $idRol = $_SESSION['rol'] ?? null;
-
 
     $TITULO = "Bienvenido, $nombreUsuario";
 ?>
@@ -55,44 +55,72 @@
                     <div class="texto-btn-ajustes">Dashboard</div>
                 </li>
 
+                <!-- Productos - Solo Admin -->
+                <?php if (puedeVerProductos()): ?>
                 <li class="btn-ajustes" onclick="location.href='../productos/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-boxes-stacked"></i></div>
                     <div class="texto-btn-ajustes">Productos</div>
                 </li>
+                <?php endif; ?>
 
+                <!-- Inventario - Solo Admin -->
+                <?php if (puedeVerInventario()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../inventario/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-truck"></i></div>
                     <div class="texto-btn-ajustes">Inventario</div>
                 </li>
+                <?php endif; ?>
 
+                <!-- Cotizaciones - Admin y Vendedor -->
+                <?php if (puedeVerCotizaciones()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../cotizaciones/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-list"></i></div>
                     <div class="texto-btn-ajustes">Cotizaciones</div>
                 </li>
+                <?php endif; ?>
 
+                <!-- Instalaciones - Admin e Instalador -->
+                <?php if (puedeVerInstalaciones()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../instalacion/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-tools"></i></div>
                     <div class="texto-btn-ajustes">Instalaciones</div>
                 </li>
+                <?php endif; ?>
 
-                <?php if (esAdmin()): ?>
+                <!-- Citas - Admin y Vendedor -->
+                <?php if (puedeVerCitas()): ?>
+                <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../citas/lista'">
+                    <div class="icono-btn-ajustes"><i class="fa-light fa-calendar-days"></i></div>
+                    <div class="texto-btn-ajustes">Citas</div>
+                </li>
+                <?php endif; ?>
+
+                <!-- Usuarios - Solo Admin -->
+                <?php if (puedeVerUsuarios()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../usuarios/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-user-shield"></i></div>
                     <div class="texto-btn-ajustes">Usuarios</div>
                 </li>
                 <?php endif; ?>
 
+                <!-- Clientes - Admin y Vendedor -->
+                <?php if (puedeVerClientes()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../clientes/lista'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-user"></i></div>
                     <div class="texto-btn-ajustes">Clientes</div>
                 </li>
+                <?php endif; ?>
                 
-                <?php if (esAdmin()): ?>
+                <!-- Extras - Solo Admin -->
+                <?php if (puedeVerExtras()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../extras/extras'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-tools"></i></div>
                     <div class="texto-btn-ajustes">Extras</div>
                 </li>
+                <?php endif; ?>
             
+                <!-- Parámetros/Configuración - Solo Admin -->
+                <?php if (puedeVerConfiguracion()): ?>
                 <li class="btn-ajustes" onclick="location.href='<?php $ROOT; ?>../configuracion/parametros'">
                     <div class="icono-btn-ajustes"><i class="fa-light fa-gears"></i></div>
                     <div class="texto-btn-ajustes">Parametros</div>

@@ -24,6 +24,12 @@ if (!tieneSesion() || !isset($_SESSION['usuario_id'])) {
     exit();
 }
 
+// Verificar permisos para crear cotizaciones
+if (!puedeCrearCotizaciones()) {
+    echo json_encode(['status' => 0, 'mensaje' => 'No tiene permisos para crear cotizaciones']);
+    exit();
+}
+
 // Usar ID admin de la sesión
 $id_admin = $_SESSION['usuario_id'];
 

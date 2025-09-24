@@ -10,6 +10,16 @@ include_once $ROOT . 'db/conexion.php';
 include_once $ROOT . 'includes/sesion.php';
 include_once $ROOT . 'includes/config.php';
 
+if (!tieneSesion()) {
+    header("Location: $URL_ROOT/login");
+    exit();
+}
+
+if (!puedeVerConfiguracion()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 function sanitizar($data, $conn)
 {
     return htmlspecialchars(mysqli_real_escape_string($conn, trim($data)));

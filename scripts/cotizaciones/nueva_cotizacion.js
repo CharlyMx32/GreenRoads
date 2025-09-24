@@ -11,7 +11,10 @@ async function calcularMaterialesAutomaticos() {
         const tipoInstalacion = document.getElementById('tipo_instalacion')?.value;
         const area = parseFloat(document.getElementById('area_total')?.value || 0);
 
+        console.log('Calculando materiales automáticos:', { tipoInstalacion, area });
+
         if (!tipoInstalacion || area <= 0) {
+            console.log('No hay tipo de instalación o área válida');
             return 0; 
         }
 
@@ -21,7 +24,7 @@ async function calcularMaterialesAutomaticos() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                tipo_terreno: tipoInstalacion,
+                tipo_instalacion: tipoInstalacion,
                 area: area
             })
         });
@@ -31,8 +34,10 @@ async function calcularMaterialesAutomaticos() {
         }
 
         const data = await response.json();
+        console.log('Respuesta del servidor:', data);
         
         if (data.success) {
+            console.log('Materiales calculados exitosamente. Costo total:', data.costo_total);
             return data.costo_total;
         } else {
             console.error('Error al calcular materiales:', data.error);
@@ -76,8 +81,9 @@ function configurarEventos() {
     });
     
     // Eventos para tipo de instalación (materiales automáticos)
-    document.getElementById('tipo_instalacion')?.addEventListener('change', function() {
-        calcularMaterialesAutomaticos();
+    document.getElementById('tipo_instalacion')?.addEventListener('change', async function() {
+        await calcularMaterialesAutomaticos();
+        await actualizarTotales();
         verificarModoComparativo();
     });
 

@@ -15,6 +15,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeVerExtras()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 // Obtener todos los extras (excluyendo los eliminados)
 $extras = [];
 $sql = "SELECT * FROM extras WHERE estado <> 'eliminado' ORDER BY 

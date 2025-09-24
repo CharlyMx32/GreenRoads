@@ -16,6 +16,11 @@
         exit();
     }
 
+    if (!puedeVerUsuarios()) {
+        header("Location: ../dashboard/menu.php?error=sin_permisos");
+        exit();
+    }
+
     $usuarios = [];
     $sql = "SELECT
     a.*,

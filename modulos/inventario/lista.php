@@ -15,6 +15,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeVerInventario()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 define('ESTADO_ACTIVO', 'activo');
 define('ESTADO_INACTIVO', 'inactivo');
 define('ESTADO_ELIMINADO', 'eliminado');

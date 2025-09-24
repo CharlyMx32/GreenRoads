@@ -15,7 +15,12 @@ if (!tieneSesion()) {
     exit();
 }
 
-// Obtener cotizaciones con cliente y admin
+if (!puedeVerCotizaciones()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
+// Obtener cotizaciones según el rol del usuario
 $cotizaciones = [];
 $sql = "
     SELECT 
@@ -41,9 +46,15 @@ $sql = "
         COALESCE(a.apellido, '') AS apellido_admin
     FROM cotizaciones c
     LEFT JOIN clientes cli ON c.id_cliente = cli.id
-    LEFT JOIN admins a ON c.id_admin = a.id 
-    ORDER BY c.fecha DESC
-";
+    LEFT JOIN admins a ON c.id_admin = a.id";
+
+// Si es vendedor, solo ver sus cotizaciones
+if (esVendedor()) {
+    $sql .= " WHERE c.id_admin = " . $_SESSION['usuario'];
+}
+
+$sql .= " ORDER BY c.fecha DESC";
+
 $result = mysqli_query($conn, $sql);
 while ($row = mysqli_fetch_assoc($result)) {
     $cotizaciones[] = $row;

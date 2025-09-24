@@ -15,6 +15,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeVerProductos()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 $productos = [];
 $sql = "SELECT p.*, u.simbolo as unidad_medida, tp.nombre as tipo_producto 
         FROM productos p

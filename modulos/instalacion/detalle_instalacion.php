@@ -15,6 +15,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeVerInstalaciones()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 $id_instalacion = (int)($_GET['id'] ?? 0);
 
 if ($id_instalacion <= 0) {

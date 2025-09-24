@@ -15,6 +15,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeVerCotizaciones()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 $id_cotizacion = (int)($_GET['id'] ?? 0);
 
 if ($id_cotizacion <= 0) {
@@ -57,6 +62,12 @@ $result = mysqli_stmt_get_result($stmt);
 
 if (!$cotizacion = mysqli_fetch_assoc($result)) {
     header("Location: lista.php");
+    exit();
+}
+
+// Verificar si el usuario tiene permiso para ver esta cotización específica
+if (!puedeVerCotizacion($cotizacion['id_admin'])) {
+    header("Location: lista.php?error=sin_permisos");
     exit();
 }
 
@@ -379,7 +390,7 @@ $instalacion_asociada = mysqli_fetch_assoc($result_instalacion);
                     <!-- Columna 3 -->
                     <div class="grid-col">
                         <!-- Resumen de precios -->
-                        <?php if ($cotizacion['es_comparativa'] != 1 && $cotizacion['es_comparativa'] != 'S'): ?>
+                        <?php if ($cotizacion['es_comparativa'] != 1): ?>
                             <div class="progreso-container" style="background: #f8f9fa; border: 2px solid #4CAF50;">
                                 <div class="progreso-header">
                                     <h3 class="progreso-title" style="color: #4CAF50;">Resumen de Precios</h3>

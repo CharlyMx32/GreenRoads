@@ -33,7 +33,8 @@ try {
     $cotizacion = $result->fetch_assoc();
     
     // Verificar si es cotización comparativa
-    $esComparativa = $cotizacion['es_comparativa'] == 1 || $cotizacion['es_comparativa'] == 'S';
+    //$esComparativa = $cotizacion['es_comparativa'] == 1 || $cotizacion['es_comparativa'] == 'S';
+    $esComparativa = $cotizacion['es_comparativa'];
     
     // Obtener productos (para comparativas y simples)
     $productos = [];

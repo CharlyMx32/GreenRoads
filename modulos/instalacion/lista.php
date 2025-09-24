@@ -15,7 +15,12 @@ if (!tieneSesion()) {
     exit();
 }
 
-// Obtener todas las instalaciones con información de cotización y cliente
+if (!puedeVerInstalaciones()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
+// Obtener instalaciones según el rol del usuario
 $instalaciones = [];
 $sql = "
     SELECT 
@@ -44,8 +49,14 @@ $sql = "
     INNER JOIN cotizaciones c ON i.id_cotizacion = c.id
     LEFT JOIN clientes cli ON c.id_cliente = cli.id
     LEFT JOIN admins a ON c.id_admin = a.id 
-    LEFT JOIN admins t ON i.tecnico_responsable = t.id
-    ORDER BY 
+    LEFT JOIN admins t ON i.tecnico_responsable = t.id";
+
+// Si es instalador, solo ver sus instalaciones asignadas
+if (esInstalador()) {
+    $sql .= " WHERE i.tecnico_responsable = " . $_SESSION['usuario'];
+}
+
+$sql .= " ORDER BY 
         CASE i.estado 
             WHEN 'en_progreso' THEN 1
             WHEN 'planificada' THEN 2
@@ -55,6 +66,7 @@ $sql = "
         i.fecha_inicio ASC,
         i.id DESC
 ";
+
 $result = mysqli_query($conn, $sql);
 while ($row = mysqli_fetch_assoc($result)) {
     $instalaciones[] = $row;

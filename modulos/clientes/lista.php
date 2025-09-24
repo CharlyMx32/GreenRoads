@@ -16,6 +16,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeVerClientes()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 $usuarios = [];
 $sql = "SELECT 
     c.* 

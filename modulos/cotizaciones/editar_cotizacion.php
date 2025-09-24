@@ -11,6 +11,11 @@ if (!tieneSesion()) {
     exit();
 }
 
+if (!puedeEditarCotizaciones()) {
+    header("Location: ../dashboard/menu.php?error=sin_permisos");
+    exit();
+}
+
 $id_cotizacion = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if ($id_cotizacion <= 0) {

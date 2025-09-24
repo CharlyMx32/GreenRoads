@@ -71,11 +71,11 @@
             <form>
                 <div class="input">
                     <div class="icono-input"><i class="fal fa-user"></i></div>
-                    <input type="text" class="textfield" id="usuario" placeholder='usuario'>
+                    <input type="text" class="textfield" id="usuario" placeholder='nombre de usuario'>
                 </div>
                 <div class="input">
                     <div class="icono-input"><i class="fal fa-lock"></i></div>
-                    <input type="password" class="textfield" id="pwd" placeholder='contraseña'>
+                    <input type="password" class="textfield" id="pwd" placeholder='contraseña de acceso'>
                     <div class="mostrarclave" id="ojo" onclick="mostrar()"><i class="fal fa-eye"></i></div>
                 </div>
                 <div class="btn1" onclick="login()">LOG IN</div>

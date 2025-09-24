@@ -1,0 +1,600 @@
+/* Filtros */
+.filtros-container {
+    width: 94%;
+    margin: 10px auto;
+    display: flex;
+    gap: 11px;
+    padding: 15px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    flex-wrap: wrap;
+    font-family: "Montserrat", sans-serif;
+    height: fit-content;
+}
+
+.filtro-item {
+    min-width: 150px;
+    flex: 1;
+}
+
+.filtro-item label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #5b5b5b;
+    font-size: 12px;
+    font-family: "Montserrat", sans-serif;
+}
+
+.filtro-item select,
+.filtro-item input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid #ccc;
+    border-radius: 5px;
+    font-size: 12px;
+    background: white;
+    font-family: "Montserrat", sans-serif;
+    color: #5b5b5b;
+}
+
+.filtro-item select:focus,
+.filtro-item input:focus {
+    border-color: #7dc042;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(125, 192, 66, 0.2);
+}
+
+/* Badges para estados y tipos */
+.badge-estado,
+.badge-tipo {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    display: inline-block;
+    min-width: 70px;
+}
+
+.badge-estado.estado-pendiente {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-estado.estado-completada {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-estado.estado-cancelada {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.badge-tipo.tipo-medicion {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.badge-tipo.tipo-instalacion {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.badge-tipo.tipo-consulta {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+}
+
+.badge-tipo.tipo-seguimiento {
+    background-color: #fff8e1;
+    color: #f57c00;
+}
+
+.badge-tipo.tipo-mantenimiento {
+    background-color: #fce4ec;
+    color: #c2185b;
+}
+
+.ver-detalle {
+    color: #17a2b8;
+}
+
+.editar {
+    color: #ffc107;
+}
+
+.completar {
+    color: #28a745;
+}
+
+.cancelar {
+    color: #fd7e14;
+}
+
+.eliminar {
+    color: #dc3545;
+}
+
+/* Formulario de nueva cita - SIMPLIFICADO */
+.form-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.form-header {
+    background: linear-gradient(135deg, #7dc042 0%, #6ba832 100%);
+    color: white;
+    padding: 25px;
+    text-align: center;
+}
+
+.form-header h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+}
+
+.form-header p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+    font-family: "Montserrat", sans-serif;
+}
+
+.form-header i {
+    margin-right: 10px;
+}
+
+.form-content {
+    display: flex;
+    min-height: 400px;
+}
+
+.form-section {
+    flex: 3;
+    padding: 30px;
+}
+
+.info-section {
+    padding: 0;
+    background: white;
+    border-left: none;
+}
+
+.form-cita {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #5b5b5b;
+    font-size: 14px;
+    font-family: "Montserrat", sans-serif;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: "Montserrat", sans-serif;
+    background: white;
+    color: #5b5b5b;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    min-height: 48px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: #7dc042;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(125, 192, 66, 0.2);
+}
+
+.form-group select {
+    cursor: pointer;
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+}
+
+/* Panel de información del cliente */
+.info-panel {
+    display: none;
+    padding: 30px;
+    background: #f8f9fa;
+    border-left: 1px solid #e9ecef;
+    height: 100%;
+}
+
+.info-panel.show {
+    display: block;
+}
+
+.info-panel h4 {
+    margin: 0 0 20px 0;
+    color: #5b5b5b;
+    font-size: 18px;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #7dc042;
+}
+
+.info-item {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.info-item strong {
+    display: block;
+    color: #7dc042;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: "Montserrat", sans-serif;
+}
+
+.info-item span {
+    color: #333;
+    font-weight: 500;
+    font-family: "Montserrat", sans-serif;
+}
+
+.info-note {
+    margin-top: 20px;
+    padding: 12px;
+    background: rgba(125, 192, 66, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(125, 192, 66, 0.2);
+}
+
+.info-note p {
+    margin: 0;
+    font-size: 12px;
+    color: #6ba832;
+    font-family: "Montserrat", sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Botones */
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn-cancelar,
+.btn-guardar {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: "Montserrat", sans-serif;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.btn-cancelar {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-cancelar:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+}
+
+.btn-guardar {
+    background: linear-gradient(135deg, #7dc042 0%, #6ba832 100%);
+    color: white;
+}
+
+.btn-guardar:hover {
+    background: linear-gradient(135deg, #6ba832 0%, #5a9629 100%);
+    transform: translateY(-1px);
+}
+
+/* ESTILOS PARA DETALLE DE CITAS */
+.detalle-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.card-detalle {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.card-header {
+    background: linear-gradient(135deg, #7dc042 0%, #6ba832 100%);
+    color: white;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    font-family: "Montserrat", sans-serif;
+}
+
+.estado-badge {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.badge-urgencia {
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.urgencia-proxima {
+    background: rgba(255, 193, 7, 0.2);
+    color: #856404;
+    border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.urgencia-vencida {
+    background: rgba(220, 53, 69, 0.2);
+    color: #721c24;
+    border: 1px solid rgba(220, 53, 69, 0.5);
+}
+
+.card-body {
+    padding: 30px;
+}
+
+.detalle-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-bottom: 20px;
+}
+
+.detalle-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detalle-item.full-width {
+    grid-column: 1 / -1;
+    margin-bottom: 20px;
+}
+
+.detalle-item label {
+    font-weight: 600;
+    color: #7dc042;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: "Montserrat", sans-serif;
+}
+
+.detalle-item span {
+    color: #333;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: "Montserrat", sans-serif;
+}
+
+.detalle-item p {
+    color: #333;
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    font-family: "Montserrat", sans-serif;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #7dc042;
+}
+
+.link-contacto {
+    color: #17a2b8;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.link-contacto:hover {
+    color: #138496;
+    text-decoration: underline;
+}
+
+/* Acciones del detalle */
+.acciones-detalle {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 0 20px 20px;
+}
+
+.btn-accion {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: "Montserrat", sans-serif;
+    min-width: 140px;
+    justify-content: center;
+}
+
+.btn-editar {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    color: #212529;
+}
+
+.btn-editar:hover {
+    background: linear-gradient(135deg, #e0a800 0%, #d39e00 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.btn-completar {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.btn-completar:hover {
+    background: linear-gradient(135deg, #218838 0%, #1abc9c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-cancelar {
+    background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
+    color: white;
+}
+
+.btn-cancelar:hover {
+    background: linear-gradient(135deg, #e8590c 0%, #dc5309 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(253, 126, 20, 0.3);
+}
+
+.btn-eliminar {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+}
+
+.btn-eliminar:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Badges mejorados para el detalle */
+.badge-estado {
+    font-size: 13px;
+    padding: 6px 12px;
+    font-weight: 600;
+    border-radius: 20px;
+}
+
+.badge-tipo {
+    font-size: 12px;
+    padding: 5px 10px;
+    font-weight: 600;
+    border-radius: 15px;
+}
+
+@media(max-width: 768px) {
+    .form-container { margin: 10px; border-radius: 8px; }
+    .form-content { flex-direction: column; }
+    .form-section { padding: 20px; }
+    .info-section { padding: 0; background: white; border-left: none; border-top: none; }
+    .info-panel { padding: 20px; background: #f8f9fa; border-left: none; border-top: 1px solid #e9ecef; border-radius: 0 0 8px 8px; }
+    .form-row { grid-template-columns: 1fr; gap: 15px; }
+    .form-actions { flex-direction: column; gap: 12px; }
+    .btn-cancelar, .btn-guardar { width: 100%; min-height: 48px; }
+    .filtros-container { width: 95%; flex-direction: column; gap: 12px; padding: 12px; }
+    .filtro-item { min-width: auto; }
+    .filtro-item select, .filtro-item input { min-height: 44px; font-size: 16px; }
+    .detalle-container { padding: 10px; gap: 15px; }
+    .card-header { padding: 15px 20px; flex-direction: column; gap: 10px; text-align: center; }
+    .card-body { padding: 15px; }
+    .detalle-row { grid-template-columns: 1fr; gap: 12px; margin-bottom: 12px; }
+    .acciones-detalle { flex-direction: column; gap: 8px; padding: 0 10px 15px; }
+    .btn-accion { width: 100%; min-width: auto; min-height: 48px; }
+    .card-header h3 { font-size: 18px; }
+    .form-group input, .form-group select, .form-group textarea { min-height: 48px; font-size: 16px; }
+}
+
+@media(max-width: 480px) {
+    .form-header { padding: 20px 15px; }
+    .form-header h2 { font-size: 20px; }
+    .form-section { padding: 15px; }
+    .info-panel { padding: 15px; }
+    .card-body { padding: 12px; }
+    .filtros-container { width: 98%; padding: 10px; gap: 10px; }
+    .detalle-container { padding: 5px; }
+    
+    /* Tabla responsive */
+    .contenedor-tabla { width: 98%; margin: 5px auto; }
+    .tabla-lista { font-size: 11px; }
+    .tabla-lista th, .tabla-lista td { padding: 4px 2px; min-width: 60px; }
+    .opciones-tabla-lista { gap: 2px; }
+    .opciones-tabla-lista > div { padding: 4px; font-size: 10px; }
+    
+    /* Ocultar columnas menos importantes en móvil */
+    .tabla-lista th:nth-child(8), .tabla-lista td:nth-child(8) { display: none; }
+    .tabla-lista th:nth-child(6), .tabla-lista td:nth-child(6) { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
