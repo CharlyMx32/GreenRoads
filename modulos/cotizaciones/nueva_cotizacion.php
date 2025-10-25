@@ -44,6 +44,57 @@ while ($row = mysqli_fetch_assoc($result)) {
             border: 2px dashed #dee2e6;
             grid-column: 1 / -1;
         }
+        
+        .canvas-btn {
+            background: #7dc042;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s, opacity 0.3s;
+        }
+
+        .canvas-btn:hover:not(:disabled) {
+            background: #4a7c59;
+        }
+
+        .canvas-btn.active {
+            background: #8bd792ff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .canvas-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        .color-btn {
+            transition: transform 0.2s, border-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .color-btn:hover {
+            transform: scale(1.1);
+            border-color: #7dc042 !important;
+        }
+        
+        .color-btn.active {
+            border-color: #7dc042 !important;
+            border-width: 3px !important;
+            box-shadow: 0 0 8px rgba(125, 192, 66, 0.5);
+        }
+        
+        .color-btn .fa-check {
+            display: none;
+        }
+        
+        .color-btn.active .fa-check {
+            display: block;
+        }
     </style>
 </head>
 
@@ -388,20 +439,57 @@ while ($row = mysqli_fetch_assoc($result)) {
             </div>
 
             <div class="canvas-controls" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center;">
-                <button type="button" id="btn_limpiar_canvas" class="canvas-btn">
-                    <i class="fas fa-trash"></i> Limpiar
+                <!-- Herramientas de dibujo -->
+                <button type="button" id="btn_dibujo_libre" class="canvas-btn active" title="Dibujo Libre">
+                    <i class="fas fa-pencil-alt"></i> Dibujo Libre
                 </button>
-                <button type="button" id="btn_rectangulo" class="canvas-btn">
+                <button type="button" id="btn_rectangulo" class="canvas-btn" title="Rectángulo">
                     <i class="far fa-square"></i> Rectángulo
                 </button>
-                <button type="button" id="btn_triangulo" class="canvas-btn">
+                <button type="button" id="btn_triangulo" class="canvas-btn" title="Triángulo">
                     <i class="fas fa-draw-polygon"></i> Triángulo
                 </button>
-                <button type="button" id="btn_circulo" class="canvas-btn">
+                <button type="button" id="btn_circulo" class="canvas-btn" title="Círculo">
                     <i class="far fa-circle"></i> Círculo
                 </button>
-                <button type="button" id="btn_dibujo_libre" class="canvas-btn active">
-                    <i class="fas fa-pencil-alt"></i> Dibujo Libre
+                <button type="button" id="btn_texto" class="canvas-btn" title="Agregar Texto">
+                    <i class="fas fa-font"></i> Texto
+                </button>
+                <button type="button" id="btn_eraser" class="canvas-btn" title="Goma de Borrar">
+                    <i class="fas fa-eraser"></i> Borrador
+                </button>
+                
+                <!-- Separador -->
+                <div style="width: 2px; background: #ddd; margin: 0 5px;"></div>
+                
+                <!-- Selector de color -->
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <button type="button" class="color-btn active" data-color="green" title="Verde" style="background: #2c5530; width: 35px; height: 35px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer; position: relative;">
+                        <i class="fas fa-check" style="color: white; font-size: 14px;"></i>
+                    </button>
+                    <button type="button" class="color-btn" data-color="black" title="Negro" style="background: #000000; width: 35px; height: 35px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer;">
+                        <i class="fas fa-check" style="color: white; font-size: 14px;"></i>
+                    </button>
+                    <button type="button" class="color-btn" data-color="red" title="Rojo" style="background: #dc3545; width: 35px; height: 35px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer;">
+                        <i class="fas fa-check" style="color: white; font-size: 14px;"></i>
+                    </button>
+                    <button type="button" class="color-btn" data-color="blue" title="Azul" style="background: #007bff; width: 35px; height: 35px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer;">
+                        <i class="fas fa-check" style="color: white; font-size: 14px;"></i>
+                    </button>
+                    <button type="button" class="color-btn" data-color="gray" title="Gris" style="background: #6c757d; width: 35px; height: 35px; border: 2px solid #ddd; border-radius: 5px; cursor: pointer;">
+                        <i class="fas fa-check" style="color: white; font-size: 14px;"></i>
+                    </button>
+                </div>
+                
+                <!-- Separador -->
+                <div style="width: 2px; background: #ddd; margin: 0 5px;"></div>
+                
+                <!-- Acciones -->
+                <button type="button" id="btn_undo" class="canvas-btn" title="Deshacer" disabled style="opacity: 0.5;">
+                    <i class="fas fa-undo"></i> Deshacer
+                </button>
+                <button type="button" id="btn_limpiar_canvas" class="canvas-btn" title="Limpiar Todo" style="background: #dc3545;">
+                    <i class="fas fa-trash"></i> Limpiar
                 </button>
             </div>
 
@@ -420,28 +508,6 @@ while ($row = mysqli_fetch_assoc($result)) {
         </div>
     </div>
     </div>
-
-    <style>
-        .canvas-btn {
-            background: #7dc042;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-
-        .canvas-btn:hover {
-            background: #4a7c59;
-        }
-
-        .canvas-btn.active {
-            background: #8bd792ff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-    </style>
 </body>
 <script src="../../scripts/cotizaciones/formas_irregulares.js"></script>
 <script src="../../scripts/cotizaciones/canvas_terreno.js"></script>

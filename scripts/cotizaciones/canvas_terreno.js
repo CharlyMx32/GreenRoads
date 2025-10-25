@@ -4,25 +4,46 @@ class CanvasTerreno {
         this.canvas = document.getElementById('canvas_terreno');
         this.ctx = this.canvas.getContext('2d');
         this.isDrawing = false;
-        this.mode = 'libre'; // 'libre', 'rectangulo', 'triangulo', 'circulo'
+        this.mode = 'libre'; // 'libre', 'rectangulo', 'triangulo', 'circulo', 'texto', 'eraser'
         this.startX = 0;
         this.startY = 0;
         this.lastX = 0;
         this.lastY = 0;
         this.savedImageData = null; // Para guardar el estado antes de preview
         
+        // Configuración para modo texto
+        this.fontSize = 16;
+        this.fontFamily = 'Arial';
+        this.textInputActive = false; // Para evitar doble input
+        
+        // Configuración de colores
+        this.currentColor = '#2c5530'; // Verde oscuro (default)
+        this.colors = {
+            green: '#2c5530',
+            black: '#000000',
+            red: '#dc3545',
+            blue: '#007bff',
+            gray: '#6c757d'
+        };
+        
+        // Sistema de historial (undo)
+        this.history = [];
+        this.maxHistory = 20; // Máximo 20 acciones guardadas
+        
         this.initCanvas();
         this.bindEvents();
         this.setupResponsive();
+        this.createTextInput(); // Crear input flotante para texto
+        this.saveState(); // Guardar estado inicial
     }
 
     initCanvas() {
         // Configuración inicial del canvas
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
-        this.ctx.strokeStyle = '#2c5530';
+        this.ctx.strokeStyle = this.currentColor;
         this.ctx.lineWidth = 2;
-        this.ctx.fillStyle = 'rgba(44, 85, 48, 0.1)';
+        this.ctx.fillStyle = `${this.currentColor}1a`; // Color con transparencia
         
         // Fondo blanco con una cuadrícula sutil
         this.drawGrid();
@@ -133,12 +154,34 @@ class CanvasTerreno {
         this.canvas.addEventListener('touchmove', this.handleTouch.bind(this));
         this.canvas.addEventListener('touchend', this.stopDrawing.bind(this));
 
-        // Eventos de botones de control
+        // Eventos de botones de control - herramientas
         document.getElementById('btn_limpiar_canvas').addEventListener('click', this.clearCanvas.bind(this));
         document.getElementById('btn_rectangulo').addEventListener('click', () => this.setMode('rectangulo'));
         document.getElementById('btn_triangulo').addEventListener('click', () => this.setMode('triangulo'));
         document.getElementById('btn_circulo').addEventListener('click', () => this.setMode('circulo'));
         document.getElementById('btn_dibujo_libre').addEventListener('click', () => this.setMode('libre'));
+        document.getElementById('btn_texto').addEventListener('click', () => this.setMode('texto'));
+        
+        // Eventos de botones nuevos
+        const btnUndo = document.getElementById('btn_undo');
+        const btnEraser = document.getElementById('btn_eraser');
+        
+        if (btnUndo) {
+            btnUndo.addEventListener('click', this.undo.bind(this));
+        }
+        
+        if (btnEraser) {
+            btnEraser.addEventListener('click', () => this.setMode('eraser'));
+        }
+        
+        // Eventos de selector de color
+        const colorButtons = document.querySelectorAll('.color-btn');
+        colorButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const color = e.currentTarget.dataset.color;
+                this.setColor(color);
+            });
+        });
     }
 
     getMousePos(e) {
@@ -163,16 +206,34 @@ class CanvasTerreno {
     }
 
     startDrawing(e) {
-        this.isDrawing = true;
         const pos = this.getMousePos(e);
+        
+        // Modo texto: mostrar input flotante
+        if (this.mode === 'texto') {
+            if (!this.textInputActive) {
+                this.showTextInput(e.clientX, e.clientY, pos.x, pos.y);
+            }
+            return;
+        }
+        
+        this.isDrawing = true;
         this.startX = pos.x;
         this.startY = pos.y;
         this.lastX = pos.x;
         this.lastY = pos.y;
 
-        if (this.mode === 'libre') {
+        if (this.mode === 'libre' || this.mode === 'eraser') {
             this.ctx.beginPath();
             this.ctx.moveTo(pos.x, pos.y);
+            
+            // Configurar modo borrador
+            if (this.mode === 'eraser') {
+                this.ctx.globalCompositeOperation = 'destination-out';
+                this.ctx.lineWidth = 10; // Grosor más grande para borrar
+            } else {
+                this.ctx.globalCompositeOperation = 'source-over';
+                this.ctx.lineWidth = 2;
+            }
         } else if (this.mode === 'rectangulo' || this.mode === 'triangulo' || this.mode === 'circulo') {
             // Guardar estado actual antes de empezar el preview
             this.savedImageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -184,7 +245,7 @@ class CanvasTerreno {
 
         const pos = this.getMousePos(e);
 
-        if (this.mode === 'libre') {
+        if (this.mode === 'libre' || this.mode === 'eraser') {
             this.ctx.lineTo(pos.x, pos.y);
             this.ctx.stroke();
             this.ctx.beginPath();
@@ -215,7 +276,16 @@ class CanvasTerreno {
             this.drawShape(this.startX, this.startY, pos.x, pos.y);
         }
         
+        // Restaurar modo normal si estaba en eraser
+        if (this.mode === 'eraser') {
+            this.ctx.globalCompositeOperation = 'source-over';
+            this.ctx.lineWidth = 2;
+        }
+        
         this.savedImageData = null;
+        
+        // Guardar estado en historial después de completar la acción
+        this.saveState();
     }
 
     drawPreview(startX, startY, endX, endY) {
@@ -273,6 +343,164 @@ class CanvasTerreno {
         }
     }
 
+    addText(x, y) {
+        // Crear un prompt personalizado para el texto
+        const texto = prompt('Ingrese el texto que desea agregar:', '');
+        
+        if (texto && texto.trim() !== '') {
+            // Configurar estilo de texto
+            this.ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+            this.ctx.fillStyle = '#2c5530';
+            this.ctx.textBaseline = 'top';
+            
+            // Dibujar el texto
+            this.ctx.fillText(texto.trim(), x, y);
+            
+            // Opcional: agregar un borde al texto para mejor visibilidad
+            this.ctx.strokeStyle = '#2c5530';
+            this.ctx.lineWidth = 0.5;
+            this.ctx.strokeText(texto.trim(), x, y);
+            
+            // Restaurar configuración
+            this.ctx.lineWidth = 2;
+        }
+    }
+
+    createTextInput() {
+        // Crear el input flotante para texto
+        this.textInput = document.createElement('input');
+        this.textInput.type = 'text';
+        this.textInput.className = 'canvas-text-input';
+        this.textInput.style.cssText = `
+            position: fixed;
+            display: none;
+            padding: 8px 12px;
+            border: 2px solid #7dc042;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: Arial;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10000;
+            min-width: 200px;
+            max-width: 400px;
+            width: auto;
+        `;
+        this.textInput.placeholder = 'Escribe aquí y presiona Enter...';
+        document.body.appendChild(this.textInput);
+
+        // Eventos del input
+        this.textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.confirmText();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                this.cancelText();
+            }
+        });
+
+        // Evitar que el blur cierre inmediatamente
+        this.textInput.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+        });
+        
+        this.textInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
+
+    showTextInput(clientX, clientY, canvasX, canvasY) {
+        this.textInputActive = true;
+        this.pendingTextX = canvasX;
+        this.pendingTextY = canvasY;
+        
+        // Mostrar el input primero para obtener sus dimensiones
+        this.textInput.style.display = 'block';
+        this.textInput.value = '';
+        
+        // Calcular posición para que no se salga de la pantalla
+        let left = clientX + 10;
+        let top = clientY - 20;
+        
+        // Ajustar si se sale por la derecha
+        const inputWidth = 400; // max-width del input
+        if (left + inputWidth > window.innerWidth) {
+            left = window.innerWidth - inputWidth - 20;
+        }
+        
+        // Ajustar si se sale por abajo
+        if (top + 50 > window.innerHeight) {
+            top = clientY - 50;
+        }
+        
+        // Ajustar si se sale por arriba
+        if (top < 10) {
+            top = 10;
+        }
+        
+        // Ajustar si se sale por la izquierda
+        if (left < 10) {
+            left = 10;
+        }
+        
+        this.textInput.style.left = left + 'px';
+        this.textInput.style.top = top + 'px';
+        this.textInput.focus();
+        
+        // Agregar listener para cerrar al hacer clic fuera
+        setTimeout(() => {
+            document.addEventListener('click', this.handleOutsideClick.bind(this), { once: true });
+        }, 100);
+    }
+    
+    handleOutsideClick(e) {
+        // Si el clic fue fuera del input, cancelar
+        if (this.textInputActive && e.target !== this.textInput) {
+            this.cancelText();
+        }
+    }
+
+    confirmText() {
+        const texto = this.textInput.value.trim();
+        
+        // Cerrar el input inmediatamente
+        this.hideTextInput();
+        
+        if (texto !== '') {
+            try {
+                // Configurar estilo de texto más fino
+                this.ctx.font = `${this.fontSize}px ${this.fontFamily}`;
+                this.ctx.fillStyle = this.currentColor;
+                this.ctx.textBaseline = 'top';
+                
+                // Dibujar el texto sin borde (para que sea más fino)
+                this.ctx.fillText(texto, this.pendingTextX, this.pendingTextY);
+                
+                // Guardar estado
+                this.saveState();
+            } catch (error) {
+                console.error('Error al agregar texto:', error);
+                alert('Error al agregar texto. Por favor intenta de nuevo.');
+            }
+        }
+    }
+
+    cancelText() {
+        this.hideTextInput();
+    }
+
+    hideTextInput() {
+        this.textInput.style.display = 'none';
+        this.textInput.value = '';
+        this.textInputActive = false;
+        
+        // Remover listener de clic fuera si existe
+        document.removeEventListener('click', this.handleOutsideClick.bind(this));
+    }
+
     redrawCanvas() {
         // Guardar el contenido actual
         const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -290,6 +518,7 @@ class CanvasTerreno {
     clearCanvas() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.drawGrid();
+        this.saveState();
     }
 
     // Función para obtener el dibujo como base64
@@ -335,28 +564,130 @@ class CanvasTerreno {
             { id: 'btn_rectangulo', mode: 'rectangulo' },
             { id: 'btn_triangulo', mode: 'triangulo' },
             { id: 'btn_circulo', mode: 'circulo' },
-            { id: 'btn_dibujo_libre', mode: 'libre' }
+            { id: 'btn_dibujo_libre', mode: 'libre' },
+            { id: 'btn_texto', mode: 'texto' },
+            { id: 'btn_eraser', mode: 'eraser' }
         ];
 
         buttons.forEach(btn => {
             const element = document.getElementById(btn.id);
-            if (btn.mode === mode) {
-                element.classList.add('active');
-            } else {
-                element.classList.remove('active');
+            if (element) {
+                if (btn.mode === mode) {
+                    element.classList.add('active');
+                } else {
+                    element.classList.remove('active');
+                }
             }
         });
 
+        // Actualizar cursor del canvas según el modo
+        this.updateCursor();
+    }
+    
+    updateCursor() {
         // Cambiar cursor del canvas según el modo
-        if (mode === 'libre') {
-            this.canvas.style.cursor = 'crosshair';
-        } else {
-            this.canvas.style.cursor = 'pointer';
+        const cursors = {
+            'libre': 'crosshair',
+            'texto': 'text',
+            'eraser': 'pointer',
+            'rectangulo': 'crosshair',
+            'triangulo': 'crosshair',
+            'circulo': 'crosshair'
+        };
+        
+        this.canvas.style.cursor = cursors[this.mode] || 'default';
+    }
+    
+    setColor(colorName) {
+        if (this.colors[colorName]) {
+            this.currentColor = this.colors[colorName];
+            this.ctx.strokeStyle = this.currentColor;
+            this.ctx.fillStyle = `${this.currentColor}1a`; // Con transparencia
+            
+            // Actualizar botones de color
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const activeBtn = document.querySelector(`[data-color="${colorName}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+        }
+    }
+    
+    // Sistema de historial (Undo)
+    saveState() {
+        try {
+            // Guardar estado actual del canvas
+            const state = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+            this.history.push(state);
+            
+            // Limitar historial a máximo definido
+            if (this.history.length > this.maxHistory) {
+                this.history.shift(); // Eliminar el más antiguo
+            }
+            
+            // Actualizar estado del botón undo
+            this.updateUndoButton();
+        } catch (error) {
+            console.error('Error al guardar estado:', error);
+        }
+    }
+    
+    undo() {
+        try {
+            if (this.history.length > 1) {
+                // Remover estado actual
+                this.history.pop();
+                
+                // Obtener estado anterior
+                const previousState = this.history[this.history.length - 1];
+                
+                // Restaurar estado anterior
+                this.ctx.putImageData(previousState, 0, 0);
+                
+                // Actualizar botón
+                this.updateUndoButton();
+            }
+        } catch (error) {
+            console.error('Error al deshacer:', error);
+        }
+    }
+    
+    updateUndoButton() {
+        const btnUndo = document.getElementById('btn_undo');
+        if (btnUndo) {
+            if (this.history.length <= 1) {
+                btnUndo.disabled = true;
+                btnUndo.style.opacity = '0.5';
+                btnUndo.style.cursor = 'not-allowed';
+            } else {
+                btnUndo.disabled = false;
+                btnUndo.style.opacity = '1';
+                btnUndo.style.cursor = 'pointer';
+            }
         }
     }
 
     handleTouch(e) {
         e.preventDefault();
+        
+        // En modo texto, no simular eventos de mouse para evitar duplicados
+        if (this.mode === 'texto' && e.type === 'touchstart') {
+            const rect = this.canvas.getBoundingClientRect();
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            const touch = e.touches[0];
+            const canvasX = (touch.clientX - rect.left) * scaleX;
+            const canvasY = (touch.clientY - rect.top) * scaleY;
+            
+            if (!this.textInputActive) {
+                this.showTextInput(touch.clientX, touch.clientY, canvasX, canvasY);
+            }
+            return;
+        }
+        
         const touch = e.touches[0];
         const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
                                         e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
