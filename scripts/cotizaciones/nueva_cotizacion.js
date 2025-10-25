@@ -5,7 +5,7 @@ import { actualizarRollos, agregarRollo, removerRollo, cargarColoresRollos, actu
 import { actualizarTotales } from './core/totales.js';
 import { guardarCotizacion } from './formulario/envio.js';
 
-// Función para calcular materiales automáticos (extraída de totales.js para evitar ciclos)
+
 async function calcularMaterialesAutomaticos() {
     try {
         const tipoInstalacion = document.getElementById('tipo_instalacion')?.value;
@@ -15,7 +15,7 @@ async function calcularMaterialesAutomaticos() {
 
         if (!tipoInstalacion || area <= 0) {
             console.log('No hay tipo de instalación o área válida');
-            return 0; 
+            return 0;
         }
 
         const response = await fetch('/greenroads/php/cotizaciones/calcular_materiales.php', {
@@ -35,7 +35,7 @@ async function calcularMaterialesAutomaticos() {
 
         const data = await response.json();
         console.log('Respuesta del servidor:', data);
-        
+
         if (data.success) {
             console.log('Materiales calculados exitosamente. Costo total:', data.costo_total);
             return data.costo_total;
@@ -50,38 +50,36 @@ async function calcularMaterialesAutomaticos() {
     }
 }
 
-// Hacer la función disponible globalmente
 window.calcularMaterialesAutomaticos = calcularMaterialesAutomaticos;
 
-
 function configurarEventos() {
-    // Eventos para terreno
+
     document.getElementById('tipo_terreno')?.addEventListener('change', toggleTerreno);
-    document.getElementById('forma_terreno')?.addEventListener('change', function() {
+    document.getElementById('forma_terreno')?.addEventListener('change', function () {
         calcularArea();
         actualizarAreasAutomaticas();
     });
-    document.getElementById('dimension1')?.addEventListener('change', function() {
+    document.getElementById('dimension1')?.addEventListener('change', function () {
         calcularArea();
         actualizarAreasAutomaticas();
     });
-    document.getElementById('dimension2')?.addEventListener('change', function() {
+    document.getElementById('dimension2')?.addEventListener('change', function () {
         calcularArea();
         actualizarAreasAutomaticas();
     });
-    document.getElementById('area_irregular')?.addEventListener('change', function() {
+    document.getElementById('area_irregular')?.addEventListener('change', function () {
         calcularArea();
         actualizarAreasAutomaticas();
     });
 
     // Eventos para instalación
-    document.getElementById('area_total')?.addEventListener('change', function() {
+    document.getElementById('area_total')?.addEventListener('change', function () {
         actualizarAreasAutomaticas();
         verificarModoComparativo();
     });
-    
+
     // Eventos para tipo de instalación (materiales automáticos)
-    document.getElementById('tipo_instalacion')?.addEventListener('change', async function() {
+    document.getElementById('tipo_instalacion')?.addEventListener('change', async function () {
         await calcularMaterialesAutomaticos();
         await actualizarTotales();
         verificarModoComparativo();
@@ -89,7 +87,7 @@ function configurarEventos() {
 
     // Eventos para extras
     document.querySelectorAll('.extra-check').forEach(ck => {
-        ck.addEventListener('change', function() {
+        ck.addEventListener('change', function () {
             toggleExtraQuantity(this);
             verificarModoComparativo();
         });
@@ -97,7 +95,7 @@ function configurarEventos() {
 
     // Eventos para cantidades de extras
     document.querySelectorAll('.extra-cantidad').forEach(input => {
-        input.addEventListener('input', function() {
+        input.addEventListener('input', function () {
             updateExtraTotal(this);
             verificarModoComparativo();
         });
@@ -143,11 +141,10 @@ function toggleExtraQuantity(checkbox) {
     const extraItem = checkbox.closest('.extra-item');
     const cantidadContainer = extraItem.querySelector('.extra-cantidad-container');
     const cantidadInput = extraItem.querySelector('.extra-cantidad');
-    
+
     if (checkbox.checked) {
         cantidadContainer.style.display = 'flex';
         extraItem.classList.add('selected');
-        // Asegurar que la cantidad sea al menos 1
         if (!cantidadInput.value || cantidadInput.value < 1) {
             cantidadInput.value = 1;
         }
@@ -160,8 +157,7 @@ function toggleExtraQuantity(checkbox) {
 // Función para validar cantidad mínima del extra
 function updateExtraTotal(cantidadInput) {
     const cantidad = parseInt(cantidadInput.value) || 1;
-    
-    // Asegurar que la cantidad sea al menos 1
+
     if (cantidad < 1) {
         cantidadInput.value = 1;
     }
@@ -173,7 +169,6 @@ window.updateExtraTotal = updateExtraTotal;
 
 async function inicializarAplicacion() {
     try {
-        // Cargar parámetros primero y esperar a que terminen
         await cargarParametrosSistema();
 
         if (parametrosSistema.garantiaDefault <= 0 || parametrosSistema.precioInstalacion <= 0) {

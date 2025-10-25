@@ -1,0 +1,279 @@
+/* Estilos para botones del canvas y generales */
+.canvas-btn,
+.btn-canvas {
+    background: #7dc042;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s, opacity 0.3s;
+}
+
+.canvas-btn:hover:not(:disabled),
+.btn-canvas:hover {
+    background: #6bb032;
+}
+
+.canvas-btn.active {
+    background: #5a9427;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.canvas-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Botones de color */
+.color-btn {
+    transition: transform 0.2s, border-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.color-btn:hover {
+    transform: scale(1.1);
+    border-color: #7dc042 !important;
+}
+
+.color-btn.active {
+    border-color: #7dc042 !important;
+    border-width: 3px !important;
+    box-shadow: 0 0 8px rgba(125, 192, 66, 0.5);
+}
+
+.color-btn .fa-check {
+    display: none;
+}
+
+.color-btn.active .fa-check {
+    display: block;
+}
+
+/* Botón secundario */
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.3s;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.canvas-btn,
+.btn-canvas,
+.btn-secondary {
+    background: #7dc042;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.canvas-btn:hover,
+.btn-canvas:hover,
+.btn-secondary:hover {
+    background: #6bb032;
+}
+
+/* Items de productos */
+.product-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f9f9f9;
+}
+
+.product-header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.product-header select {
+    flex: 1;
+}
+
+/* Botón eliminar */
+.eliminar {
+    color: #dc3545;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.eliminar:hover {
+    color: #c82333;
+}
+
+/* Resumen */
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    margin: 5px 0;
+    padding: 3px 0;
+}
+
+/* Checkbox */
+.checkbox-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+/* Detalles del rollo */
+.rollo-details {
+    background: #f0f0f0;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.rollo-details > div {
+    margin: 5px 0;
+}
+
+/* Campos de información */
+.info-field {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 10px;
+    border-radius: 4px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Secciones ocultas */
+.hidden-section {
+    transition: all 0.3s ease;
+}
+
+/* Sección de formas */
+.formas-section {
+    margin-top: 15px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+/* Items de extras */
+.extra-item.selected {
+    background-color: #f8fff8;
+    border: 1px solid #7dc042;
+    border-radius: 5px;
+}
+
+/* Selector de clientes */
+.cliente-selector-container {
+    position: relative;
+}
+
+.cliente-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.cliente-dropdown.visible {
+    display: block;
+}
+
+.cliente-dropdown-item {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cliente-dropdown-item:hover,
+.cliente-dropdown-item.highlighted {
+    background-color: #f8f9fa;
+}
+
+.cliente-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f8f9fa;
+}
+
+.cliente-selected-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cliente-clear-btn {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    padding: 4px;
+}
+
+/* Opciones de cotización */
+.cotizacion-opcion {
+    margin-bottom: 15px;
+}
+
+/* Mensaje de límite */
+.limite-mensaje {
+    transition: all 0.3s ease;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+}
+
+.limite-mensaje.visible {
+    opacity: 1;
+    max-height: 100px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-container-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .actions-container {
+        position: relative;
+        bottom: auto;
+        right: auto;
+        margin-top: 20px;
+        justify-content: center;
+    }
+}
